@@ -1,0 +1,27 @@
+resolver: lts-11.13
+
+# packages:
+#  - location:
+#     git: git@github.com:forsyde/forsyde-atom.git
+#     commit: 59aeeb6130bc3fa4665aebd2634ebe3a575a7208
+#    extra-dep: true
+
+packages:
+- .
+- forsyde-atom-extensions
+- forsyde-shallow-extensions
+
+extra-deps:
+- forsyde-shallow-3.4.0.0
+- git: git@github.com:forsyde/forsyde-atom.git
+  commit: 59aeeb6130bc3fa4665aebd2634ebe3a575a7208
+
+# Override default flag values for local packages and extra-deps
+# flags: {}
+#
+# Extra directories used by stack for building
+# extra-include-dirs: [/path/to/dir]
+# extra-lib-dirs: [/path/to/dir]
+#
+# Allow a newer minor version of GHC than the snapshot specifies
+# compiler-check: newer-minor

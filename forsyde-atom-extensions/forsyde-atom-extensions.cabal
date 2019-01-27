@@ -1,0 +1,26 @@
+cabal-version:       >=1.10
+name:                forsyde-atom-extensions
+version:             0.1.0.0
+synopsis:            extensions for forsyde-atom
+description:         This package extends ForSyDe.Atom with a couple of new skeletons. They will be included in the next release.
+-- bug-reports:
+license:             BSD3
+license-file:        LICENSE
+author:              George Ungureanu
+maintainer:          ugeorge@kth.se
+-- copyright:
+-- category:
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+
+library
+  exposed-modules:   ForSyDe.Atom.Skeleton.Vector
+                   , ForSyDe.Atom.Skeleton.Vector.Matrix
+                   , ForSyDe.Atom.Skeleton.Vector.Cube
+                   , ForSyDe.Atom.Skeleton.Vector.Designs
+  other-modules:     Paths_forsyde_atom_extensions
+  -- other-extensions:
+  build-depends:       base >=4.2 && <5,
+                       forsyde-atom
+  hs-source-dirs:      src
+  default-language:    Haskell2010

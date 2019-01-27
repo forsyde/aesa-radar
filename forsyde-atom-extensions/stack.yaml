@@ -1,0 +1,10 @@
+resolver: lts-11.22
+
+packages:
+- .
+# Dependency packages to be pulled from upstream that are not in the resolver
+# using the same syntax as the packages field.
+# (e.g., acme-missiles-0.3)
+extra-deps:
+- git: git@github.com:forsyde/forsyde-atom.git
+  commit: 59aeeb6130bc3fa4665aebd2634ebe3a575a7208
