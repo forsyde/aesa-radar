@@ -148,6 +148,8 @@ Finally we provide two aliases for the basic Haskell data types used in the syst
 
  #### Digital Beamforming (DBF)
 
+![](figs/dbf-cube.svg)
+
 > dbf :: Pulses (Range (Antenna CpxData))
 >     -> Pulses (Range (Beam    CpxData))
 > dbf = SY.comb11 (V.farm11 fDBF)
