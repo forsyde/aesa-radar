@@ -3,7 +3,7 @@
 
 \newsavebox{\videoin}
 \savebox{\videoin}{%
-  \begin{tikzpicture}[scale=.8,>=latex]
+  \begin{tikzpicture}[scale=.5,>=latex]
     \coordinate (o) at (0,0,0);
     \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
     \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize antennas};
@@ -33,14 +33,14 @@
     (0,5,5) -- (5,5,5)
     ;
     
-    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.1cm, post length=0.1cm}]
+    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
     (5,0,0) coordinate (x) -- (5,5,0) -- (5,5,5) -- (5,0,5) -- (x);
   \end{tikzpicture}%
 }
 
 \newsavebox{\videoout}
 \savebox{\videoout}{%
-  \begin{tikzpicture}[scale=.8,>=latex]
+  \begin{tikzpicture}[scale=.5,>=latex]
     \coordinate (o) at (0,0,0);
     \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
     \draw[->] (o) -- (0,6,0) node [very near end, above, sloped] {\footnotesize beams};

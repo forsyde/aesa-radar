@@ -146,13 +146,51 @@ Finally we provide two aliases for the basic Haskell data types used in the syst
 
  ### Video Processing Pipeline Stages
 
+As presented [earlier]() the AESA application consists in a signal
+processing chain on input video streams coming from the array of
+antennas. For each antenna the data arrives _pulse by pulse_, and for
+each pulse arrives _range bin by range bin_. This happens _for all
+antennas in parallel_, and all complex samples are synchronized with
+the same sampling rate, e.g. of the A/D converter. Each processing
+stage is transforming this stream of numbers as follows.
+
  #### Digital Beamforming (DBF)
 
-![](figs/dbf-cube.svg)
+The DBF receives complex indata, from $N_A$ antenna elements and forms
+ $N_B$ simultaneous receiver beams, or "listening directions", by
+ summing individually phase-shifted indata signals from all
+ elements. Basically, considering the input video "cube" described
+ [previously](), the the transformation applied by DBF, could be
+ depicted as in [@fig:dbf-cube], where the _pulse_ dimension
+ goes to infinity (i.e. data is received pulse by pulse).
 
-> dbf :: Pulses (Range (Antenna CpxData))
->     -> Pulses (Range (Beam    CpxData))
-> dbf = SY.comb11 (V.farm11 fDBF)
+![Digital Beam Forming on video structure](figs/dbf-cube.pdf){#fig:dbf-cube}
+
+However, using knowledge of _how_ data arrives, the _range bin_
+dimension can also be unrolled in time, and thus the DBF algorithm can
+be applied as soon as $N_A$ complex samples arrive.
+
+![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
+
+To translate [@fig:dbf-samp] into MoC behavior, instead of modeling a
+vector of $N_A$ synchronous signals, i.e. a signal for each antenna
+element, we choose to represent it as one signal of $N_A$ samples, as
+for the SY MoC the two representations are semantically
+equivalent. However, with this approach we focus on the parallel
+procesing of data aspect of the computation rather than the concurrent
+distribution of signals, which is more suitable for this application.
+
+As such, the DBF signal processing block boils down to a single
+synchronous
+[`comb11`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:comb22)
+process applying the DBF algorithm on sampled vectors of complex data.
+
+![](figs/dbf-proc.pdf)
+
+> dbf :: SY.Signal (Antenna CpxData) -> SY.Signal (Beam CpxData)
+> dbf = SY.comb11 fDBF
+
+
 
 > fDBF :: Antenna CpxData
 >      -> Beam CpxData
