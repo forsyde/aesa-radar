@@ -1,47 +1,10 @@
-
- ## The ForSyDe-Atom Implementation of the AESA Model
-
-[ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/) is a spin-off
-of [ForSyDe-Shallow](https://forsyde.github.io/forsyde-atom/) which
-explores new modeling concepts, and has a fundamentally different
-approach to how models are described and instantiated. Historically,
-it has been the "playground" for developing and applying modeling
-concepts such as algorithmic skeletons (parallel patterns) and
-applicative-style modeling in ForSyDe. For more information on the
-main concepts behind ForSyDe-Atom see [@ungureanu17]. From the point
-of view of user experience though, the API is pretty much identical to
-ForSyDe-Shallow's, with the following two main differences:
-
- * the user has more control of which libraries are
-   imported. Functions are not distinguished by their suffix any
-   longer, which means that multiple libraries export functions which
-   deliberately share the same name. As such, the suggested
-   programming style for mixed-library designs is to alias the
-   imported library (e.g. `import ForSyDe.Atom.MoC.SY as SY`) and
-   reference the function using the alias as a prefix (e.g. `SY.mealy`
-   instead of `mealySY` in ForSyDe-Shallow).
-
- * some of ForSyDe's "canonical" names for process constructors
-   inspired from functional programming have been replaced with more
-   suggestive names inspired from component-based modeling, which are
-   denoting common building blocks, relevant to their domain. For
-   example `mapSY` is now called `SY.comb11`; `zipWithSY` is now
-   called `SY.comb21`; `zipWithV` is now called `V.farm21`, etc.
-
-The ForSyDe-Atom definition of the Saab-AESA application is found in
-`<root>/src/AESAAtom.lhs` and can be imported as a generic library
-(e.g. in the interpreter session).
+ ### An Operation-Oriented Approach to modeling the AESA
 
 > {-# LANGUAGE PackageImports #-}
-> module AESAAtom where
+> module ForSyDe.Atom.AESA1 where
 
- ### Imported Libraries
-
-As we the AESA application uses complex numbers, we use Haskell's
-[`Complex`](http://hackage.haskell.org/package/base/docs/Data-Complex.html)
-type.
-
-> import Data.Complex
+> import ForSyDe.Atom.AESA.Types
+> import ForSyDe.Atom.AESA.Coefs
 
 For describing temporal (i.e. streaming) behavior of the application
 our design will use a heterogeneous approach, using a combination of
@@ -98,53 +61,25 @@ terms of vector skeletons.
 > import ForSyDe.Atom.Skeleton.Vector.Matrix as M
 > import ForSyDe.Atom.Skeleton.Vector.Designs
 
- ### Aliases and constants
-
-For ease of documentation we will be using type synonyms (aliases) for
-all types and structures throughout this design:
-
-* `Antenna` denotes a vector container for the antenna elements. Its
-  length is equal to the number of antennas in the radar $N_A$.
-
-* After Digital Beamforming (DBF), the antenna elements are
-  transformed into $N_B$ beams, thus we associate the `Beam` alias for
-  the vector container wrapping those beams.
-
-* `Range` is a vector container for range bins. All antennas have the
-  same number of range bins $N_b$, rendering each $\text{Antenna}
-  \times \text{Range}$ a pefect matrix of samples for every pulse.
-
-* For ease of problem dimensioning, we use another vector alias
-  `CRange` for the _center range bins_ calculated after the Constant
-  False Alarm Ratio (CFAR) has been applied. Its length is $N_b' =
-  N_b-2N_{FFT}-3$.
-
-* `Window` stands for a doppler window of $N_{FFT}$ pulses.
-
-> type Antenna     = Vector -- length: nA
-> type Beam        = Vector -- length: nB
-> type Range       = Vector -- length: nb
-> type CRange      = Vector -- length: nb'
-> type Window      = Vector -- length: nFFT
-
-The only constants which need to be hard-coded (or passed as arguments
-for that matter) are $N_B$ and $N_{FFT}$. The rest are inferred from
-the size of the input data.
-
-> nB   = 8   :: Int
-> nFFT = 512 :: Int
-
-In this model pulses are dimensioned in time, where the time aspect is captured by the properly "one pulse arrives after the other". Furthermore, we can safely assume that, at least for the first part of the signal processing pipeline, all pulses are syncronized with the A/D converter rate, thus an _infinite stream of pulses_ can be modeled as a ForSyDe SY signal. After Corner Turn (CT), as long as we operate on chunks/windows of data the most natural MoC to describe processing is SDF, which drops the assumption of _total synchrony_ throughout the system in favor of a _partial synchrony_ (i.e. consistent cut) with respect to the firing of the actor. In ForSyDe-Atom SY signals are distinguished from SDF signals in the sense that they carry different tag systems [@lee98] and infer different time semantics. Thus we use two aliases for each respective type of signal: `Pulses` and `WPulses` (windowed pulses).
+In this model pulses are dimensioned in time, where the time aspect is
+captured by the properly "one pulse arrives after the
+other". Furthermore, we can safely assume that, at least for the first
+part of the signal processing pipeline, all pulses are syncronized
+with the A/D converter rate, thus an _infinite stream of pulses_ can
+be modeled as a ForSyDe SY signal. After Corner Turn (CT), as long as
+we operate on chunks/windows of data the most natural MoC to describe
+processing is SDF, which drops the assumption of _total synchrony_
+throughout the system in favor of a _partial synchrony_
+(i.e. consistent cut) with respect to the firing of the actor. In
+ForSyDe-Atom SY signals are distinguished from SDF signals in the
+sense that they carry different tag systems [@lee98] and infer
+different time semantics. Thus we use two aliases for each respective
+type of signal: `Pulses` and `WPulses` (windowed pulses).
 
 > type Pulses a  = SY.Signal a
 > type WPulses a = SDF.Signal a
 
-Finally we provide two aliases for the basic Haskell data types used in the system, to stay consistent with the application specification.
-
-> type CpxData     = Complex Float
-> type RealData    = Float
-
- ### Video Processing Pipeline Stages
+ #### Video Processing Pipeline Stages
 
 As presented [earlier]() the AESA application consists in a signal
 processing chain on input video streams coming from the array of
@@ -154,7 +89,7 @@ antennas in parallel_, and all complex samples are synchronized with
 the same sampling rate, e.g. of the A/D converter. Each processing
 stage is transforming this stream of numbers as follows.
 
- #### Digital Beamforming (DBF)
+ ##### Digital Beamforming (DBF)
 
 The DBF receives complex indata, from $N_A$ antenna elements and forms
  $N_B$ simultaneous receiver beams, or "listening directions", by
@@ -187,8 +122,9 @@ process applying the DBF algorithm on sampled vectors of complex data.
 
 ![](figs/dbf-proc.pdf)
 
-> dbf :: SY.Signal (Antenna CpxData) -> SY.Signal (Beam CpxData)
-> dbf = SY.comb11 fDBF
+> dbf :: SY.Signal (Range (Antenna CpxData))
+>     -> SY.Signal (Range (Beam CpxData))
+> dbf = SY.comb11 (V.farm11 fDBF)
 
 
 
@@ -201,24 +137,7 @@ process applying the DBF algorithm on sampled vectors of complex data.
 >     elMatrix   = V.farm11 V.fanout antennaEl
 >     beamConsts = mkBeamConsts (V.length antennaEl) nB
 
-
-> mkBeamConsts :: Int  -- ^ Number of antenna elements (x in e_x, Figure 3)
->              -> Int  -- ^ Number of beams (y in b_y, Figure 3)
->              -> Vector (Vector CpxData)
-> mkBeamConsts n_ae n_b = M.farm21 (*) taperingCoefs phaseShiftCoefs
->   where
->     taperingCoefs     = V.farm11 (V.fanoutn n_b) taylorCf
->     phaseShiftCoefs   = V.farm11 (\k -> V.farm11 (mkCoeff k) thetas) (vectorFloat [1..n_ae])
->     mkCoeff k theta_l = exp $ cis $ (k - 9.5) * d * sin theta_l / lambda -- Eqs.(1) and (2)
->     --------------
->     taylorCf = V.farm11 (\x -> mkPolar x 0) (taylor n_ae 4 (-30)) -- random parameters; stand for c_k, Eq.1
->     thetas   = vectorFloat [1..n_b]                               -- random theta_l for l=1 to y
->     d        = 0.1                                                -- the distance between the antenna elements.
->     lambda   = 660                                                -- wavelength of the pulse
->     --------------
->     vectorFloat = vector . map fromIntegral
-
- #### Pulse Compression (PC)
+ ##### Pulse Compression (PC)
 
 > pc :: Pulses (Range (Beam CpxData))
 >    -> Pulses (Beam (Range CpxData))
@@ -228,9 +147,7 @@ process applying the DBF algorithm on sampled vectors of complex data.
 >     -> Range CpxData -- ^ output pulse-compressed bin
 > fPC = fir mkPcCoefs
 
-> mkPcCoefs = hanning 8
-
- #### Corner Turn (CT)
+ ##### Corner Turn (CT)
 
 > ct :: Pulses (Beam (Range CpxData))
 >   -> (WPulses (Beam (Range CpxData)),
@@ -243,7 +160,7 @@ process applying the DBF algorithm on sampled vectors of complex data.
 >     initBatch = replicate (nFFT `div` 2) (M.fanout (cis 0))
 
 
- #### Doppler Filter Bank (DFB)
+ ##### Doppler Filter Bank (DFB)
 
 > doppler :: WPulses (Beam (Range CpxData))
 >         -> WPulses (Beam (Range (Window RealData)))
@@ -261,10 +178,9 @@ process applying the DBF algorithm on sampled vectors of complex data.
 > fWeight :: Window CpxData -> Window CpxData
 > fWeight = V.farm21 (*) mkWeightCoefs
 
-> mkWeightCoefs = V.farm11 (\x -> mkPolar x x) (hanning nFFT)
 
 
- #### Constant False Alarm Ratio (CFAR)
+ ##### Constant False Alarm Ratio (CFAR)
 
 > cfar :: WPulses (Beam ( Range (Window RealData)))
 >      -> WPulses (Beam (CRange (Window RealData)))
@@ -285,7 +201,7 @@ process applying the DBF algorithm on sampled vectors of complex data.
 >     addV    = V.farm21 (+)
 >   
 
- #### Integrator (INT)
+ ##### Integrator (INT)
 
 > int :: WPulses (Beam (CRange (Window RealData)))
 >     -> WPulses (Beam (CRange (Window RealData)))
@@ -297,9 +213,7 @@ process applying the DBF algorithm on sampled vectors of complex data.
 >     mulSCube c = SY.comb11 (C.farm11 (*c))
 >     delaySCube = SY.delay (C.fanout 0)
 
-> mkFirCoefs = vector [1,1,1,1,0,0,0,0]
-
- ### System Process Network
+ #### System Process Network
 
 > aesa :: Pulses (Range (Antenna CpxData))
 >      -> Pulses (Beam (CRange (Window RealData)))
@@ -309,7 +223,6 @@ process applying the DBF algorithm on sampled vectors of complex data.
 >     rDfb      = cfar $ doppler rCt
 >     (lCt,rCt) = ct $ pc $ dbf video
 
- ## References
 
 
 
