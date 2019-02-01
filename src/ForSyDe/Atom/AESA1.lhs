@@ -3,6 +3,7 @@
 > {-# LANGUAGE PackageImports #-}
 > module ForSyDe.Atom.AESA1 where
 
+> import Data.Complex
 > import ForSyDe.Atom.AESA.Types
 > import ForSyDe.Atom.AESA.Coefs
 
@@ -61,6 +62,8 @@ terms of vector skeletons.
 > import ForSyDe.Atom.Skeleton.Vector.Matrix as M
 > import ForSyDe.Atom.Skeleton.Vector.Designs
 
+[@sec:aliases-shallow]
+
 In this model pulses are dimensioned in time, where the time aspect is
 captured by the properly "one pulse arrives after the
 other". Furthermore, we can safely assume that, at least for the first
@@ -99,7 +102,7 @@ The DBF receives complex indata, from $N_A$ antenna elements and forms
  depicted as in [@fig:dbf-cube], where the _pulse_ dimension
  goes to infinity (i.e. data is received pulse by pulse).
 
-![Digital Beam Forming on video structure](figs/dbf-cube.pdf){#fig:dbf-cube}
+![Digital Beam Forming on video structure](figs/dbf-cube.pdf)
 
 However, using knowledge of _how_ data arrives, the _range bin_
 dimension can also be unrolled in time, and thus the DBF algorithm can
@@ -120,7 +123,6 @@ synchronous
 [`comb11`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:comb22)
 process applying the DBF algorithm on sampled vectors of complex data.
 
-![](figs/dbf-proc.pdf)
 
 > dbf :: SY.Signal (Range (Antenna CpxData))
 >     -> SY.Signal (Range (Beam CpxData))

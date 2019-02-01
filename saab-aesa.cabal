@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e57d699ed029a5341aa3c195327fc45695b2d33e5d2cb8746d842f00d24d1725
+-- hash: 692e8de89bdfe4b8be8dae43c188d5718fb954bd668379b73c0f79741a74fe62
 
 name:           saab-aesa
 version:        0.1.0.0
@@ -15,10 +17,9 @@ copyright:      2018 George Ungureanu, KTH
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
-    ChangeLog.md
     README.md
+    ChangeLog.md
 
 source-repository head
   type: git

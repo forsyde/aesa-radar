@@ -13,3 +13,6 @@ Install the latest pandoc (later than 1.7). If your OS distribution is ancient (
 	git clone git@github.com:lierdakil/pandoc-crossref.git
 	cd pandoc-crossref
 	stack install   # Strong dependencies on TH
+	cd .. && rm -rf pandoc-crossref
+	
+	
