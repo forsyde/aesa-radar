@@ -5,7 +5,7 @@
 > -- imported normally once 'forsyde-atom-extensions' is pushed to upstream.
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 > import ForSyDe.Atom.Skeleton.Vector.Matrix as M
-> import ForSyDe.Atom.Skeleton.Vector.Designs
+> import ForSyDe.Atom.Skeleton.Vector.DSP
 > import Data.Complex
 > import ForSyDe.Atom.AESA.Types
 

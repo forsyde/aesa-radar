@@ -95,13 +95,13 @@ indexes = farm31 (,,) colix rowix depthix
     rowix = V.farm11 M.transpose colix
     depthix =  M.transpose $ V.farm11 M.transpose colix
 
-transpose1 :: Cube a -- ^ dimensions @(Z,Y,X)@
+transpose :: Cube a -- ^ dimensions @(Z,Y,X)@
            -> Cube a -- ^ dimensions @(Y,X,Z)@
-transpose1 = V.farm11 M.transpose . M.transpose
+transpose = V.farm11 M.transpose . M.transpose
 
-transpose1' :: Cube a -- ^ dimensions @(Y,X,Z)@
+transpose' :: Cube a -- ^ dimensions @(Y,X,Z)@
             -> Cube a -- ^ dimensions @(Z,Y,X)@
-transpose1' = M.transpose . V.farm11 M.transpose
+transpose' = M.transpose . V.farm11 M.transpose
 
 -- | Maps a function on every value of a cube.
 --

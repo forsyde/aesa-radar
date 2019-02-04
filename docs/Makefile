@@ -7,10 +7,12 @@ FIGS_SRC = ./figs_src
 FIGS_DIR = ./figs
 
 LHS_FILES :=	21:../src/ForSyDe/Shallow/AESA.lhs \
-		31:../src/ForSyDe/Atom/AESA/Types.lhs \
 		32:../src/ForSyDe/Atom/AESA1.lhs \
-		33:../src/ForSyDe/Atom/AESA/Coefs.lhs \
 		34:../src/ForSyDe/Atom/AESA2.lhs 
+#		31:../src/ForSyDe/Atom/AESA/Types.lhs \
+#		33:../src/ForSyDe/Atom/AESA/Coefs.lhs \
+
+
 
 BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))
@@ -41,7 +43,7 @@ pdf: $(DOC).pdf
 
 $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(SVG_FIGS) $(TX_FILES) $(MD_FILES)
 	pandoc $(MD_DIR)/* \
-		--mathml --number-sections \
+		--mathml --number-sections --toc\
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--filter=scripts/includes-svg.hs \
@@ -50,7 +52,7 @@ $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(SVG_FIGS) $(TX_FILES) 
 
 $(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(TX_FILES) $(MD_FILES)
 	pandoc $(MD_DIR)/* \
-		--number-sections \
+		--number-sections --toc\
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--bibliography=refs.bib \

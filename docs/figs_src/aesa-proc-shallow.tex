@@ -1,0 +1,52 @@
+\documentclass{standalone}
+
+\usepackage[tikz]{forsyde}
+
+\begin{document}
+\begin{tikzpicture}[constructors=shallow,scale=1.2]
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapV}^T(f_{DBF})$},type=comb](dbf){dbf};
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapV}(f_{PC})$},type=comb,right of=dbf](pc){pc};
+  \standard[process,moc=sdf,f={$^T$},type=actor,right of=pc,yshift=1cm,xshift=4cm](p1){};
+  \resetportinfo{p1}\wpinfo{$N_{FFT}$}\epinfo{1}
+  \standard[process,moc=sdf,f={$^T$},type=actor,right of=pc,yshift=-1cm,xshift=4cm](p2){};
+  \resetportinfo{p2}\wpinfo{$N_{FFT}$}\epinfo{1}
+  \standard[process,moc=sdf,f={$0_1...0_{N_{FFT}}$},type=delay,left of=p2](ovr){};
+
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapMat}(f_{DFB})$},type=comb,right of=p1](dfb1){dfb};
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapMat}(f_{DFB})$},type=comb,right of=p2](dfb2){dfb};
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapV}(f_{cfar})$},type=comb,right of=dfb1](cfar1){cfar};
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapV}(f_{cfar})$},type=comb,right of=dfb2](cfar2){cfar};
+  \standard[process,moc=sy,ni=2,f={$+$},type=comb,xshift=2.5cm](add)<$(cfar1)!.5!(cfar2)$>{addSC};
+  \standard[process,moc=blackbox,right of=add](int){firNet};
+  \draw[s]
+  (dbf) edge[<-] ++(-1.5,0)
+  (pc) edge[<-] (dbf) edge[-|-=.27,->] (p1) edge[-|-,->] (ovr)
+  (ovr) edge[->] (p2)
+  (dfb1) edge[<-] (p1) edge[->] (cfar1)
+  (dfb2) edge[<-] (p2) edge[->] (cfar2)
+  (add.w1) edge[<-,-|-] (cfar1.e1) (add.w2) edge[<-,-|-] (cfar2.e1) (add.e1) edge[->] (int)
+  (int) edge[->] ++(1.5,0)
+  ;
+  \gettikzx{(dbf.east)}{\x}\gettikzx{(dbf.west)}{\y}
+  \draw[dashed] (\x,1.5) rectangle (\y,-1.5) node[anchor=north west]{dbf};
+  \gettikzx{(pc.east)}{\x}\gettikzx{(pc.west)}{\y}
+  \draw[dashed] (\x,1.5) rectangle (\y,-1.5) node[anchor=north west]{pc};
+  \gettikzx{(p2.east)}{\x}\gettikzx{(ovr.west)}{\y}
+  \draw[dashed] (\x,1.5) rectangle (\y,-1.5) node[anchor=north west]{ct};
+  \gettikzx{(dfb1.east)}{\x}\gettikzx{(dfb1.west)}{\y}
+  \draw[dashed] (\x,1.5) rectangle (\y,.2) node[anchor=north west]{dfb};
+  \gettikzx{(dfb2.east)}{\x}\gettikzx{(dfb2.west)}{\y}
+  \draw[dashed] (\x,-.2) rectangle (\y,-1.5) node[anchor=north west]{dbf};
+  \gettikzx{(cfar1.east)}{\x}\gettikzx{(cfar1.west)}{\y}
+  \draw[dashed] (\x,1.5) rectangle (\y,.2) node[anchor=north west]{cfar};
+  \gettikzx{(cfar2.east)}{\x}\gettikzx{(cfar2.west)}{\y}
+  \draw[dashed] (\x,-.2) rectangle (\y,-1.5) node[anchor=north west]{cfar};
+  \gettikzx{(int.east)}{\x}\gettikzx{(add.west)}{\y}
+  \draw[dashed] (\x,1.5) rectangle (\y,-1.5) node[anchor=north west]{int};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

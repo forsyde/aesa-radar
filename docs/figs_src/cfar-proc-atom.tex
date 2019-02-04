@@ -1,0 +1,15 @@
+\documentclass{standalone}
+
+\usepackage[tikz]{forsyde}
+
+\begin{document}
+\begin{tikzpicture}[]
+  \standard[process,moc=sy,f={$\noexpand\mathtt{farm}(f_{cfar})$},type=comb](a){cfar};
+  \draw[s=sy] (a) edge[<-] ++(-2,0) edge[->] ++(2,0);
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

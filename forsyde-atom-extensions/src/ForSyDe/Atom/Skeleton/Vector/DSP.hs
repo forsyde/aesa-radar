@@ -1,4 +1,4 @@
-module ForSyDe.Atom.Skeleton.Vector.Designs where
+module ForSyDe.Atom.Skeleton.Vector.DSP where
 
 import Data.Complex
 import ForSyDe.Atom.MoC as MoC

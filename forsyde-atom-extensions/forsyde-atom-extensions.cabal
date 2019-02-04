@@ -17,7 +17,7 @@ library
   exposed-modules:   ForSyDe.Atom.Skeleton.Vector
                    , ForSyDe.Atom.Skeleton.Vector.Matrix
                    , ForSyDe.Atom.Skeleton.Vector.Cube
-                   , ForSyDe.Atom.Skeleton.Vector.Designs
+                   , ForSyDe.Atom.Skeleton.Vector.DSP
   other-modules:     Paths_forsyde_atom_extensions
   -- other-extensions:
   build-depends:       base >=4.2 && <5,

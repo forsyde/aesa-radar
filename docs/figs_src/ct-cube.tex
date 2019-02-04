@@ -1,0 +1,93 @@
+\documentclass[tikz,border=10pt,multi]{standalone}
+\usetikzlibrary{decorations.pathmorphing,calc,decorations.pathreplacing}
+
+\newcommand{\drawsmallcube}[1]{%
+  \draw[thick, fill=blue]%
+  (#1) --++(0,-1,0) --++(-1,0,0) --++(0,1,0) -- cycle%
+  (#1) --++(-1,0,0) --++(0,0,-1) --++(1,0,0) -- cycle%
+  (#1) --++(0,-1,0) --++(0,0,-1) --++(0,1,0) -- cycle%
+  ;%
+}
+
+\newcommand{\drawcubeinit}[1]{%
+  \draw (#1) --++(0,0,4) --++(0,4,0) --++(0,0,-4) -- cycle;
+  \draw (#1)++(0,4,0) --++(4,0,0) --++(0,-4,0);
+}
+
+\newcommand{\drawcubefin}[1]{%
+  \draw (#1)++(4,4,4) coordinate (o)
+  (o) --++(0,0,-4) --++(0,-4,0) --++(0,0,4) -- cycle;
+  \draw (o) --++(-4,0,0) (o)++(0,-4,0) --++(-4,0,0);
+}
+
+
+\newcommand{\drawcubefinmargin}[1]{%
+  \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
+  (#1)++(4,4,4) coordinate (o)
+  (o) --++(0,0,-4) --++(0,-4,0) --++(0,0,4) -- cycle;
+  \draw (o) --++(-4,0,0) (o)++(0,-4,0) --++(-4,0,0);
+}
+
+\newsavebox{\videoin}
+\savebox{\videoin}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \draw[->] (0,0,0) --++(0,13,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (0,0,0) --++(0,0,8) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (0,6,0) --++(0,0,8) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (0,0,0) --++(19,0,0) node [very near end, above, sloped] {\footnotesize pulse windows};
+    \draw[->] (0,6,0) --++(19,0,0) node [very near end, above, sloped] {\footnotesize pulse windows};
+
+    % right channel
+    \foreach \i in {0,4,8}{
+      \drawcubeinit{\i,6,0}
+      \foreach \j in {1,2,3,4}{
+        \pgfmathtruncatemacro{\x}{\i+\j}
+        \drawsmallcube{\x,8,2}
+      }
+      \drawcubefin{\i,6,0}
+    }
+    % finish right channel
+    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
+    (14,10,4) --++(0,0,-4) --++(0,-4,0) --++(0,0,4) -- cycle;
+    \draw (14,10,4) --++(-2,0,0) (14,6,4) --++(-2,0,0)  (14,10,0) --++(-2,0,0);
+    \drawsmallcube{13,8,2}\drawsmallcube{14,8,2}
+  
+    % init left channel
+    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
+    (0,0,0) --++(0,0,4) --++(0,4,0) --++(0,0,-4) -- cycle;
+    \draw (0,4,0) --++(2,0,0) (0,0,4) --++(2,0,0) (0,4,4) --++(2,0,0);
+    \drawsmallcube{1,2,2}\drawsmallcube{2,2,2}
+
+    % left channel
+    \foreach \i in {2,6,10}{
+      \drawcubeinit{\i,0,0}
+      \foreach \j in {1,2,3,4}{
+        \pgfmathtruncatemacro{\x}{\i+\j}
+        \drawsmallcube{\x,2,2}
+      }
+      \drawcubefin{\i,0,0}
+    }
+
+    \foreach \i in {2,4,6,8,10,12}{
+      \draw[red,dashed,thin,opacity=.1,fill=red] (\i,0,4) -- (\i,10,4) -- (\i,10,0) -- (\i,0,0) -- cycle;
+    }
+
+    \node[anchor=east, xshift=-5pt] at (0,2,3) {\tt left channel}; 
+    \node[anchor=east, xshift=-5pt] at (0,8,3) {\tt right channel};
+
+    \path[draw,thick,decorate,decoration=brace] (4,-.1,4) -- (2,-.1,4) node[midway,below,font=\small]{$N_{FFT}/2$};
+    \path[draw,thick,decorate,decoration=brace] (6,-1.2,4) -- (2,-1.2,4) node[midway,below,font=\small]{$N_{FFT}$};
+  \end{tikzpicture}%
+}
+
+
+\begin{document}
+\begin{tikzpicture}
+  \node (in) {\usebox{\videoin}};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

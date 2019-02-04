@@ -3,18 +3,20 @@
 \usepackage[tikz]{forsyde}
 
 \begin{document}
-\begin{tikzpicture}[constructors=shallow]
+\begin{tikzpicture}[]
   \node[circle,inner sep=1.5pt,fill=black] (a) {};
-  \standard[process,moc=sdf,f={$^T$},type=actor](p1)<2.5,.5>{};
+  \interface[left of=a](if){sy}{sdf};
+  \standard[process,moc=sdf,f={$^T$},type=comb](p1)<2.5,.5>{};
   \resetportinfo{p1}\wpinfo{$N_{FFT}$}\epinfo{1}
-  \standard[process,moc=sdf,f={$^T$},type=actor](p2)<2.5,-.5>{};
+  \standard[process,moc=sdf,f={$^T$},type=comb](p2)<2.5,-.5>{};
   \resetportinfo{p2}\wpinfo{$N_{FFT}$}\epinfo{1}
-  \node[anchor=east] (ni) at (-1.5,0) {\textit{from PC}};
+  \node[anchor=east] (ni) at (-3,0) {\textit{from PC}};
   \node[anchor=west] (no1) at (4.5,.5) {\textit{to DFB right}};
   \node[anchor=west] (no2) at (4.5,-.5) {\textit{to DFB left}};
-  
-  \draw[s]
-  (a) edge[<-] (ni) edge[|-,->] (p1)  edge[|-,token=vector,->] (p2)
+
+  \draw[s=sy] (ni) edge[->] (if);
+  \draw[s=sdf]
+  (a) edge[<-] (if) edge[|-,->] (p1)  edge[|-,token=vector,->] (p2)
   (p1) edge[->] (no1) (p2) edge[->] (no2);
   \node[anchor=north] at (.5,-.5) {$N_{FFT}/2$};
 \end{tikzpicture}

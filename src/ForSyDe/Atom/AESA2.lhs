@@ -1,3 +1,5 @@
+ ## A Process Network-Oriented Approach to Modeling{#sec:atom-network}
+
 > {-# LANGUAGE PackageImports #-}
 > module ForSyDe.Atom.AESA2 where
 
@@ -8,7 +10,7 @@
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 > import ForSyDe.Atom.Skeleton.Vector.Cube   as C
 > import ForSyDe.Atom.Skeleton.Vector.Matrix as M
-> import ForSyDe.Atom.Skeleton.Vector.Designs
+> import ForSyDe.Atom.Skeleton.Vector.DSP
 
 > import ForSyDe.Atom.AESA.Types
 > import ForSyDe.Atom.AESA.Coefs
@@ -17,6 +19,31 @@
 > nb'  = nb - 2 * nFFT - 2
 
  #### Digital Beamforming (DBF)
+
+The DBF receives complex indata, from $N_A$ antenna elements and forms
+ $N_B$ simultaneous receiver beams, or "listening directions", by
+ summing individually phase-shifted indata signals from all
+ elements. Basically, considering the input video "cube" described
+ [previously](), the the transformation applied by DBF, could be
+ depicted as in [@fig:dbf-cube], where the _pulse_ dimension goes to
+ infinity (i.e. data is received pulse by pulse).
+
+![Digital Beam Forming on video structure](figs/dbf-cube.pdf)
+
+However, using knowledge of _how_ data arrives, the _range bin_
+dimension can also be unrolled in time, and thus the DBF algorithm can
+be applied as soon as $N_A$ complex samples arrive.
+
+![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
+
+To translate [@fig:dbf-samp] into MoC behavior, instead of modeling a
+vector of $N_A$ synchronous signals, i.e. a signal for each antenna
+element, we choose to represent it as one signal of $N_A$ samples, as
+for the SY MoC the two representations are semantically
+equivalent. However, with this approach we focus on the parallel
+procesing of data aspect of the computation rather than the concurrent
+distribution of signals, which is more suitable for this application.
+
 
 > dbf :: Antenna (SY.Signal CpxData)
 >     -> Beam    (SY.Signal CpxData)

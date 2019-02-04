@@ -4,7 +4,7 @@
 
  ## Imported Libraries
 
-As we the AESA application uses complex numbers, we use Haskell's
+As the AESA application uses complex numbers, we use Haskell's
 [`Complex`](http://hackage.haskell.org/package/base/docs/Data-Complex.html)
 type.
 
@@ -252,30 +252,72 @@ out of the scope of this use case.
 
  ### Corner Turn (CT){#sec:ct-shallow label="CT in ForSyDe-Shallow"}
 
-The role of the corner turn in the video processing chain is simply to
-split the input signal as specified in [@sec:video-chain-spec] into
-the right and the left channel, and to "delay" the left channel with
-$N_{FFT}/2$ samples in order to achieve 50% overlap in the downstream
-processes.
+In order to be able to calculate the Doppler channels fuher in the
+processing pipeline, during a CT, a rearrangement of data must be
+performed between functions that process data in “different”
+directions, e.g. range and pulse. This rearrangement is called corner
+turn. In order to maximize the efficiency (overall
+throughput)\todo{true?}\ of the AESA radar application this stage is
+combined with an _overapped memory_ technique, which means that the
+datapath is split into two concurrent processing channels with 50%
+overlapped data, as depicted below in [@fig:ct-cube].
+
+![CT on video structure](figs/ct-cube.pdf){#fig:ct-cube}
+
+This figure shows an important particularity of this stage as compared
+to others: the _pulse_ axis is partitioned in finite _windows_ of
+$N_{FFT}$ pulse matrices. This implies that whatever function a `ct`
+process migh perform is applied to a _window of $N_{FFT}$ consecutive_
+pulse samples _at once_. As such we alter the notion of _total_ order
+inferred by the synchronous MoC into a notion of _partial_ order among
+samples, with respect to (i.e. relative to) the application of the FFT
+algorithm on a window of pulses further downstream, in
+[@sec:dfb-shallow]. The synchronous dataflow (SDF) MoC (@lee95,@lee98)
+is a more appropriate MoC to describe such a behavior. As such we
+define the CT process stage as an SDF actor
+[`actor11SDF`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-MoC-SDF.html#v:actor11SDF)
+operating on $N_{FFT}$ pulse matrices, and generating one video cube
+every time the process fires. In other words we say that the CT actor
+has a consumption rate of $N_{FFT}$ (matrix) tokens and a production
+rate of 1 (cube) token, like in [@fig:ct-proc-shallow].
 
 ![Corner turn splitter](figs/ct-proc-shallow.pdf){#fig:ct-proc-shallow}
 
-The process is depicted [@fig:ct-proc-shallow]. The stream of pulses
-is now seen from an _untimed_ SDF perspective -- we will see shortly
-why. The _left_ signal of pulses is filled with $N_{FFT}$ initial
-tokens, made up of matrices filled up with complex $0$s, using the
+The overlapping memory processing is depicted simply by splitting the
+input signal as specified in [@sec:video-chain-spec] into the right
+and the left channel, and to "delay" the left channel with $N_{FFT}/2$
+samples in order to achieve 50% overlap in the downstream processes.
+The the network depicted in [@fig:ct-proc-shallow] shows the stream of
+pulses now from an _untimed_ SDF perspective. The _left_ signal of
+pulses is filled with $N_{FFT}$ initial tokens, made up of matrices
+filled up with complex $0$s, using the
 [`delaySDF`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-MoC-SDF.html#v:delaySDF)
 process constructor. This way, whatever input arrives from the PC
 stage, will be observed at the left channel only after $N_{FFT}/2$
-samples.
+samples, and the corner turning is performed on this "delayed" data.
+
+The way in which the `PCT` process operates on the window of $N_{FFT}$
+pulses is to transform the list of input tokens into a `Vector` using
+the
+[`vector`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html)
+utility, thus forming a cube of `Window (Beam (Range CpxData))`. We
+need to transpose this cube so that we can operate on individual
+windows of samples. We do that with the help of
+`transposeCube`[^transpC] skeleton which re-shuffles the elements into
+the structure `Beam (Range (Window CpxData))`. Finally we wrap the
+resulting video cube into a singleton token list (i.e. one output
+token) by using the `:[]` list constructors.
+
+[^transpC]: see `transposeCube` from the `forsyde-shallow-extensions` documentation.
 
 > ct :: Signal (Beam (Range CpxData))
->   -> (Signal (Beam (Range CpxData)),
->       Signal (Beam (Range CpxData)))
-> ct pcSig = (rightWSig, leftWSig)
+>   -> (Signal (Beam (Range (Window CpxData))),
+>       Signal (Beam (Range (Window CpxData))))
+> ct pcSig = (pCT rightSig, pCT leftSig)
 >   where
->     rightWSig = pcSig
->     leftWSig  = delaySDF initBatch pcSig
+>     pCT      = actor11SDF nFFT 1 ((:[]) . transposeCube . vector)
+>     rightSig = pcSig
+>     leftSig  = delaySDF initBatch pcSig
 >     initBatch = replicate (nFFT `div` 2) (infiniteMat (cis 0))
 
 *Interesting fact:* although the application specification mentions
@@ -298,43 +340,27 @@ applied by the DBF can be depicted as in [@fig:dfb-cube].
 
 ![DFB on video structure](figs/dfb-cube.pdf){#fig:dfb-cube}
 
-This figure shows an important particularity of this stage as compared
-to others: the _pulse_ axis is partitioned in finite _windows_ of
-$N_{FFT}$ pulse matrices. This implies that the DBF function $f_{DBF}$
-is applied to a window of $N_{FFT}$ _consecutive_ pulse samples _at
-once_. As such we alter the notion of _total_ (consecutive) order
-inferred by the synchronous MoC into a notion of _partial_ order among
-samples, with respect to (i.e. relative to) the application of the FFT
-algorithm on a window of pulses. The synchronous dataflow (SDF) MoC
-(@lee95,@lee98) is a more appropriate MoC to describe such a
-behavior. As such we define the DFB signal processing stage as an SDF
-actor
-[`actor11SDF`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-MoC-SDF.html#v:actor11SDF)
-operating on $N_{FFT}$ pulse matrices, and generating one video cube
-every time the process fires. In other words we say that the DBF actor
-has a consumption rate of $N_{FFT}$ (matrix) tokens and a production
-rate of 1 (cube) token, like in [@fig:dfb-proc-shallow].
+This figure further suggests that the DBF function $f_{DBF}$ is
+applied to a window of $N_{FFT}$ _consecutive_ pulse samples _at
+once_. However the _cube_ tokens formed in the previous CT stage can
+all be considered synchronous with each other (again), as they
+originate from the same input stream. The 50% ovelapping of data is
+assured by the $N_{FFT}/2$ initial tokens on the left channel, thus we
+can safely state that the cube tokens themselves follow the perfect
+synchrony assumption. For each channel, the DFB stage is represented
+by a SY combinational process
+[`combSY`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-MoC-Synchronous.html#v:combSY)
+as shown in [@fig:dfb-proc-shallow].
 
 ![DFB stage process](figs/dfb-proc-shallow.pdf){#fig:dfb-proc-shallow}
 
-The way in which the `dfb` process operates on the window of $N_{FFT}$
-pulses is to transform the list of input tokens into a `Vector` using the
-[`vector`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html)
-utility, thus forming a cube of `Window (Beam (Range CpxData))`. We
-need to transpose this cube so that we can operate on individual
-windows of samples, thus the `transposeCube`[^transpC] skeleton
-re-shuffles the elements into the structure `Beam (Range (Window
-CpxData))`. After that we apply the function $f_{DFB}$ on each
-$\mathtt{Window}$ contained by the newly-formed
-$\mathtt{Beam}\times\mathtt{Range}$ matrix. Finally we wrap the
-resulting video cube into a singleton token list (i.e. one output
-token) by using the `:[]` list constructors.
+As such, the `dfb` process applies the function $f_{DFB}$ on each
+_window_ of complex samples, arranged in rows within the
+$\mathtt{Beam}\times\mathtt{Range}$ space by the previous stage CT.
 
-[^transpC]: see `transposeCube` from the `forsyde-shallow-extensions` documentation.
-
-> dfb :: Signal (Beam (Range CpxData))
+> dfb :: Signal (Beam (Range (Window  CpxData)))
 >     -> Signal (Beam (Range (Window RealData)))
-> dfb = actor11SDF nFFT 1 ((:[]) . mapMat fDFB . transposeCube . vector)
+> dfb = combSY (mapMat fDFB)
 
 The function $f_{DFB}$ is applied on each _window_ of complex data
 samples and consists in three consecutive steps:
@@ -386,11 +412,11 @@ originating from a beam.
 
 > cfar :: Signal (Beam ( Range (Window RealData)))
 >      -> Signal (Beam (CRange (Window RealData)))
-> cfar = actor11SDF 1 1 ((:[]) . mapV fCFAR . head)
+> cfar = combSY (mapV fCFAR)
 
 The $f_{CFAR}$ function normalizes each doppler window, after which
 the sensitivity will be adapted to the clutter situation in current
-area, as seen in [fig:cfar-signal]. The blue line indicates the mean
+area, as seen in [@fig:cfar-signal]. The blue line indicates the mean
 value of maximum of the left and right reference bins, which means
 that for each doppler sample, a swipe of neighbouring bins is
 necessary, as suggested by [@fig:cfar-cube]. This is a typical pattern
@@ -437,7 +463,7 @@ $${#eq:cfar}
 
 In order to maximize the (potential) parallelism of our described
 model, we systematically apply the skeletons
-[`stencilV`](http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-Core-Vector.html#v:stencilV)
+[`stencilV`](http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-Core-Vector.html#v:stencilV),
 [`mapV`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html#v:mapV),
 [`zipWithV`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html#v:zipWithV),
 [`zipWith3V`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html#v:zipWith3V),
@@ -456,10 +482,11 @@ as follows.
 >     -----------------------------------------------
 >     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
 >     arithMean :: Vector (Vector RealData) -> Vector RealData
->     arithMean = (/nFFT) . reduceV addV . mapV geomMean . groupV 4
+>     arithMean = mapV (/n) . reduceV addV . mapV geomMean . groupV 4
 >     geomMean  = mapV (logBase 2 . (/4)) . reduceV addV
 >     neighbors = stencilV (2 * nFFT + 3) r_of_d
 >     addV      = zipWithV (+)
+>     n         = fromIntegral nFFT
 
 The first thing we calculate is the $MD$ for each doppler window (row)
 belonging to the _center bins_, thus dropping the unnecessary earliest
@@ -559,22 +586,68 @@ matrix for each beam.
 
  ### Integration (INT){#sec:int-shallow label="INT in ForSyDe-Shallow"}
 
+INT integrates envelope detected video over a number of FFT batches of
+envelope detected video. Each Doppler channel, range bin and antenna
+element are integrated using an 8-tap FIR filter, as suggested in
+[@fig:int-cube]. 
+
 ![INT on video structure](figs/int-cube.pdf){#fig:int-cube}
 
+The input data arrives from both left and right doppler channels and
+it is merged before applying the FIR filter. This is simply done by
+mapping the element-wise $+$\todo{correct?}\ on each arriving pair of cubes, as shown
+in [@fig:int-proc-shallow].
+
+![CFAR stage process](figs/int-proc-shallow.pdf){#fig:int-proc-shallow}
 
 > int :: Signal (Beam (CRange (Window RealData)))
 >     -> Signal (Beam (CRange (Window RealData)))
 >     -> Signal (Beam (CRange (Window RealData)))
-> int cr cl = applyFIR $ addSCube cr cl
+> int cr cl = firNet $ addSC cr cl
 >   where
->     applyFIR   = fir' addSCube mulSCube delaySCube mkFirCoefs
->     addSCube   = comb2SY (zipWithCube (+))
->     mulSCube c = combSY (mapCube (*c))
->     delaySCube = delaySY (infiniteCube 0)
+>     firNet  = fir' addSC mulSC dlySC mkFirCoefs
+>     addSC   = comb2SY (zipWithCube (+))
+>     mulSC c = combSY (mapCube (*c))
+>     dlySC   = delaySY (infiniteCube 0)
 
-> ------------------------------------------------------
-> -- System Process Network
-> ------------------------------------------------------
+
+Previously in [@sec:pc-shallow] we have used the `fir` skeleton to
+apply a FIR filter upon a vector of _numbers_. However itself, `fir`
+is an algorithmic skeleton which describes a common pattern of
+communication and computation and does not care of the type of data it
+operates on. We finally highlight a question that was probably in the
+back of your head by now: is it possible to apply skeletons on
+_structures of signals_ instead of on _structures of numbers_? The
+answer is obvious: yes! While on vectors of numbers the algorithmic
+skeletons create (potentially) parallel arithmetic operations, applied
+on vectors of signals these skeletons can instantiate (potentially)
+parallel process networks. We thus use a more generic `fir'`[^firP]
+skeleton, which does not conveniently apply the number functions $+$
+or $\times$ whenever appropriate, but rather takes as arguments the
+equivalent operations on the structures of the contained elements. In
+our case the equivalent operations are performed by _SY processes_,
+thus the `fir'` skeleton simply arranges these processes to form the
+well-known structure from [@fig:fir-proc-shallow].
+
+![The FIR process network](figs/fir-proc-shallow.pdf){#fig:fir-proc-shallow}
+
+[^firP]: see `fir'` from the `forsyde-shallow-extensions` documentation.
+
+Come to think of it, we could have depicted much more parallelism had
+exploited the concurrent nature of processes and described the
+dataflow relations between each datum arriving from the
+antennas. Nevertheless this was a didactic exercise to get used to the
+partition of data in _space_ (i.e. vectors manipulated by skeletons)
+and time (i.e. signals manipulated by processes). One such process
+network-oriented approach can be found in [@sec:atom-network].
+
+ ## The AESA Process Network{#sec:aesa-shallow}
+
+Now\todo{please check section!}\ it is time to put it all together by
+"connecting" the previously defined video processing stages into one
+process network, as shown in [@fig:aesa-proc-shallow].
+
+![The AESA process network instance](figs/aesa-proc-shallow.pdf){#fig:aesa-proc-shallow}
 
 > aesa :: Signal (Range (Antenna CpxData))
 >      -> Signal (Beam (CRange (Window RealData)))
@@ -583,33 +656,71 @@ matrix for each beam.
 >     lDfb      = cfar $ dfb lCt
 >     rDfb      = cfar $ dfb rCt
 >     (lCt,rCt) = ct $ pc $ dbf video
->     
-> ------------------------------------------------------
-> -- Helpers, constants generators
-> ------------------------------------------------------
 
  ## Coefficient Generators{#sec:coefs-shallow label="Coefficients"}
 
+Here we define the vectors of coefficients used throughout the AESA
+design. We keep them outside the main design, rendering it
+parametrizable.
 
-> mkBeamConsts :: Int  -- ^ Number of antenna elements (x in e_x, Figure 3)
->              -> Int  -- ^ Number of beams (y in b_y, Figure 3)
+The `mkBeamConst` generator creates a matrix of $\alpha_{ij}$ beam
+constants used in the digital beamforming stage
+[@sec:dbf-shallow]. These beam constants perform both phase shift and
+tapering according to [@eq:beam-coef], where $c_k$ performs tapering
+and $\varphi_{kl}$ perform phase shifting. For tapering we use a set
+of Taylor coefficients generated with our in-house utility
+`taylor`[^taylor]. The phase shift shall be calculated according to
+[@eq:beam-phase], where $d$ is the distance between the antenna
+elements. $\theta_l$ is the angle between the wave front of the
+current beam and normal of the antenna elements and $\lambda$ is the
+wavelength of the pulse.
+
+$$ \alpha_{kl}=c_k e^{j\varphi_{kl}},\ \forall k\in[1,N_A], l \in [1,N_B]$$ {#eq:beam-coef}
+
+$$ \varphi_{kl}=\frac{(k-9.5)\cdot 2\pi\cdot d \sin\theta}{\lambda}$$ {#eq:beam-phase}
+
+[^taylor]: see `taylor` from the `forsyde-shallow-extensions` documentation.
+
+> mkBeamConsts :: Int  -- ^ Number of antennas: nA
+>              -> Int  -- ^ Number of beams: nB
 >              -> Vector (Vector CpxData)
-> mkBeamConsts n_ae n_b = zipWithMat (*) taperingCoefs phaseShiftCoefs
+> mkBeamConsts nA nB = zipWithMat (*) taperingCoefs phaseShiftCoefs
 >   where
->     taperingCoefs     = mapV (copyV n_b) taylorCf
->     phaseShiftCoefs   = mapV (\k -> mapV (mkCoeff k) thetas) (vectorFloat [1..n_ae])
->     mkCoeff k theta_l = exp $ cis $ (k - 9.5) * d * sin theta_l / lambda -- Eqs.(1) and (2)
+>     taperingCoefs     = mapV (copyV nB) taylorCf
+>     phaseShiftCoefs   = mapV (\k -> mapV (mkCoeff k) thetas) kindexes
+>     mkCoeff k theta_l = exp $ cis ((k - 9.5) * d * sin theta_l / lambda) 
 >     -----------------------------
->     taylorCf = mapV (\x -> mkPolar x 0) (taylor n_ae 4 (-30)) -- random parameters; stand for c_k, Eq.1
->     thetas   = vectorFloat [1..n_b]                               -- random theta_l for l=1 to y
->     d        = 0.1                                                -- the distance between the antenna elements.
->     lambda   = 660                                                -- wavelength of the pulse
+>     taylorCf = mapV (\x -> mkPolar x 0) (taylor nA 4 (-30)) 
+>     thetas   = vectorFloat [1..nB] -- (arbitrary) theta_l for l=1 to y
+>     kindexes = vectorFloat [1..nA] -- vector of k indexes
+>     d        = 0.1                 -- (arbitrary) distance between the antennas
+>     lambda   = 1                   -- (arbitrary) wavelength of the pulse
 >     -----------------------------
 >     vectorFloat = vector . map fromIntegral
 
+For the scope of this project we use some pre-computed arbitrary
+numbers for $d$, $\theta_l$, $\lambda$\todo{correct?}. The beam
+constants themselves can be pre-computed for multiple realistic
+alignment scenarios to form lookup tables which adapt the execution
+parameters, however this falls out of the scope for this model.
+
+The `mkPcCoefs` generator for the FIR filter in [@sec:pc-shallow] is
+simply a 8-tap Hanning window, created with our in-house utility
+`hanning`[^hanning]. It can be changed according to the user
+requirements.
+
+[^hanning]: see `hanning` from the `forsyde-shallow-extensions` documentation.
+
 > mkPcCoefs = hanning 8
+
+We use also a Hanning window to generate the complex weight
+coefficients for decreasing the Doppler side lobes during DFB in
+[@sec:dfb-shallow]. This can be changed according to the user
+requirements.
 
 > mkWeightCoefs = mapV (\x -> mkPolar x x) (hanning nFFT)
 
-> mkFirCoefs = vector [1,1,1,1,0,0,0,0]
+For the integrator FIR in [@sec:int-shallow] we use a square window.
+
+> mkFirCoefs = vector [1/8,1/8,1/8,1/8,1/8,1/8,1/8,1/8]
 

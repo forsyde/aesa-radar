@@ -1,0 +1,29 @@
+\documentclass{standalone}
+
+\usepackage[tikz]{forsyde}
+
+\begin{document}
+\begin{tikzpicture}[constructors=shallow,port/.style={draw,fill=black,inner sep=1.5pt}]
+  \standard[process,moc=sy,ni=2,f={$+$},type=comb](b1){addSC};
+  \standard[process,moc=sy,ni=1,f={$\times c$},type=comb,below of=b1](b2){mulSC};
+  \standard[process,moc=sy,f={$0$},type=delay,below of=b2](b3){dlySC};
+  \node[fill=white, fit={(b1)(b2)(b3)}, opacity=.2] (q) {};
+  \cluster[process,moc=blackbox,f={$\noexpand\mathtt{coeffs}$},inner sep=18pt,type={fir'}](b)<(q)>{firNet};  
+  \standard[process,moc=sy,ni=2,f={$+$},type=comb, left of=b](a){addSC};
+  \draw[]
+  (b1.w1) node[port] {} (b1.w2) node[port] {} (b1.e1) node[port] {}
+  (b2.w1) node[port] {} (b2.e1) node[port] {} (b3.w1) node[port] {} (b3.e1) node[port] {}
+  (q.north east) node[anchor=south east, inner sep=1pt] {\scriptsize\it arguments};
+  ;
+  \draw[s] (a) edge[->,dstport] (b)
+  (a.w1)++(-1,0) node[anchor=east] {\it from CFAR right} edge[->] (a.w1)
+  (a.w2)++(-1,0) node[anchor=east] {\it from CFAR left} edge[->]  (a.w2)
+  (b.east) edge[srcport,->] ++(1,0)
+  ;
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

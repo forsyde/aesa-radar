@@ -4,8 +4,7 @@
 
 \begin{document}
 \begin{tikzpicture}[constructors=shallow]
-  \standard[process,moc=sdf,f={$\noexpand\mathtt{mapMat}^{T}(f_{DFB})$},type=actor](a){dfb};
-  \resetportinfo{a}\wpinfo{$N_{FFT}$}\epinfo{1}
+  \standard[process,moc=sy,f={$\noexpand\mathtt{mapMat}(f_{DFB})$},type=comb](a){dfb};
   \draw[s] (a) edge[<-] ++(-2,0) edge[->] ++(2,0);
 \end{tikzpicture}
 \end{document}
