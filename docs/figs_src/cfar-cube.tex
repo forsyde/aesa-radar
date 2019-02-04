@@ -1,0 +1,89 @@
+\documentclass[tikz,border=10pt,multi]{standalone}
+\usetikzlibrary{decorations.pathmorphing,calc}
+
+\newcommand{\drawcube}[1]{%
+  \draw[very thick, fill=blue]%
+  (#1) --++(0,-1,0) --++(-1,0,0) --++(0,1,0) -- cycle%
+  (#1) --++(-1,0,0) --++(0,0,-1) --++(1,0,0) -- cycle%
+  (#1) --++(0,-1,0) --++(0,0,-1) --++(0,1,0) -- cycle%
+  ;%
+}
+
+\newsavebox{\videoin}
+\savebox{\videoin}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (9,0,0) node [very near end, above, sloped] {\footnotesize Doppler windows};
+
+    \draw[dashed,gray]
+    (0,2,0) -- (5,2,0) -- (5,2,5) -- (0,2,5) -- (0,2,0);
+
+    \drawcube{3,3,1}
+    \drawcube{3,3,2}
+    \drawcube{1,3,3}
+    \drawcube{2,3,3}
+    \drawcube{3,3,3}
+    \drawcube{4,3,3}
+    \drawcube{5,3,3}
+    \drawcube{3,3,4}
+    \drawcube{3,3,5}
+        
+    \draw[dashed,gray]
+    (0,3,0) -- (5,3,0) -- (5,3,5) -- (0,3,5) -- (0,3,0)
+    (0,2,5) node[anchor=south west] {\scriptsize\it beam}
+    ;
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
+    ;
+  \end{tikzpicture}%
+}
+
+\newsavebox{\videoout}
+\savebox{\videoout}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,7) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (9,0,0) node [very near end, above, sloped] {\footnotesize Doppler windows};
+
+    \draw[dashed,gray] (0,2,0) -- (5,2,0) -- (5,2,3) -- (0,2,3) -- cycle;
+    % \draw[fill=gray,opacity=.2] (0,2,1) -- (5,2,1) -- (5,3,1) -- (0,3,1) -- cycle;
+
+    \drawcube{1,3,2}
+    \drawcube{2,3,2}
+    \drawcube{3,3,2}
+    \drawcube{4,3,2}
+    \drawcube{5,3,2}
+
+    \draw[dashed,gray]
+    (0,3,0) -- (5,3,0) -- (5,3,3) -- (0,3,3) -- (0,3,0);
+    \node[anchor=south east] at (0,2,3) {\scriptsize\it beam};
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,3) -- (0,0,3) node[anchor=north west] {\scriptsize $N_b'$} -- (5,0,3)
+    (0,5,3) -- (5,5,3)
+    (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,3) -- (5,0,3) -- cycle;
+    ;
+  \end{tikzpicture}%
+}
+
+
+\begin{document}
+\begin{tikzpicture}
+  \node (in) {\usebox{\videoin}};
+  \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\videoout}};
+  \node[anchor=west,xshift=1cm] at ($(in)!.4!(out)$) {\Huge $\Rightarrow$};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

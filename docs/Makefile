@@ -14,8 +14,11 @@ LHS_FILES :=	21:../src/ForSyDe/Shallow/AESA.lhs \
 
 BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))
-PDF_FIGS := $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_SRC)/*.tex))
+TIKZ_FIGS:= $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_SRC)/*.tex))
+PDF_FIGS := $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_SRC)/*.pdf))
 SVG_FIGS := $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.svg, $(wildcard $(FIGS_SRC)/*.tex))
+SVG_FIGS += $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.svg, $(wildcard $(FIGS_SRC)/*.pdf))
+
 MD_FILES = $(sort $(foreach file,$(LHS_FILES),$(call make-md-targets,$(call index,$(file)),$(call name,$(file)))))
 
 # Makes target PDF names with figure names extracted.
@@ -38,15 +41,17 @@ pdf: $(DOC).pdf
 
 $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(SVG_FIGS) $(TX_FILES) $(MD_FILES)
 	pandoc $(MD_DIR)/* \
-		--mathml \
+		--mathml --number-sections \
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--filter=scripts/includes-svg.hs \
 		--bibliography=refs.bib \
 		-f markdown -t html -s -o $@
 
-$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TX_FILES) $(MD_FILES)
+$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(TX_FILES) $(MD_FILES)
 	pandoc $(MD_DIR)/* \
+		--number-sections \
+		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--bibliography=refs.bib \
 		-s -o $@
@@ -60,11 +65,14 @@ $(foreach file,$(LHS_FILES),\
 input/%.md: $(TXT_DIR)/%.md
 	cp $(<) $@
 
-$(PDF_FIGS): figs/%.pdf: figs_src/%.tex
+$(TIKZ_FIGS): figs/%.pdf: figs_src/%.tex
 	pdflatex $(<)
 	mv $(*F).pdf $@
 	rm *.log
 	rm *.aux
+
+$(PDF_FIGS): figs/%.pdf: figs_src/%.pdf
+	cp $(<) $@
 
 $(SVG_FIGS): figs/%.svg: figs/%.pdf
 	pdf2svg $(<) $@

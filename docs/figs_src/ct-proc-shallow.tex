@@ -1,0 +1,19 @@
+\documentclass{standalone}
+
+\usepackage[tikz]{forsyde}
+
+\begin{document}
+\begin{tikzpicture}[constructors=shallow]
+  \node[circle,inner sep=1.5pt,fill=black] (a) {};
+  \draw[s] (a) edge[<-] ++(-1.5,0) edge[|-,->] ++(1.5,.5)  edge[|-,token=vector,->] ++(1.5,-.5);
+  \node[anchor=east] at (-1.5,0) {\textit{from PC}};
+  \node[anchor=west] at (1.5,.5) {\textit{to DBF right}};
+  \node[anchor=west] at (1.5,-.5) {\textit{to DBF left}};
+  \node[anchor=north] at (.5,-.5) {$N_{FFT}/2$};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

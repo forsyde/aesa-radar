@@ -7,7 +7,7 @@
     \coordinate (o) at (0,0,0);
     \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
     \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
-    \draw[->] (o) -- (7,0,0) node [very near end, above, sloped] {\footnotesize pulses};
+    \draw[->] (o) -- (7,0,0) node [very near end, above, sloped] {\footnotesize pulse};
 
     \draw[dashed,gray]
     (2,0,0) -- (2,5,0) -- (2,5,5) -- (2,0,5) -- (2,0,0);
@@ -32,9 +32,10 @@
     (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
     (0,5,5) -- (5,5,5)
     ;
-    
+
     \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
     (5,0,0) coordinate (x) -- (5,5,0) -- (5,5,5) -- (5,0,5) -- (x);
+
   \end{tikzpicture}%
 }
 

@@ -1,0 +1,56 @@
+\documentclass[tikz,border=10pt,multi]{standalone}
+\usetikzlibrary{decorations.pathmorphing,calc}
+
+\newcommand{\drawcube}[1]{%
+  \draw[very thick, fill=blue]%
+  (#1) --++(0,-1,0) --++(-1,0,0) --++(0,1,0) -- cycle%
+  (#1) --++(-1,0,0) --++(0,0,-1) --++(1,0,0) -- cycle%
+  (#1) --++(0,-1,0) --++(0,0,-1) --++(0,1,0) -- cycle%
+  ;%
+}
+
+\newsavebox{\videoin}
+\savebox{\videoin}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (7,0,0) node [very near end, above, sloped] {\footnotesize window};
+
+    \draw[dashed,gray] (0,2,0) -- (5,2,0) -- (5,2,5) -- (0,2,5) -- cycle;
+    % \draw[fill=gray,opacity=.2] (0,2,2) -- (5,2,2) -- (5,3,2) -- (0,3,2) -- cycle;
+
+    \drawcube{3,3,3}
+        
+    \draw[dashed,gray]
+    (0,3,0) -- (5,3,0) -- (5,3,5) -- (0,3,5) -- (0,3,0);
+    \draw[fill=gray,opacity=.2] (0,2,3) -- (5,2,3) -- (5,3,3) -- (0,3,3) -- cycle;
+    \draw[fill=gray,opacity=.2] (0,3,3) -- (5,3,3) -- (5,3,2) -- (0,3,2) -- cycle;
+    \draw[fill=gray,opacity=.2] (5,3,3) -- (5,3,2) -- (5,2,2) -- (5,2,3) -- cycle;
+    \node[anchor=south west] at (0,2,5) {\scriptsize\it beam};
+    \node[anchor=south west] at (5,2,3) {\scriptsize\it bin};
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b'$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
+    ;
+  \end{tikzpicture}%
+}
+
+
+\begin{document}
+\begin{tikzpicture}
+  \node (a1) {\usebox{\videoin}};
+  \node[anchor=west,xshift=-1.4cm] (a2) at (a1.east) {\usebox{\videoin}};
+  \node[anchor=west] (a3) at (a2.east) {\usebox{\videoin}};
+  \node[anchor=west] at ($(a2)!.5!(a3)$) {\Huge $\cdots$};
+  \draw[ultra thick,->] (a1.south) -- (a3.south) node [midway, below] {8-tap FIR};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
