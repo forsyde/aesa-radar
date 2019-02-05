@@ -1,55 +1,82 @@
  ## A Process Network-Oriented Approach to Modeling{#sec:atom-network}
 
-> {-# LANGUAGE PackageImports #-}
+The second approach to modeling the radar signal processing
+application carries on the idea incepted earlier in
+[@sec:int-shallow], namely to use skeletons to express parallelism at
+the process level rather than at datum level. This way processes are
+expressed as operating on elementary streams of data, i.e. originating
+from each antenna element in particular, and skeletons rather describe
+patterns of interaction and synchronization between these
+processes. We thus trade the monolithic view of processes computing
+"cubes" of data for a much finer-grained view which allows to quantize
+the potential for parallelism by exploiting 1) the arithmetic/data
+dependencies; 2) the precedence relations.
+
+The ForSyDe-Atom definition file for the second approach to modeling
+the Saab-AESA application is found at
+`<root>/src/ForSyDe/Atom/AESA2.lhs` and it can be imported as a
+generic library (e.g. in the interpreter session). Below you find the
+module definition and exported functions.
+
+> {-# LANGUAGE PackageImports #-}  -- you can ignore this line
 > module ForSyDe.Atom.AESA2 where
+
+By now the imported libraries are not a mistery any longer. Check
+[@sec:atom-operation] for more details on what each is imported for.
 
 > import Data.Complex
 > import ForSyDe.Atom.MoC.SDF as SDF
 > import ForSyDe.Atom.MoC.SY  as SY
-
+>
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 > import ForSyDe.Atom.Skeleton.Vector.Cube   as C
 > import ForSyDe.Atom.Skeleton.Vector.Matrix as M
 > import ForSyDe.Atom.Skeleton.Vector.DSP
 
+As in the previous section, we import these local submodule containing
+the type synonym declarations presented in [@sec:aliases-shallow] and
+the coefficient windows like in [@sec:coefs-shallow].
+
 > import ForSyDe.Atom.AESA.Types
 > import ForSyDe.Atom.AESA.Coefs
 
-> nb   = 256 :: Int
-> nb'  = nb - 2 * nFFT - 2
+ ### Video Processing Pipeline Stages
+
+By now the functional specification of each stage in the video
+processing pipe should be quite clear clear. The modeling approaches
+used until now tried to _translate_ this functional specification into
+an _executable_ ForSyDe specification. We now stretch the intuition
+gained with these models and exploit the initial assumption stated as
+early as [@sec:video-chain-spec]: _"For each antenna the data arrives
+_pulse by pulse_, and each pulse arrives _range bin by range
+bin_. This happens _for all antennas in parallel_, and all complex
+samples are synchronized with the same sampling rate, e.g. of the A/D
+converter."_
+
+This allows us to "unroll" the video cubes into parallel (synchronous)
+streams, each stream being able to be processed as soon as it contains
+enough data. This unrolling can be simply depicted in
+[@fig:cube-unrolling] as chaining the pulses as they arive: range bin
+by range bin. We say that we partition the data _in time_ rather than
+_in space_, which is a more appropriate partition judging by the
+speciffication's assumptions.
+
+![Video cube unrolling](figs/cube-unrolling.pdf){#fig:cube-unrolling}
 
  #### Digital Beamforming (DBF)
 
-The DBF receives complex indata, from $N_A$ antenna elements and forms
- $N_B$ simultaneous receiver beams, or "listening directions", by
- summing individually phase-shifted indata signals from all
- elements. Basically, considering the input video "cube" described
- [previously](), the the transformation applied by DBF, could be
- depicted as in [@fig:dbf-cube], where the _pulse_ dimension goes to
- infinity (i.e. data is received pulse by pulse).
-
-![Digital Beam Forming on video structure](figs/dbf-cube.pdf)
-
-However, using knowledge of _how_ data arrives, the _range bin_
-dimension can also be unrolled in time, and thus the DBF algorithm can
-be applied as soon as $N_A$ complex samples arrive.
+Recall that the DBF $N_B$ simultaneous receiver beams from the complex
+data received from $N_A$ antenna elements, as explained in
+[@sec:dbf-shallow]. Depicted from a streaming point of view, DBF looks
+like in @fig:dbf-samp.
 
 ![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
-
-To translate [@fig:dbf-samp] into MoC behavior, instead of modeling a
-vector of $N_A$ synchronous signals, i.e. a signal for each antenna
-element, we choose to represent it as one signal of $N_A$ samples, as
-for the SY MoC the two representations are semantically
-equivalent. However, with this approach we focus on the parallel
-procesing of data aspect of the computation rather than the concurrent
-distribution of signals, which is more suitable for this application.
-
 
 > dbf :: Antenna (SY.Signal CpxData)
 >     -> Beam    (SY.Signal CpxData)
 > dbf antennaSigs = beamSigs
 >   where
->     beamSigs   = V.reduce (V.farm21 (SY.comb21 (+))) beamMatrix
+>     beamSigs   = V.farm11 (V.reduce (SY.comb21 (+))) beamMatrix
 >     beamMatrix = M.farm21 (\c -> SY.comb11 (*c)) beamConsts sigMatrix
 >     sigMatrix  = V.farm11 V.fanout antennaSigs
 >     beamConsts = mkBeamConsts (V.length antennaSigs) nB

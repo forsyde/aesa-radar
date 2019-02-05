@@ -1,0 +1,69 @@
+\documentclass[tikz,border=10pt,multi]{standalone}
+\usetikzlibrary{decorations.pathmorphing,calc,decorations.pathreplacing}
+
+\newsavebox{\videoin}
+\savebox{\videoin}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize antennas};
+    \draw[->] (o) -- (7,0,0) node [very near end, above, sloped] {\footnotesize pulses};
+    \draw[dashed,gray]
+    (2,0,0) -- (2,5,0) -- (2,5,5) -- (2,0,5) -- (2,0,0);
+    \draw[very thick, fill=blue]
+    (2,5,2) -- (2,5,3) -- (3,5,3) -- (3,5,2) -- cycle
+    (2,5,3) -- (2,0,3) -- (3,0,3) -- (3,5,3) -- cycle
+    (3,5,3) -- (3,0,3) -- (3,0,2) -- (3,5,2) -- cycle
+    ;
+    \foreach \i in {1,...,4} {
+      \draw[thick] (2,\i,3) -- (3,\i,3) --  (3,\i,2);
+    }
+    \draw[dashed,gray]
+    (3,0,0) -- (3,5,0) -- (3,5,5) -- (3,0,5) -- (3,0,0)
+    (2,0,5) node[anchor=north west] {\scriptsize\it pulse}
+    ;    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    ;
+    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
+    (5,0,0) coordinate (x) -- (5,5,0) -- (5,5,5) -- (5,0,5) -- (x);
+  \end{tikzpicture}%
+}
+
+\newsavebox{\videoout}
+\savebox{\videoout}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,7) node [very near end, above, sloped] {\footnotesize antennas};
+    \draw[->] (o) -- (10,0) node [very near end, above, sloped] {\footnotesize samples};
+    \draw[very thick, fill=blue]
+    (2,5) -- (3,5) -- (3,0) -- (2,0) -- cycle
+    ;
+    \foreach \i in {1,...,4} {
+      \draw[thick] (2,\i) -- (3,\i);
+    }
+    \draw(0,5) node[anchor=south west] {\scriptsize $N_A$} -- (8,5);    
+    \draw[dashed](5,0) node[anchor=north] {\scriptsize $N_b...$} -- (5,5);
+    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
+    (8,0) -- (8,5);
+
+    \path[draw,thick,decorate,decoration=brace] (5,-1) -- (0,-1) node[midway,below,font=\small]{\scriptsize\it pulse};
+    \path[draw,thick,decorate,decoration=brace] (2,5.2) -- (3,5.2) node[midway,above,font=\small]{\scriptsize\it bin};
+  \end{tikzpicture}%
+}
+
+
+\begin{document}
+\begin{tikzpicture}
+  \node (in) {\usebox{\videoin}};
+  \node[anchor=west,xshift=2cm] (out) at (in.east) {\usebox{\videoout}};
+  \node[anchor=west] at ($(in)!.5!(out)$) {\Huge $\Rightarrow$};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

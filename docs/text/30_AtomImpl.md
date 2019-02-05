@@ -37,8 +37,3 @@ parallelism at a _process network_ level (e.g. process farms), similar
 to how [@sec:int-shallow] has been described. We show that the second
 approach enables opportunities for exploitation and design space
 exploration at a more fine-grained level.
-
-The ForSyDe-Atom definition files of the Saab-AESA application is
-found under `<root>/src/ForSyDe/Atom/` and the two approaches, found
-in `AESA1.lhs` and `AESA2.lhs` can be imported as a generic library
-(e.g. in the interpreter session).

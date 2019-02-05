@@ -7,6 +7,12 @@ knowledge acquired in the previous section and introduce the reader to
 the ForSyDe-Atom API. This is why we recommend reading through the
 previous chapter before carrying on with this one.
 
+The ForSyDe-Atom definition file for the first approach to modeling
+the Saab-AESA application is found at
+`<root>/src/ForSyDe/Atom/AESA1.lhs` and it can be imported as a
+generic library (e.g. in the interpreter session). Below you find the
+module definition and exported functions.
+
 > {-# LANGUAGE PackageImports #-} -- you can ignore this line for now
 > module ForSyDe.Atom.AESA1 where
 
@@ -263,7 +269,7 @@ using the `fir'` pattern to create a FIR process network.
 
 The AESA process network is formed by "plugging in" together all
 components instantiated in the previous sections, and thus obtaining
-the system description in [@fig:aesa-proc-atom].
+the system description in [@fig:aesa-proc-atom]. 
 
 ![The AESA process network instance](figs/aesa-proc-atom.pdf){#fig:aesa-proc-atom}
 

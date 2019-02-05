@@ -9,12 +9,6 @@
 > import Data.Complex
 > import ForSyDe.Atom.AESA.Types
 
-The only constants which need to be hard-coded (or passed as arguments
-for that matter) are $N_B$ and $N_{FFT}$. The rest are inferred from
-the size of the input data.
-
-> nB   = 8   :: Int
-> nFFT = 512 :: Int
 
 > mkBeamConsts :: Int  -- ^ Number of antenna elements (x in e_x, Figure 3)
 >              -> Int  -- ^ Number of beams (y in b_y, Figure 3)

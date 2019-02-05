@@ -46,3 +46,8 @@ in the system, to stay consistent with the application specification.
 > type CpxData     = Complex Float
 > type RealData    = Float
 
+
+> nB   = 8   :: Int
+> nFFT = 512 :: Int
+> nb   = 256 :: Int
+> nb'  = nb - 2 * nFFT - 2
