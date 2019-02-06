@@ -1,0 +1,65 @@
+\documentclass{standalone}
+
+\usepackage[tikz,math]{forsyde}
+\usepackage{ifthen}
+
+\begin{document}
+\begin{tikzpicture}[scale=1.5]
+  \foreach \j/\y/\off in {1/0/1.2, 2/1/.5, 3/3/.1}{
+    \newcommand{\cy}{\ifthenelse{\j=3}{N_A}{\j}}
+    \foreach \i/\x in {1/0, 2/2, 3/6}{
+      \newcommand{\cx}{\ifthenelse{\i=3}{N_B}{\i}}
+      \basic[primitive,f={$\times\alpha_{\noexpand\cy\noexpand\cx}$}](a\i\j)<\x,-\y>{$\MocCmb$};
+      \draw[s=sy]
+      (a\i\j)++(-.5,.5) coordinate (i\i\j) edge[->] (a\i\j)
+      (a\i\j)++(\off,-\off) coordinate (o\i\j) edge[] (a\i\j)
+      ;
+      \gettikzx{(o\i\j)}{\xout}
+      \coordinate (r\i\j) at (\xout,-4);
+      \draw[s=sy] (o\i\j) edge (r\i\j);
+    }
+  }
+  \foreach \i in {1,2,3}{
+    \newcommand{\cx}{\ifthenelse{\i=3}{N_B}{\i}}
+    \node[fill=white] at ($(a\i2)!.4!(a\i3)$) {$\vdots$};
+    \basic[primitive,f=$+$](m\i 1)<$(r\i 3)!.5!(r\i 2)-(0,.2)$>{$\MocCmb$};
+    \basic[primitive,f=$+$](m\i 2)<$(r\i 1)-(.2,.2)$>{$\MocCmb$};
+    \basic[primitive,f=$+$](m\i 3)<$(r\i 1)!.5!(r\i 3)-(0,1.1)$>{$\MocCmb$};
+    \node[anchor=south east] at ($(r\i 1)+(-.3,0)$) {\tiny$\ddots$};
+    \node[] (tmp1) at ($(m\i 1)!.5!(m\i 3)-(.15,0)$) {$\cdots$};
+    \node[] (tmp2) at ($(m\i 2)!.5!(m\i 3)+(.15,0)$) {$\cdots$};
+    \node[] (out\i) at ($(m\i 3)+(0,-1)$) {$b_{\cx}$}; 
+    \draw[s=sy]
+    (m\i 1) edge[<-] (r\i 3) edge[<-] (r\i 2)
+    (m\i 2) edge[<-] (r\i 1) edge[<-] ++(-.2,.2)
+    (tmp1) edge[<-] (m\i 1) edge[->] (m\i 3)
+    (tmp2) edge[<-] (m\i 2) edge[->] (m\i 3)
+    (m\i 3) edge[->] (out\i)
+    ;
+    \cluster[inner sep=13pt](redu\i)<(m\i 2)(m\i 3)(m\i 1)>{};
+  }
+  \cluster[process,type=farm,inner xsep=20pt](mapfin)<(redu1)(redu2)(redu3)>{};
+  \foreach \i in {1,2,3}{
+    \cluster[process,type=reduce,inner sep=13pt](redu\i)<(m\i 2)(m\i 3)(m\i 1)>{};
+  }
+  \coordinate (hack) at ($(a33)+(1.5,.5)$);
+  \cluster[process,type=farm,inner xsep=20pt, inner ysep=35pt,
+  f={$\langle\langle\noexpand\mathtt{beamConsts}\rangle\rangle$}](mapbeam)<(a11)(hack)>{};
+
+  \foreach \j in {1,2,3}{
+    \newcommand{\cy}{\ifthenelse{\j=3}{N_A}{\j}}
+    \draw
+    (i1\j)++(-1,0) node{$a_{\cy}$} edge[trans={->,s=sy}{mapbeam-west}{v=sy}] (i3\j)
+    (i3\j) edge[v=sy] ++(.9,0)
+    ;
+    \node[anchor=south,xshift=.4cm] at (i1\j) {\scriptsize\tt fanout};
+    \node[fill=white,inner xsep=20pt] at ($(i2\j)!.7!(i3\j)$) {$\cdots$};    
+  }
+  
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

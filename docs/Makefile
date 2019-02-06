@@ -77,7 +77,9 @@ $(PDF_FIGS): figs/%.pdf: figs_src/%.pdf
 	cp $(<) $@
 
 $(SVG_FIGS): figs/%.svg: figs/%.pdf
-	pdf2svg $(<) $@
+	convert -density 150 $< -scale 80% -quality 90 $@
+	sed -i 's|<svg|<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" |g' $@
+#	pdf2svg $(<) $@
 
 clean:
 	rm -f $(MD_DIR)/*

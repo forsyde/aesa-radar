@@ -72,6 +72,9 @@ like in @fig:dbf-samp.
 
 ![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
 
+![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom}
+
+
 > dbf :: Antenna (SY.Signal CpxData)
 >     -> Beam    (SY.Signal CpxData)
 > dbf antennaSigs = beamSigs
