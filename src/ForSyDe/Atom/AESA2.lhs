@@ -91,6 +91,9 @@ like in @fig:dbf-samp.
 
 ![PC network](figs/pc-net-atom.pdf){#fig:pc-net-atom}
 
+![`countDelay` process structure](figs/pc-counter-atom.pdf){#fig:pc-counter-atom}
+
+
 > pc :: Beam (SY.Signal CpxData)
 >    -> Beam (SY.Signal CpxData)
 > pc = V.farm11 (fir' addProc mulProc (fst . delayCount) mkPcCoefs)

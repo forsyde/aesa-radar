@@ -38,12 +38,12 @@
     ;
     \cluster[inner sep=13pt](redu\i)<(m\i 2)(m\i 3)(m\i 1)>{};
   }
-  \cluster[process,type=farm,inner xsep=20pt](mapfin)<(redu1)(redu2)(redu3)>{};
+  \cluster[composite,type=farm,inner xsep=20pt](mapfin)<(redu1)(redu2)(redu3)>{};
   \foreach \i in {1,2,3}{
     \cluster[process,type=reduce,inner sep=13pt](redu\i)<(m\i 2)(m\i 3)(m\i 1)>{};
   }
   \coordinate (hack) at ($(a33)+(1.5,.5)$);
-  \cluster[process,type=farm,inner xsep=20pt, inner ysep=35pt,
+  \cluster[composite,type=farm,inner xsep=20pt, inner ysep=35pt,
   f={$\langle\langle\noexpand\mathtt{beamConsts}\rangle\rangle$}](mapbeam)<(a11)(hack)>{};
 
   \foreach \j in {1,2,3}{
@@ -54,8 +54,7 @@
     ;
     \node[anchor=south,xshift=.4cm] at (i1\j) {\scriptsize\tt fanout};
     \node[fill=white,inner xsep=20pt] at ($(i2\j)!.7!(i3\j)$) {$\cdots$};    
-  }
-  
+  }  
 \end{tikzpicture}
 \end{document}
 

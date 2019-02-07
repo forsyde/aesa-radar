@@ -1,29 +1,39 @@
 \documentclass{standalone}
-
 \usepackage[tikz,math]{forsyde}
 \usepackage{ifthen}
 
 \begin{document}
-\begin{tikzpicture}[scale=1.7]
-  \foreach \j/\y in {1/0, 2/2, 3/5}{
+\begin{tikzpicture}[xscale=1.7,yscale=2.2]
+  \foreach \j/\y in {1/0, 2/2, 3/4.5}{
     \newcommand{\cy}{\ifthenelse{\j=3}{N_B}{\j}}
     \node (s1\j) at (-2,-\y) {$b_{\cy}$};
-    \basic[primitive,f={$\times c_1$},](a1\j)<$(-2,-\y)+(1.2,-1)$>{$\MocCmb$};
+    \basic[primitive,f={$\times c_1$},](a1\j)<$(-2,-\y)+(1.2,-.6)$>{$\MocCmb$};
+    \draw[s=sy,->] (a1\j) -| ++(.4,-.3) coordinate(v1\j);
     \foreach \i/\x in {2/0, 3/2, 4/6}{
       \newcommand{\cx}{\ifthenelse{\i=4}{N}{\i}}
       \pgfmathtruncatemacro{\prev}{\i-1}
       \standard[process,f={$\noexpand\mathtt{countBin}$;$(0,N_b)$},moc=sy,type=stated](s\i\j)<\x,-\y>{delayCount};
-      \basic[primitive,f={$\times c_{\noexpand\cx}$},](a\i\j)<$(\x,-\y)+(1.2,-1)$>{$\MocCmb$};
-      \draw[s=sy]
-      (s\i\j.e1) edge[-|-,->] (a\i\j.west)
-      (s\prev\j) edge[->] (s\i\j)
-      ;
+      \basic[primitive,f={$\times c_{\noexpand\cx}$},](a\i\j)<$(\x,-\y)+(1.2,-.6)$>{$\MocCmb$};
+      \draw[s=sy] (s\i\j.e1) edge[-|-,->] (a\i\j.west);
+      \draw[s=sy,->] (s\prev\j) edge[->] (s\i\j);
+      \draw[s=sy,->] (a\i\j) -| ++(.4,-.3) coordinate (v\i\j);
     }
+    \basic[primitive,f={$+$},xshift=2cm](rk\j)<v4\j>{$\MocCmb$};
+    \cluster[shape=merge shape,inner sep=12pt,type=reduce](red\j)<(rk\j)>{};
+    \node[xshift=3cm] (out) at (red\j) {$b_{pc,\cy}$};
+    \draw[s=sy,->] (red\j) -- (out) ;
     \draw[s=sy] (s1\j.east) edge[-|-=.7,->] (a1\j.west);
+    \draw[v=sy,->] ($(v1\j)-(.5,0)$) -- (red\j);
+    \node[fill=white,inner xsep=20pt] at ($(s3\j)!.5!(s4\j)$) {$\cdots$};
+    \node[fill=white,inner xsep=20pt] at ($(v3\j)!.5!(v4\j)$) {$\cdots$};
+    \cluster[process,inner xsep=17pt, inner ysep=10pt,type=fir',f={$\langle c_1,c_2,...,c_N\rangle$}](f\j)<(red\j)(s2\j)(a1\j)>{};
+    \cluster[shape=merge shape,inner sep=12pt,type=reduce](red\j)<(rk\j)>{};
+    
   }
-  % \foreach \i/\of in {1/.8,2/.6,3/.4,4/0}{
-  %   \draw[s=sy] (s\i\j.e1) edge[-|-,->] (a\i\j.west);
-  % }
+  \foreach \i in {2,3,4}{
+    \node at ($(s\i 2)!.65!(s\i 3)$){$\vdots$};
+  }
+  \cluster[composite,inner sep=15pt,type=farm]<(f1)(f2)(f3)>{};
 \end{tikzpicture}
 \end{document}
 
