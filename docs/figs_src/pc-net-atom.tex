@@ -1,0 +1,33 @@
+\documentclass{standalone}
+
+\usepackage[tikz,math]{forsyde}
+\usepackage{ifthen}
+
+\begin{document}
+\begin{tikzpicture}[scale=1.7]
+  \foreach \j/\y in {1/0, 2/2, 3/5}{
+    \newcommand{\cy}{\ifthenelse{\j=3}{N_B}{\j}}
+    \node (s1\j) at (-2,-\y) {$b_{\cy}$};
+    \basic[primitive,f={$\times c_1$},](a1\j)<$(-2,-\y)+(1.2,-1)$>{$\MocCmb$};
+    \foreach \i/\x in {2/0, 3/2, 4/6}{
+      \newcommand{\cx}{\ifthenelse{\i=4}{N}{\i}}
+      \pgfmathtruncatemacro{\prev}{\i-1}
+      \standard[process,f={$\noexpand\mathtt{countBin}$;$(0,N_b)$},moc=sy,type=stated](s\i\j)<\x,-\y>{delayCount};
+      \basic[primitive,f={$\times c_{\noexpand\cx}$},](a\i\j)<$(\x,-\y)+(1.2,-1)$>{$\MocCmb$};
+      \draw[s=sy]
+      (s\i\j.e1) edge[-|-,->] (a\i\j.west)
+      (s\prev\j) edge[->] (s\i\j)
+      ;
+    }
+    \draw[s=sy] (s1\j.east) edge[-|-=.7,->] (a1\j.west);
+  }
+  % \foreach \i/\of in {1/.8,2/.6,3/.4,4/0}{
+  %   \draw[s=sy] (s\i\j.e1) edge[-|-,->] (a\i\j.west);
+  % }
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

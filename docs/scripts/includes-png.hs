@@ -8,6 +8,6 @@ main = toJSONFilter toSVG
     toSVG (Image attr inline (trg,x))
       = let (name,ext) = splitExtension trg
         in if (ext == ".pdf")
-           then Image attr inline (name ++ ".svg", x)
+           then Image attr inline (name ++ ".png", x)
            else Image attr inline (trg, x)
     toSVG x = x

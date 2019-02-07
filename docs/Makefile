@@ -18,8 +18,8 @@ BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))
 TIKZ_FIGS:= $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_SRC)/*.tex))
 PDF_FIGS := $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_SRC)/*.pdf))
-SVG_FIGS := $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.svg, $(wildcard $(FIGS_SRC)/*.tex))
-SVG_FIGS += $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.svg, $(wildcard $(FIGS_SRC)/*.pdf))
+PNG_FIGS := $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.png, $(wildcard $(FIGS_SRC)/*.tex))
+PNG_FIGS += $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.png, $(wildcard $(FIGS_SRC)/*.pdf))
 
 MD_FILES = $(sort $(foreach file,$(LHS_FILES),$(call make-md-targets,$(call index,$(file)),$(call name,$(file)))))
 
@@ -41,12 +41,12 @@ html: $(DOC).html
 
 pdf: $(DOC).pdf
 
-$(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(SVG_FIGS) $(TX_FILES) $(MD_FILES)
+$(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(TX_FILES) $(MD_FILES)
 	pandoc $(MD_DIR)/* \
 		--mathml --number-sections --toc\
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
-		--filter=scripts/includes-svg.hs \
+		--filter=scripts/includes-png.hs \
 		--bibliography=refs.bib \
 		-f markdown -t html -s -o $@
 
@@ -76,9 +76,9 @@ $(TIKZ_FIGS): figs/%.pdf: figs_src/%.tex
 $(PDF_FIGS): figs/%.pdf: figs_src/%.pdf
 	cp $(<) $@
 
-$(SVG_FIGS): figs/%.svg: figs/%.pdf
+$(PNG_FIGS): figs/%.png: figs/%.pdf
 	convert -density 150 $< -scale 80% -quality 90 $@
-	sed -i 's|<svg|<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" |g' $@
+#	 sed -i 's|<svg|<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" |g' $@
 #	pdf2svg $(<) $@
 
 clean:

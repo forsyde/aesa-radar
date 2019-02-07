@@ -87,16 +87,19 @@ like in @fig:dbf-samp.
 
  #### Pulse Compression (PC)
 
+![Pulse Compression on streams of complex samples](figs/pc-samp.pdf){#fig:pc-samp}
+
+![PC network](figs/pc-net-atom.pdf){#fig:pc-net-atom}
+
 > pc :: Beam (SY.Signal CpxData)
 >    -> Beam (SY.Signal CpxData)
-> pc = V.farm11 (fir' addProc mulProc (fst . delayCounter) pcCoefs)
+> pc = V.farm11 (fir' addProc mulProc (fst . delayCount) mkPcCoefs)
 >   where
->     addProc = SY.comb21 (+)
->     mulProc = SY.comb21 (*)
->     delayCounter = SY.stated12 countBeamLgth (0, nb)
->     countBeamLgth _ 0 _ = (0, nb)
->     countBeamLgth _ c s = (s, c-1)
->     pcCoefs = V.farm11 SY.constant1 mkPcCoefs
+>     addProc    = SY.comb21 (+)
+>     mulProc c  = SY.comb11 (*c)
+>     delayCount = SY.stated12 countBin (0, nb)
+>     countBin _ 0 _ = (0, nb)
+>     countBin _ c s = (s, c-1)
 
 
  #### Corner Turn (CT)

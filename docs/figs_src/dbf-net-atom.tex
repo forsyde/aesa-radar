@@ -5,14 +5,14 @@
 
 \begin{document}
 \begin{tikzpicture}[scale=1.5]
-  \foreach \j/\y/\off in {1/0/1.2, 2/1/.5, 3/3/.1}{
+  \foreach \j/\y/\off in {1/0/1.2, 2/1/.4, 3/3/0}{
     \newcommand{\cy}{\ifthenelse{\j=3}{N_A}{\j}}
     \foreach \i/\x in {1/0, 2/2, 3/6}{
       \newcommand{\cx}{\ifthenelse{\i=3}{N_B}{\i}}
       \basic[primitive,f={$\times\alpha_{\noexpand\cy\noexpand\cx}$}](a\i\j)<\x,-\y>{$\MocCmb$};
       \draw[s=sy]
       (a\i\j)++(-.5,.5) coordinate (i\i\j) edge[->] (a\i\j)
-      (a\i\j)++(\off,-\off) coordinate (o\i\j) edge[] (a\i\j)
+      (a\i\j.300)++(\off,-\off) coordinate (o\i\j) edge[] (a\i\j)
       ;
       \gettikzx{(o\i\j)}{\xout}
       \coordinate (r\i\j) at (\xout,-4);
