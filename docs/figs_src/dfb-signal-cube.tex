@@ -1,0 +1,78 @@
+\documentclass[tikz,border=10pt,multi]{standalone}
+\usetikzlibrary{decorations.pathmorphing,calc}
+
+\newsavebox{\videoin}
+\savebox{\videoin}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (9,0,0) node [very near end, above, sloped] {\footnotesize pulse windows};
+
+    \draw[very thick, fill=blue]
+    (5,2,2) -- (5,2,3) -- (5,3,3) -- (5,3,2) -- cycle
+    (5,2,3) -- (0,2,3) -- (0,3,3) -- (5,3,3) -- cycle
+    (5,3,3) -- (0,3,3) -- (0,3,2) -- (5,3,2) -- cycle
+    ;
+
+    \foreach \i in {1,...,4} {
+      \draw[thick] (\i,2,3) -- (\i,3,3) --  (\i,3,2);
+      \draw[dashed,gray] (\i,5,0) -- (\i,5,5) -- (\i,0,5);
+      \path[draw,red,thin,-latex] (\i,0,0)++(-.5,0,0) --++(0,0,5);
+    }
+    \path[draw,red,thin,-latex] (5,0,0)++(-.5,0,0) --++(0,0,5);
+    \node[anchor=west,red] at (5,0,5) {\footnotesize direction of consumption};
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
+    ;
+  \end{tikzpicture}%
+}
+
+\newsavebox{\videoout}
+\savebox{\videoout}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (9,0,0) node [very near end, above, sloped] {\footnotesize pulse windows};
+
+    \draw[very thick, fill=blue]
+    (5,2,2) -- (5,2,3) -- (5,3,3) -- (5,3,2) -- cycle
+    (5,2,3) -- (0,2,3) -- (0,3,3) -- (5,3,3) -- cycle
+    (5,3,3) -- (0,3,3) -- (0,3,2) -- (5,3,2) -- cycle
+    ;
+
+    \foreach \i in {1,...,4} {
+      \draw[thick] (\i,2,3) -- (\i,3,3) --  (\i,3,2);
+      \draw[dashed,gray] (0,5,\i) -- (5,5,\i) -- (5,0,\i);
+      \path[draw,red,thin,-latex] (0,0,\i)++(0,0,-.5) --++(5,0,0);
+    }
+    \path[draw,red,thin,-latex] (0,0,5)++(0,0,-.5) --++(5,0,0);
+    \node[anchor=west,red] at (5,0,5) {\footnotesize direction of production};
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
+    ;
+  \end{tikzpicture}%
+}
+
+
+\begin{document}
+\begin{tikzpicture}
+  \node (in) {\usebox{\videoin}};
+  \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\videoout}};
+  \node[] at ($(in)!.6!(out)$) {\Huge $\Rightarrow$};
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

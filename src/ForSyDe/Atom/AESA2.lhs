@@ -96,37 +96,46 @@ like in @fig:dbf-samp.
 
 > pc :: Beam (SY.Signal CpxData)
 >    -> Beam (SY.Signal CpxData)
-> pc = V.farm11 (fir' addProc mulProc (fst . delayCount) mkPcCoefs)
+> pc = V.farm11 (fir' addProc mulProc delayCount mkPcCoefs)
 >   where
 >     addProc    = SY.comb21 (+)
 >     mulProc c  = SY.comb11 (*c)
->     delayCount = SY.stated12 countBin (0, nb)
+>     delayCount = fst . SY.stated12 countBin (0, nb)
 >     countBin _ 0 _ = (0, nb)
 >     countBin _ c s = (s, c-1)
 
 
  #### Corner Turn (CT)
 
+![Building matrices of complex samples during CT](figs/ct-samp.pdf){#fig:ct-samp}
+
+![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
+
 > ct :: Beam (SY.Signal CpxData)
 >    -> (Beam (SDF.Signal CpxData),
 >        Beam (SDF.Signal CpxData))
-> ct pcSigs = (V.farm11 rightCorner pcSigs, V.farm11 leftCorner pcSigs)
+> ct sigs = (V.farm11 rightCorner sigs, V.farm11 leftCorner sigs)
 >   where
->     rightCorner = SY.toSDF
+>     rightCorner = cornerTurn . SY.toSDF
 >     leftCorner  = SDF.delay initBatch . rightCorner
->     initBatch = replicate (nFFT `div` 2) (cis 0)
+>     initBatch   = replicate (nb * nFFT `div` 2) (cis 0)
+>     cornerTurn  = SDF.comb11 (nFFT * nb, nb * nFFT,
+>                               fromMatrix . M.transpose . matrix nb nFFT)
 
  #### Doppler Filter Bank (DFB)
 
-> doppler :: Beam (SDF.Signal CpxData)
->         -> Beam (SDF.Signal RealData)
-> doppler = V.farm11
->           (SDF.comb11 (nFFT * nb, nFFT * nb,
->                        fromMatrix . transform . matrix nb nFFT))
+![Doppler Filter Bank on streams of complex samples](figs/dfb-samp.pdf){#fig:dfb-samp}
+
+![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
+
+> dfb :: Beam (SDF.Signal CpxData)
+>     -> Beam (SDF.Signal RealData)
+> dfb = V.farm11
+>       (SDF.comb11 (nFFT, nFFT,
+>                    fromVector . fDFB . vector))
 >   where
->     transform  = V.farm11 (fDoppler . fWeight) . M.transpose 
->     fWeight    = V.farm21 (*) mkWeightCoefs
->     fDoppler   = V.farm11 envelope . fft nFFT
+>     fDFB       = V.farm11 envelope . fft nFFT . weight 
+>     weight     = V.farm21 (*) mkWeightCoefs
 >     envelope a = let i = realPart a
 >                      q = imagPart a
 >                  in sqrt (i * i + q * q)
@@ -134,25 +143,61 @@ like in @fig:dbf-samp.
  #### Constant False Alarm Ratio (CFAR)
 
 > cfar :: Beam (SDF.Signal RealData)
->      -> Beam (SDF.Signal RealData)
-> cfar = V.farm11
->        (SDF.comb11 (nFFT * nb, nFFT * nb',
->                     fromMatrix . fCFAR . matrix nFFT nb))
+>      -> (SY.Signal RealData))
+> cfar = V.farm11 (V.unzipx (V.fanoutn nFFT 1) . pCFAR . gather)
 
-> fCFAR :: Range (Window RealData) -> CRange (Window RealData)
-> fCFAR r_of_d = V.farm41 (\m -> V.farm31 (normCfa m)) md bin lmv emv
+        
+> gather :: SDF.Signal RealData
+>        -> Vector (SDF.Signal (Matrix RealData)
+>                  ,SDF.Signal (Vector RealData)
+>                  ,SDF.Signal (Matrix RealData))
+> gather = V.farm11 get . distrib . stencils
 >   where
->     bin = V.drop (nFFT + 1) r_of_d
->     md  = V.farm11 (logBase 2 . V.reduce min) bin
->     emv = V.farm11 (meanFun . V.take nFFT) stens
->     lmv = V.farm11 (meanFun . V.drop (nFFT + 3)) stens
->     -----------------------------------------------
->     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
->     meanFun :: Vector (Vector RealData) -> Vector RealData
->     meanFun = V.reduce addV . V.farm11 (V.farm11 (logBase 2 . (/4)) . V.reduce addV) . V.group 4
->     stens   = V.stencil (2 * nFFT + 3) r_of_d
->     addV    = V.farm21 (+)
->   
+>     stencils = SDF.comb11 (nb * nFFT, 1,
+>                            \a -> [V.stencil (2*nFFT+3) $ matrix nFFT nb a])
+>     distrib :: SDF.Signal (Vector (Matrix RealData)) -> Vector (SDF.Signal (Matrix RealData))
+>     distrib  = SDF.unzipx (V.fanoutn nb' 1)
+>     get smx  = (early smx, mid smx, late smx)
+>       where
+>         early = SDF.comb11 (1,1,\[a] -> [V.take nFFT a])
+>         mid   = SDF.comb11 (1,1,\[a] -> [V.first $ V.drop (nFFT + 1) a])
+>         late  = SDF.comb11 (1,1,\[a] -> [V.drop (nFFT + 3) a])
+
+> pCFAR :: Vector (SDF.Signal (Matrix RealData)
+>                 ,SDF.Signal (Vector RealData)
+>                 ,SDF.Signal (Matrix RealData))
+>       -> Vector (SDF.Signal (Vector RealData))
+> pCFAR = V.farm11 calc
+>   where
+>     calc (e,m,l) = normP (minVP m) (meanP e) (meanP l) m
+>     ------------------------------------------------------
+>     normP = SDF.comb41 ((1,1,1,1),1,
+>                         \[a] [b] [c] [d] -> [V.farm31 (normF a) b c d])
+>     minVP = SDF.comb11 (1,1,\[a] -> [minFunc a])
+>     meanP = SDF.comb11 (1,1,\[a] -> [arithMean a])
+>     ------------------------------------------------------
+>     normF m e l a = 2 ** (5 + logBase 2 a - maximum [l,e,m])
+>     minFunc   = logBase 2 . V.reduce min
+>     arithMean = V.farm11 (/n) . V.reduce addV . V.farm11 geomMean . V.group 4
+>     geomMean  = V.farm11 (logBase 2 . (/4)) . V.reduce addV
+>     addV      = V.farm21 (+)
+>     n         = fromIntegral nFFT
+
+
+-- > fCFAR :: Range (Window RealData) -> CRange (Window RealData)
+-- > fCFAR r_of_d = V.farm41 (\m -> V.farm31 (normCfa m)) md bin lmv emv
+-- >   where
+-- >     bin = V.drop (nFFT + 1) r_of_d
+-- >     md  = V.farm11 (logBase 2 . V.reduce min) bin
+-- >     emv = V.farm11 (meanFun . V.take nFFT) stens
+-- >     lmv = V.farm11 (meanFun . V.drop (nFFT + 3)) stens
+-- >     -----------------------------------------------
+-- >     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
+-- >     meanFun :: Vector (Vector RealData) -> Vector RealData
+-- >     meanFun = V.reduce addV . V.farm11 (V.farm11 (logBase 2 . (/4)) . V.reduce addV) . V.group 4
+-- >     stens   = V.stencil (2 * nFFT + 3) r_of_d
+-- >     addV    = V.farm21 (+)
+-- >   
 
  #### Integrator (INT)
 
@@ -170,11 +215,11 @@ like in @fig:dbf-samp.
 
  ### System Process Network
 
-> aesa :: Antenna (SY.Signal CpxData)
->      -> Beam (CRange (SY.Signal RealData))
-> aesa video = int lDfb rDfb
->   where
->     lDfb      = cfar $ doppler lCt
->     rDfb      = cfar $ doppler rCt
->     (lCt,rCt) = ct $ pc $ dbf video
+-- > aesa :: Antenna (SY.Signal CpxData)
+-- >      -> Beam (CRange (SY.Signal RealData))
+-- > aesa video = int lDfb rDfb
+-- >   where
+-- >     lDfb      = cfar $ doppler lCt
+-- >     rDfb      = cfar $ doppler rCt
+-- >     (lCt,rCt) = ct $ pc $ dbf video
 

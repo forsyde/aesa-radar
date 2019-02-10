@@ -9,12 +9,12 @@
   \basic[primitive,f={$N_b$},right of=ns,yshift=.5cm](mem){$\MocDel$};
   \draw[s,<-] (ns.205) to ++(-1.5,0) node[anchor=east] {};
   \draw[s,->] (ns.30) to[-|-] (mem);
-  \draw[s,->] (mem) to ++(1,0) coordinate (a) |- ++(0,.7) -- ++(-3.5,0) |- (ns.155);
+  \draw[s,->] (mem) to ++(.5,0) coordinate (a) |- ++(0,.7) -- ++(-3,0) |- (ns.155);
   \draw[s,->] (ns.330) to[-|-] (b);
-  \draw[s,->] (mem) to ++(1.5,0) node[anchor=west] {};
-  \draw[s,->] (b) to ++(1.5,0) node[anchor=west] {};
+  \draw[s,->] (mem) to ++(1,0) node[anchor=west,inner xsep=1pt, inner ysep=6pt, draw] (q) {};
+  \draw[s,->] (b) to ++(2,0) node[anchor=west] {};
   \node(dummy) at (-1,1) {};
-  \cluster[composite,inner ysep=15pt]<(mem)(a)(b)(ns)(dummy)>{countDelay};
+  \cluster[composite,inner ysep=15pt]<(mem)(a)(b)(ns)(dummy)(q)>{countDelay};
 
 \end{tikzpicture}
 \end{document}
