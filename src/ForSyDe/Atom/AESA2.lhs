@@ -142,21 +142,25 @@ like in @fig:dbf-samp.
 
  #### Constant False Alarm Ratio (CFAR)
 
+![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cfar-cube-atom}
+
+![CFAR network](figs/cfar-net-atom.pdf){#fig:cfar-net-atom}
+
 > cfar :: Beam (SDF.Signal RealData)
 >      -> Beam (SDF.Signal RealData)
-> cfar = V.farm11 (pCFAR . gather)
+> cfar = V.farm11 (pCFAR . assign)
 
         
-> gather :: SDF.Signal RealData
+> assign :: SDF.Signal RealData
 >        -> Vector (SDF.Signal (Matrix RealData)
 >                  ,SDF.Signal (Vector RealData)
 >                  ,SDF.Signal (Matrix RealData))
-> gather = V.farm11 get . distrib . stencils
+> assign = V.farm11 get . distrib . neighbors
 >   where
->     stencils = SDF.comb11 (nb * nFFT, 1,
->                            \a -> [V.stencil (2*nFFT+3) $ matrix nFFT nb a])
->     distrib  = SDF.unzipx (V.fanoutn nb' 1)
->     get smx  = (early smx, mid smx, late smx)
+>     neighbors = SDF.comb11 (nb * nFFT, nb',
+>                             fromVector . V.stencil (2*nFFT+3) . matrix nFFT nb)
+>     distrib   = SDF.distribute (V.fanoutn nb' 1)
+>     get smx   = (early smx, mid smx, late smx)
 >       where
 >         early = SDF.comb11 (1,1,\[a] -> [V.take nFFT a])
 >         mid   = SDF.comb11 (1,1,\[a] -> [V.first $ V.drop (nFFT + 1) a])
@@ -166,60 +170,49 @@ like in @fig:dbf-samp.
 >                 ,SDF.Signal (Vector RealData)
 >                 ,SDF.Signal (Matrix RealData))
 >       -> SDF.Signal RealData
-> pCFAR = SDF.gatherAndStream (V.fanoutn nb' nFFT) . V.farm11 calc
+> pCFAR = SDF.merge (V.fanoutn nb' nFFT) . V.farm11 calc
 >   where
 >     calc (e,m,l) = normP (minVP m) (meanP e) (meanP l) m
 >     ------------------------------------------------------
 >     normP = SDF.comb41
->             ((1,1,1,1), nb' * nFFT,
->              \[m] [e] [l] [a] -> fromVector $ V.farm31 (normF m) e l a)
->     minVP = SDF.comb11 (1,1,\[a] -> [minFunc a])
+>             ((1,1,1,1), nFFT,
+>              \[m] [e] [l] [a] -> fromVector $ V.farm31 (norm m) e l a)
+>     minVP = SDF.comb11 (1,1,\[a] -> [minVal a])
 >     meanP = SDF.comb11 (1,1,\[a] -> [arithMean a])
 >     ------------------------------------------------------
->     normF m e l a = 2 ** (5 + logBase 2 a - maximum [l,e,m])
->     minFunc   = logBase 2 . V.reduce min
+>     norm m e l a = 2 ** (5 + logBase 2 a - maximum [l,e,m])
+>     minVal    = logBase 2 . V.reduce min
 >     arithMean = V.farm11 (/n) . V.reduce addV . V.farm11 geomMean . V.group 4
 >     geomMean  = V.farm11 (logBase 2 . (/4)) . V.reduce addV
 >     addV      = V.farm21 (+)
 >     n         = fromIntegral nFFT
 
 
--- > fCFAR :: Range (Window RealData) -> CRange (Window RealData)
--- > fCFAR r_of_d = V.farm41 (\m -> V.farm31 (normCfa m)) md bin lmv emv
--- >   where
--- >     bin = V.drop (nFFT + 1) r_of_d
--- >     md  = V.farm11 (logBase 2 . V.reduce min) bin
--- >     emv = V.farm11 (meanFun . V.take nFFT) stens
--- >     lmv = V.farm11 (meanFun . V.drop (nFFT + 3)) stens
--- >     -----------------------------------------------
--- >     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
--- >     meanFun :: Vector (Vector RealData) -> Vector RealData
--- >     meanFun = V.reduce addV . V.farm11 (V.farm11 (logBase 2 . (/4)) . V.reduce addV) . V.group 4
--- >     stens   = V.stencil (2 * nFFT + 3) r_of_d
--- >     addV    = V.farm21 (+)
--- >   
-
  #### Integrator (INT)
+
+![Integration on cubes of complex samples](figs/int-cube.pdf){#fig:int-cube-atom}
+
+![INT network](figs/int-net-atom.pdf){#fig:int-net-atom}
 
 > int :: Beam (SDF.Signal RealData)
 >     -> Beam (SDF.Signal RealData)
->     -> Beam (CRange (SY.Signal RealData))
-> int cr cl = M.farm11 firChain $ M.farm21 addSY (unroll cr) (unroll cl)
+>     -> Beam (CRange (Window (SY.Signal RealData)))
+> int cr cl = C.farm11 firChain $ C.farm21 addSY (unroll cr) (unroll cl)
 >   where
->     unroll   = M.farm11 SDF.toSY . V.farm11 streamify
->     streamify= SDF.unzipx (V.fanoutn nb' nFFT) .
->                SDF.comb11 (nFFT * nb', 1, (:[]) . vector)
+>     unroll   = C.farm11 SDF.toSY .
+>                M.farm11 (SDF.distribute (V.fanoutn nFFT 1)) .
+>                V.farm11 (SDF.distribute (V.fanoutn nb' nFFT))
 >     firChain = fir' addSY mulSY (SY.delay 0) mkFirCoefs
 >     addSY    = SY.comb21 (+)
 >     mulSY c  = SY.comb11 (*c)
 
  ### System Process Network
 
--- > aesa :: Antenna (SY.Signal CpxData)
--- >      -> Beam (CRange (SY.Signal RealData))
--- > aesa video = int lDfb rDfb
--- >   where
--- >     lDfb      = cfar $ doppler lCt
--- >     rDfb      = cfar $ doppler rCt
--- >     (lCt,rCt) = ct $ pc $ dbf video
+> aesa :: Antenna (SY.Signal CpxData)
+>      -> Beam (CRange (Window (SY.Signal RealData)))
+> aesa video = int lDfb rDfb
+>   where
+>     lDfb      = cfar $ dfb lCt
+>     rDfb      = cfar $ dfb rCt
+>     (lCt,rCt) = ct $ pc $ dbf video
 

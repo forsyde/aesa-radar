@@ -1,0 +1,36 @@
+\documentclass{standalone}
+
+\usepackage[tikz,math]{forsyde}
+
+\begin{document}
+\begin{tikzpicture}[constructors=shallow,xscale=2,yscale=2.4]
+  \trans[transition=s1v1,no=4,type={distribute},xshift=-2cm] (dist) <-1.2,-1> {};
+  \resetportinfo{dist}\wpinfo{$N_{b'}\times N_{FFT}$}\epinfo{$N_{FFT}$}\epinfo{$N_{FFT}$}\epinfo{$...$}\epinfo{$N_{FFT}$}
+  \foreach \j/\y/\off/\distoff in {1/0/220/.5, 2/1/250/.6, 4/2.5/320/.5}{
+    \newcommand{\cy}{\ifthenelse{\j=3}{N_{b'}}{\j}}
+    \pgfmathsetmacro{\down}{\y - 3}
+    \trans[transition=s1v1,no=4,type={distribute},yshift=1.2cm] (dist\j) <-1,-\y> {};
+    \resetportinfo{dist\j}\wpinfo{$N_{FFT}$}\epinfo{$1$}\epinfo{$1$}\epinfo{$...$}\epinfo{$1$}
+    \foreach \i/\x in {1/0, 2/2, 4/4.5}{
+      \newcommand{\cx}{\ifthenelse{\i=3}{N_{FFT}}{\i}}
+      \interface[](if\i\j)<\x,-\y>{sdf}{sy}
+      \standard[process,moc=blackbox,xshift=2cm](a\i\j)<\x,-\y>{\scriptsize 8-tap FIR};
+      \draw[s=sdf,->] (dist\j.e\i) -| (if\i\j);
+      \draw[s=sy,->] (if\i\j) -- (a\i\j);
+      \draw[s=sy,->] (a\i\j.\off) -- ++(0,\down) coordinate (o\i\j);
+    }
+    \draw[s=sdf] (dist.e\j) edge[-|-=\distoff,->] (dist\j.w1);  
+    \path (a2\j) -- (if4\j) node [midway] {$\cdots$};
+  }
+  \path (a12) -- (a14) node [midway] {$\vdots$};
+  \path (a22) -- (a24) node [midway] {$\vdots$};
+  \path (a42) -- (a44) node [midway] {$\vdots$};
+  \node[xshift=-1cm] (distd) at (dist.w1) {};
+  \node[yshift=-1cm] (add) at (a44.south east) {};
+  \cluster[farmstyle,type=farm,inner sep=20pt](int)<(distd)(dist1)(add)>{INT};
+  \draw[trans={v=sy}{int-east}{v=sy,srcport,->}] (o11) -- ++(6,0)
+  node[black,anchor=west]{$\SkelVec{\SkelVec{\SkelVec{b}}_1^{int}...\SkelVec{\SkelVec{b}}_{N_B}^{int}}$};
+  \draw[trans={s=sdf,<-}{int-west}{v=sdf,srcport}] (dist.w1) --++(-1.2,0) node[black,anchor=east]{$\SkelVec{b_1^{cfar}...b_{N_B}^{cfar}}$};
+  
+\end{tikzpicture}
+\end{document}
