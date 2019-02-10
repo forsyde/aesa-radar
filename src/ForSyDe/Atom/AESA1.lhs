@@ -45,7 +45,7 @@ layer_[^layers] using an appropriate alias for each.
 
 [^layers]: see [@ungureanu17] for more on layers.
 
-> import ForSyDe.Atom.MoC.SDF as SDF
+> import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
 > import ForSyDe.Atom.MoC.SY  as SY
 
 Also recall that for describing parallel operations on data we use
@@ -74,9 +74,9 @@ module.
 > -- import our own custom Vector module, with bug-fixes. It will be
 > -- imported normally once 'forsyde-atom-extensions' is pushed to upstream.
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
-> import ForSyDe.Atom.Skeleton.Vector.Cube   as C
-> import ForSyDe.Atom.Skeleton.Vector.Matrix as M
-> import ForSyDe.Atom.Skeleton.Vector.DSP
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Cube   as C
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Matrix as M
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.DSP
 
  ### Video Processing Pipeline Stages
 

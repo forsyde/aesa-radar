@@ -25,13 +25,13 @@ By now the imported libraries are not a mistery any longer. Check
 [@sec:atom-operation] for more details on what each is imported for.
 
 > import Data.Complex
-> import ForSyDe.Atom.MoC.SDF as SDF
+> import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
 > import ForSyDe.Atom.MoC.SY  as SY
 >
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
-> import ForSyDe.Atom.Skeleton.Vector.Cube   as C
-> import ForSyDe.Atom.Skeleton.Vector.Matrix as M
-> import ForSyDe.Atom.Skeleton.Vector.DSP
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Cube   as C
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Matrix as M
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.DSP
 
 As in the previous section, we import these local submodule containing
 the type synonym declarations presented in [@sec:aliases-shallow] and
@@ -143,8 +143,8 @@ like in @fig:dbf-samp.
  #### Constant False Alarm Ratio (CFAR)
 
 > cfar :: Beam (SDF.Signal RealData)
->      -> (SY.Signal RealData))
-> cfar = V.farm11 (V.unzipx (V.fanoutn nFFT 1) . pCFAR . gather)
+>      -> Beam (SDF.Signal RealData)
+> cfar = V.farm11 (pCFAR . gather)
 
         
 > gather :: SDF.Signal RealData
@@ -155,7 +155,6 @@ like in @fig:dbf-samp.
 >   where
 >     stencils = SDF.comb11 (nb * nFFT, 1,
 >                            \a -> [V.stencil (2*nFFT+3) $ matrix nFFT nb a])
->     distrib :: SDF.Signal (Vector (Matrix RealData)) -> Vector (SDF.Signal (Matrix RealData))
 >     distrib  = SDF.unzipx (V.fanoutn nb' 1)
 >     get smx  = (early smx, mid smx, late smx)
 >       where
@@ -166,13 +165,14 @@ like in @fig:dbf-samp.
 > pCFAR :: Vector (SDF.Signal (Matrix RealData)
 >                 ,SDF.Signal (Vector RealData)
 >                 ,SDF.Signal (Matrix RealData))
->       -> Vector (SDF.Signal (Vector RealData))
-> pCFAR = V.farm11 calc
+>       -> SDF.Signal RealData
+> pCFAR = SDF.gatherAndStream (V.fanoutn nb' nFFT) . V.farm11 calc
 >   where
 >     calc (e,m,l) = normP (minVP m) (meanP e) (meanP l) m
 >     ------------------------------------------------------
->     normP = SDF.comb41 ((1,1,1,1),1,
->                         \[a] [b] [c] [d] -> [V.farm31 (normF a) b c d])
+>     normP = SDF.comb41
+>             ((1,1,1,1), nb' * nFFT,
+>              \[m] [e] [l] [a] -> fromVector $ V.farm31 (normF m) e l a)
 >     minVP = SDF.comb11 (1,1,\[a] -> [minFunc a])
 >     meanP = SDF.comb11 (1,1,\[a] -> [arithMean a])
 >     ------------------------------------------------------

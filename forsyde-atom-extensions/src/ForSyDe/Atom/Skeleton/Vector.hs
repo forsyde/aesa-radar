@@ -2,7 +2,7 @@
 
 module ForSyDe.Atom.Skeleton.Vector(
   module V,
-  rotate, take, drop, get, (<@), (<@!), indexes, group, indexesTo, stencil
+  rotate, take, drop, get, (<@), (<@!), indexes, group, indexesTo, stencil,
 ) where
 
 import "forsyde-atom" ForSyDe.Atom.Skeleton.Vector as V hiding (
