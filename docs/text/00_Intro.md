@@ -7,6 +7,7 @@ link-citations: true
 linkReferences: true
 header-includes: |
     \usepackage{todonotes}
+	\usepackage[margin=1in]{geometry}
 ---
 
 # Introduction

@@ -27,7 +27,7 @@ By now the imported libraries are not a mistery any longer. Check
 > import Data.Complex
 > import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
 > import ForSyDe.Atom.MoC.SY  as SY
->
+
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Cube   as C
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Matrix as M
@@ -67,13 +67,23 @@ speciffication's assumptions.
 
 Recall that the DBF $N_B$ simultaneous receiver beams from the complex
 data received from $N_A$ antenna elements, as explained in
-[@sec:dbf-shallow]. Depicted from a streaming point of view, DBF looks
-like in @fig:dbf-samp.
+[@sec:dbf-shallow]. Depicted from a streaming point of view, DBF would
+look more like in @fig:dbf-samp.
 
 ![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
 
-![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom}
+As can be seen in @fig:dbf-samp, a beam can be formed _as soon as_ all
+antennas have produced a complex sample each. We thus represent the
+parallel streams of data coming from each antenna element as a _vector
+of synchronous signals_, i.e. vector of signals where each event is
+synchronous with each other. This allows us to depict the dataflow
+interaction between the streams during digital beamforming as the
+process network in @fig:dbf-net-atom, where (for the sake of space) we
+represent a combinational process
+[`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html#v:comb22)
+as a node with the $\oplus$ symbol.
 
+![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom}
 
 > dbf :: Antenna (SY.Signal CpxData)
 >     -> Beam    (SY.Signal CpxData)
@@ -84,15 +94,55 @@ like in @fig:dbf-samp.
 >     sigMatrix  = V.farm11 V.fanout antennaSigs
 >     beamConsts = mkBeamConsts (V.length antennaSigs) nB
 
+In fact the code listing above, depicted in @fig:dbf-net-atom, is an
+equivalent semantic "lifting" of the vector skeletons in
+[@sec:dbf-shallow;@sec:dbf-atom] into the _signal_ domain. In other
+words instead of representing signals as carrying (multi-dimensional)
+vectors of values in their events, signals themselves are organized
+into (multi-dimensional) vectors and are carying values in their
+events. Consequently, the "elementary" operations passed to skeletons
+are thus _processes_ rather than simple functions on values. The
+visual depiction in @fig:dbf-net-atom suggests the interaction of
+processes and signals, for example through the
+[`fanout`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:fanout)
+skeleton which distributes one signal to a whole row (i.e. vector) of
+processes, the matrix `farm`[^farmM] applies a matrix of partially
+applied processes on a matrix of signals, and
+[`reduce`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:reduce),
+which creates a reduction network of binary processes pair-wise
+applying the function $+$ on all events in signals. Practically the
+DBF network transforms $N_A$ synchronous signals originating from each
+antenna element into $N_B$ synchronous signals for each beam. The
+internal structure of the transformation though exposes multiple
+degrees of potential for parallel exploitation.
+
+[^farmM]: see `ForSyDe.Atom.Skeleton.Vector.Matrix.farm22` from
+            the `forsyde-atom-extensions` documentation.
 
  #### Pulse Compression (PC)
 
+Recall from @sec:pc-shallow that the pulse compression stage decodes
+the modulation of the pulse by applying a matched filer on the range
+bins. This essentially applies a sliding window (i.e. a FIR filter) on
+the bin samples and we have already seen in @sec:int-shallow that this
+operation expands nicely into a pipelined network structure provided
+the samples are streamed through a signal.
+ 
 ![Pulse Compression on streams of complex samples](figs/pc-samp.pdf){#fig:pc-samp}
 
+In fact, as shown in @fig:pc-samp samples _are_ actually arriving in
+synchronous streams from the DBF stage, as an effect of the initial
+assumption. This in turn creates a perfect match to exploit the
+application's inherent potential for parallelism by feeding each
+arriving beam into a pipelined $N$-tap FIR filter. The resulting
+process network is depicted in @fig:pc-net-atom where the
+[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
+and
+[`reduce`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:reduce)
+skeletons are captured by appropriate graphical primitives, suggesting
+the structured replication of a certain composite process.
+
 ![PC network](figs/pc-net-atom.pdf){#fig:pc-net-atom}
-
-![`countDelay` process structure](figs/pc-counter-atom.pdf){#fig:pc-counter-atom}
-
 
 > pc :: Beam (SY.Signal CpxData)
 >    -> Beam (SY.Signal CpxData)
@@ -104,10 +154,58 @@ like in @fig:dbf-samp.
 >     countBin _ 0 _ = (0, nb)
 >     countBin _ c s = (s, c-1)
 
+In @fig:pc-net-atom we instantiate an $N$-tap FIR filter for each beam
+signal by using the `fir'`[^firA] skeleton which takes as arguments a)
+a process used as kernel operation for reduction; b) a process for
+scaling each tap with the according coefficient; c) a process for
+delaying each tap and d) a vector with $N$ coefficients; and
+replicates and connects each process accordingly to form the
+well-known FIR-filter pattern.
+
+The FIR skeleton, as other skeletons, is not only parametric, but also
+orthogonal from "what" it is performing. Its role is simply to
+describe a "pattern" of structured composition, abstracting away the
+operations which are actually performed. The operations passed as
+arguments fix the semantics of the process network: if they are
+functions on values, then the network becomes a parallel algorithm; if
+they are processes on signals, then it becomes a network of concurrent
+processes. Another advantage with this orthogonal scheme is that we
+can elegantly customize our design, as seen in @fig:pc-net-atom, where
+instead of a simple
+[`delay`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:delay)
+process for delaying the FIR taps, we pass a
+[`stated`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:stated22)
+process structured like in @fig:pc-counter-atom which both delays the
+taps, but also flushes the FIR pipeline after $N_b$ samples. This
+needs to be done in order to preserve the behavior of the application
+as specified in @sec:video-chain-spec: each pulse of range bins needs
+to be computed independently from each other.
+
+![`countDelay` process structure](figs/pc-counter-atom.pdf){#fig:pc-counter-atom}
 
  #### Corner Turn (CT)
 
+During the corner turning the sampled data is re-aligned to form rows
+of $N_{FFT}$ samples for each range bin. _How_ to do this was already
+presented in [@sec:ct-shallow;@sec:ct-atom], namely to consume as many
+pulses (matrices) as necessary to form full video cubes, transpose
+these cubes and then pass them as single tokens for the upcoming
+processing stages. However, in this approach we use the awareness that
+for each beam samples arrive in order, one range bin at a time, and
+fill the video cube in the direction suggested in the left side of
+@fig:ct-samp.
+
 ![Building matrices of complex samples during CT](figs/ct-samp.pdf){#fig:ct-samp}
+
+Our CT network thus maps on each beam signal a corner turn process
+which, under the SDF execution semantics, consumes $N_{FFT}\times N_b$
+(ordered) samples, interprets it as a matrix, transposes it, and
+$N_b\times N_{FFT}$ samples ordered in the direction suggested in the
+right side of @fig:ct-samp. Like before, in order to achieve 50%
+overlapping betwen the two output channels, the channel one needs to
+be "delayed" with a prefix signal equivalent to half a video cube. In
+this case that prefix is formed of $\frac{N_b \times N_{FFT}}{2}$
+zeroes.
 
 ![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
 
@@ -207,6 +305,8 @@ like in @fig:dbf-samp.
 >     mulSY c  = SY.comb11 (*c)
 
  ### System Process Network
+
+![AESA network as black-box components](figs/aesa-net-atom.pdf){#fig:aesa-net-atom}
 
 > aesa :: Antenna (SY.Signal CpxData)
 >      -> Beam (CRange (Window (SY.Signal RealData)))

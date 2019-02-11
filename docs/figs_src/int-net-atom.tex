@@ -28,6 +28,7 @@
   \node[xshift=-1cm] (distd) at (dist.w1) {};
   \node[yshift=-1cm] (add) at (a44.south east) {};
   \cluster[farmstyle,type=farm,inner sep=20pt](int)<(distd)(dist1)(add)>{INT};
+  \node[anchor=north east] at (int.north east){$\forall b \in [1,N_B]$};
   \draw[trans={v=sy}{int-east}{v=sy,srcport,->}] (o11) -- ++(6,0)
   node[black,anchor=west]{$\SkelVec{\SkelVec{\SkelVec{b}}_1^{int}...\SkelVec{\SkelVec{b}}_{N_B}^{int}}$};
   \draw[trans={s=sdf,<-}{int-west}{v=sdf,srcport}] (dist.w1) --++(-1.2,0) node[black,anchor=east]{$\SkelVec{b_1^{cfar}...b_{N_B}^{cfar}}$};

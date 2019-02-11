@@ -103,6 +103,8 @@ sense that they carry different tag systems [@lee98] and infer
 different time semantics, thus we will refer to them with their
 appropriate type constructor.
 
+ #### Digital Beamforming (DFB){#sec:dbf-atom label="DBF in ForSyDe-Atom"}
+
 As presented in [@sec:dbf-shallow], the digital beamforming stage is
 represented by a SY
 [`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:comb22)
@@ -139,6 +141,8 @@ or `Matrix`es.
 >     elMatrix   = V.farm11 V.fanout antennaEl
 >     beamConsts = mkBeamConsts (V.length antennaEl) nB
 
+ #### Pulse Compression (PC){#sec:pc-atom label="PC in ForSyDe-Atom"}
+
 The pulse compression stage is described like in [@sec:pc-shallow] as
 a SY
 [`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:comb22)
@@ -164,6 +168,8 @@ applied on numbers only.
 > fPC :: Range CpxData -- ^ input range bins     
 >     -> Range CpxData -- ^ output pulse-compressed bins
 > fPC = fir mkPcCoefs
+
+ #### Corner Turn (CT){#sec:ct-atom label="CT in ForSyDe-Atom"}
 
 During corner turning with memory overlapping we see a major
 difference as compared to the definition in [@sec:ct-shallow], namely
@@ -193,6 +199,8 @@ data in rows of samples in the direction of pulse windows.
 >     leftSig   = SDF.delay initBatch wsig
 >     initBatch = replicate (nFFT `div` 2) (M.fanout (cis 0))
 
+ #### Doppler Filter Bank (DFB){#sec:dfb-atom label="DFB in ForSyDe-Atom"}
+
 The Doppler filter bank behave similarly to [@sec:dfb-shallow] with
 the sole exception that it needs to explicitly convert the SDF signal
 back to SY using the MoC interface
@@ -217,6 +225,8 @@ in order to operate in the synchronous domain again[^fn:1].
 >     envelope a = let i = realPart a
 >                      q = imagPart a
 >                  in sqrt (i * i + q * q)
+
+ #### Constant False Alarm Ratio (CFAR){#sec:cfar-atom label="CFAR in ForSyDe-Atom"}
 
 The constant false alarm ratio stage is implemented exactly the same as in [@sec:cfar-shallow], but now we use the ForSyDe atom skeletons
 [`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22),
@@ -251,6 +261,9 @@ and `stencil`[^stenA].
 >     neighbors = V.stencil (2 * nFFT + 3) r_of_d
 >     addV      = V.farm21 (+)
 >     n         = fromIntegral nFFT
+
+
+ #### Integration (INT){#sec:int-atom label="INT in ForSyDe-Atom"}
 
 Finally, the integration is performed like in [@sec:int-shallow], by
 using the `fir'` pattern to create a FIR process network.

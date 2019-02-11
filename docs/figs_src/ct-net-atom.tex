@@ -8,14 +8,14 @@
   \standard[process,f={$^T$},moc=sdf,type=comb,right of=if, xshift=2cm](ct){cornerTurn};
   \resetportinfo{ct}\wpinfo{$N_{FFT}\times N_b$}\epinfo{$N_b\times N_{FFT}$}
   \draw[s=sdf] (ct) edge[<-] (if);
-  % \draw[s=sdf] (ct.east)++(3,-.5) node[black, anchor=west] (br) {$b_{left}$} edge[-|-=.65,<-,token=scalar,token pos=.3] (ct.east);
-  \node[anchor=south] (tok) at ($(ct.east)+(1.6,-.5)$) {$\frac{N_b \times N_{FFT}}{2}$};
-  \cluster[farmstyle,type=farm](all)<(if)(tok)>{CT};
+  \basic[primitive,f={$\SkelVec{0}_{\noexpand\frac{N_b \times N_{FFT}}{2}}$}](tok)<$(ct.east)+(1.6,-.5)$>{$\MocDel$}
+  \node[] (dum) at ($(ct.east)+(2,0)$) {};
+  \cluster[farmstyle,type=farm,inner ysep=20pt](all)<(if)(ct)(dum)>{CT};
   \draw[trans={s=sy,<-}{all-west}{v=sy,srcport}] (if) --++(-1,0) node[black,anchor=east]{$\langle b^{pc}_{1}...b^{pc}_{N_B}\rangle$};
   \draw[s=sdf] (ct.east) -|++(1,.5) edge[trans={s=sdf}{all-east}{v=sdf,->,srcport}]++(2.2,0)
        ++(2.2,0) node[black,anchor=west]{$\langle b^{ct,r}_{1}...b^{ct,r}_{N_B}\rangle$};
-  \draw[s=sdf] (ct.east) -|++(1,-.5) edge[trans={s=sdf,token=scalar,token pos=.4}{all-east}{v=sdf,->,srcport}]++(2.2,0)
-       ++(2.2,0) node[black,anchor=west]{$\langle b^{ct,l}_{1}...b^{ct,l}_{N_B}\rangle$};
+  \draw[s=sdf] (ct.east) -|++(1,-.5) -- (tok) (tok) edge[trans={s=sdf}{all-east}{v=sdf,->,srcport}]++(1.6,0)
+       ++(1.6,0) node[black,anchor=west]{$\langle b^{ct,l}_{1}...b^{ct,l}_{N_B}\rangle$};
   
 \end{tikzpicture}
 \end{document}
