@@ -20,9 +20,8 @@
   \cluster[farmstyle,type=farm](aesanet)<(pc)(p1)(int)>{};
   \draw[trans={<-,s=sy}{dbfnet-west}{v=sy,srcport}] (dbf) --++(-1,0) node[anchor=east]{$\SkelVec{a}_{[1..N_A]}$};
   \draw[trans={v=sy}{aesanet-west}{s=sy,srcport,->}] (dbfnet.e1) -- (pc);
-  \draw[s=sy,dstport] (dbf) -- (dbfnet.e1);
+  \draw[s=sy,dstport] (dbf) -- (dbfnet.e1) (pc) edge[->] (p1);
   \draw[s=sdf]
-  (pc) edge[->] (p1)
   (p1.e1) edge[->] (dfb1) (dfb1) edge[->] (cfar1) (cfar1.e1) edge[-|-,->] (int.w1)
   (p1.e2) edge[->] (dfb2) (dfb2) edge[->] (cfar2) (cfar2.e1) edge[-|-,->] (int.w2)
   ;

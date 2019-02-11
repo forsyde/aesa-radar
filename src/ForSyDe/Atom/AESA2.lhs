@@ -63,7 +63,7 @@ speciffication's assumptions.
 
 ![Video cube unrolling](figs/cube-unrolling.pdf){#fig:cube-unrolling}
 
- #### Digital Beamforming (DBF)
+ #### Digital Beamforming (DBF){#sec:dbf-atom-net}
 
 Recall that the DBF $N_B$ simultaneous receiver beams from the complex
 data received from $N_A$ antenna elements, as explained in
@@ -119,7 +119,7 @@ degrees of potential for parallel exploitation.
 [^farmM]: see `ForSyDe.Atom.Skeleton.Vector.Matrix.farm22` from
             the `forsyde-atom-extensions` documentation.
 
- #### Pulse Compression (PC)
+ #### Pulse Compression (PC){#sec:pc-atom-net}
 
 Recall from @sec:pc-shallow that the pulse compression stage decodes
 the modulation of the pulse by applying a matched filer on the range
@@ -205,7 +205,7 @@ right side of @fig:ct-samp. Like before, in order to achieve 50%
 overlapping betwen the two output channels, the channel one needs to
 be "delayed" with a prefix signal equivalent to half a video cube. In
 this case that prefix is formed of $\frac{N_b \times N_{FFT}}{2}$
-zeroes.
+zeroes on each beam path.
 
 ![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
 
@@ -220,9 +220,30 @@ zeroes.
 >     cornerTurn  = SDF.comb11 (nFFT * nb, nb * nFFT,
 >                               fromMatrix . M.transpose . matrix nb nFFT)
 
- #### Doppler Filter Bank (DFB)
+ #### Doppler Filter Bank (DFB){#sec:dfb-atom-net}
+
+During the Doppler filter bank, every window of samples, associated
+with each range bin goes through a transformation consisting in
+weighting, FFT, and envelope calculation, as already presented in
+@sec:dfb-shallow. Since the samples have been arranged in pulse
+window-order during the previous stage, the DFB transformation can
+occur as soon as a window of $N_{FFT}$ samples arrive, like in
+@fig:dfb-samp.
 
 ![Doppler Filter Bank on streams of complex samples](figs/dfb-samp.pdf){#fig:dfb-samp}
+
+As compared with the pulse compression (PC) stage in @sec:pc-atom-net,
+the DFB is not carried out in a "sliding window" fashion, i.e. it
+cannot be processed "one sample at a time", but rather it needs the
+whole $N_{FFT}$ batch in order to apply the FFT algorithm. As such,
+the best-fitted MoC execution semantics to describe the process(es)
+associated with DFB is still SDF. We can simply describe the DFB stage
+as a
+[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
+of
+[`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html#v:comb22)
+SDF actors which apply the $f_{DFB}$ function on $N_{FFT}$ tokens
+every firing cycle, as seen in @fig:dfb-net-atom.
 
 ![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
 
@@ -238,9 +259,40 @@ zeroes.
 >                      q = imagPart a
 >                  in sqrt (i * i + q * q)
 
+Each function composing $f_{DFB}$ is itself inherently parallel, as it
+is described in terms of parallel skeletons. We could have "lifted"
+these skeletons as deep as associating a process for each elementary
+arithmetic operation, following the example set in
+@sec:dbf-atom-net. This, however, is left as an exercise for the
+reader. The interested reader is also recommended to read the
+associated chapter in the technical manual (@atom-manual) to see how
+the `fft'`[^fftA] skeleton behaves when instantiated as a function
+versus as a butterfly network of processes acting under different MoC
+semantics.
+
+[^fftA]: see `ForSyDe.Atom.Skeleton.Vector.DSP.fft'` from
+            the `forsyde-atom-extensions` documentation.
+
  #### Constant False Alarm Ratio (CFAR)
 
+The CFAR, as presented earlier in @sec:cfar-shallow is by far the most
+intensive stage in terms of data interaction patterns, dominated by
+numerous reduction-type operations between neighboring elements which
+follow stencil accessing patterns as suggested in @fig:cfar-cube-atom.
+
 ![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cfar-cube-atom}
+
+Strictly speaking from a functional point of view, we could implement
+the CFAR in the same manner as the previous DFB stage in
+@sec:dfb-atom-net, i.e. for each beam: consume $N_{b}\times N_{FFT}$
+sample tokens $\rightarrow$ apply $f_{CFAR}$ $\rightarrow$ produce
+$N_{b'}\times N_{FFT}$ sample tokens, where $f_{CFAR}$ is _exactly_
+the same matrix-wise operation as in
+[@sec:cfar-shallow;@sec:cfar-atom]. However, for didactic purpose, we
+would like to describe the same behavior by lifting the main
+operations (to some extent) and exposing their inherent potential for
+being executed in parallel or concurently. Translating $f_{CFAR}$ into
+a network of processes, we obtain the design in @fig:cfar-net-atom.
 
 ![CFAR network](figs/cfar-net-atom.pdf){#fig:cfar-net-atom}
 
@@ -248,6 +300,16 @@ zeroes.
 >      -> Beam (SDF.Signal RealData)
 > cfar = V.farm11 (pCFAR . assign)
 
+We describe the CFAR network as a
+[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
+distributed over all beams, where each worker is logically separated
+into two stages:
+
+ * `assign`, which partitions the data into the appropriate worksets
+   based on the algorithm acessing patterns of @eq:cfar.
+
+ * `pCFAR` maps @eq:cfar on the partitioned data and obtains the
+   output matrix of normalized Doppler bins.
         
 > assign :: SDF.Signal RealData
 >        -> Vector (SDF.Signal (Matrix RealData)
@@ -258,11 +320,43 @@ zeroes.
 >     neighbors = SDF.comb11 (nb * nFFT, nb',
 >                             fromVector . V.stencil (2*nFFT+3) . matrix nFFT nb)
 >     distrib   = SDF.distribute (V.fanoutn nb' 1)
->     get smx   = (early smx, mid smx, late smx)
+>     get smx   = (early smx, pres smx, late smx)
 >       where
 >         early = SDF.comb11 (1,1,\[a] -> [V.take nFFT a])
->         mid   = SDF.comb11 (1,1,\[a] -> [V.first $ V.drop (nFFT + 1) a])
+>         pres  = SDF.comb11 (1,1,\[a] -> [V.first $ V.drop (nFFT + 1) a])
 >         late  = SDF.comb11 (1,1,\[a] -> [V.drop (nFFT + 3) a])
+
+The `assign` process first consumes $N_{b}\times N_{FFT}$ tokens,
+forms a $\mathtt{Bin}\times\mathtt{Window}$ matrix and applies the
+`stencil`[^stenA] pattern, creating $N_{b'}$ matrices of $2N_{FFT}+3$
+neighboring Doppler windows. These matrix tokens are then
+`distribute`[^distributeA]d to a
+[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
+where respectively $N_{b'}$ workers are partitioning each matrix of
+neighbors into Doppler windows corresponding to _early_, _present_ and
+_late_ range bins, as described by @eq:cfar.
+
+**NOTE:** It is important for the reader to understand that at this
+  level of abstraction, passing "data" around is the only analyzable
+  way to describe behavior, however it is irrelevant what those means
+  of the data transmission will eventually become in an actual
+  implementation. For example consuming $x$ tokens does not
+  necessarily imply that those $x$ tokens "arrive" in sequence from
+  somewhere, but rather the consumption rate gives a quantum and a
+  measure of the data necessary to operate on. Depending on the
+  available resources and platforms, the data may be passed through
+  e.g. virtual channels, locations in shared memory, even locations in
+  the local memory of a multi-processor unit. It is up to the analysis
+  and the design space exploration stages in a design flow to decide
+  upon the relevant means to represent ForSyDe signals. Similarly,
+  passing "one token" which consists of a matrix does not necessarily
+  mean that we transmit the whole matrix data to another physical
+  process; in the case of the `assign` process passing "tokens of
+  matrices" around sublty represents the communication of positioning
+  information in existing data sets rather than the sets themselves.
+
+[^distributeA]: see `ForSyDe.Atom.MoC.SDF.distribute` from the
+            `forsyde-atom-extensions` documentation.
 
 > pCFAR :: Vector (SDF.Signal (Matrix RealData)
 >                 ,SDF.Signal (Vector RealData)
@@ -285,6 +379,17 @@ zeroes.
 >     addV      = V.farm21 (+)
 >     n         = fromIntegral nFFT
 
+The second part of of this stage, `pCFAR` is actually applying the
+CFAR system of @eq:cfar on each of the $N_{b'}$ triples formed of
+_early_, _present_ and _late_ Doppler windows. Each worker is
+processing these matrices accordingly, we obtain one window of
+$N_{FFT}$ normalized Doppler bins. Finally, the resulting $N_{b'}$
+windows are `merge`[^mergeA]d into a consistent SDF signal of doppler
+bins, and thus producing $N_{b'}\times N_{FFT}$ tokens.
+
+
+[^mergeA]: see `ForSyDe.Atom.MoC.SDF.merge` from the
+            `forsyde-atom-extensions` documentation.
 
  #### Integrator (INT)
 
