@@ -7,7 +7,7 @@
   \standard[process,f={$\noexpand\mathtt{stencil}(l)$},moc=sdf,type=comb](n){neighbors};
   \resetportinfo{n}\wpinfo{$N_b\times N_{FFT}$}\epinfo{$N_{b'}$}
   \trans[transition=s1v1,type={distribute $\langle 1...\rangle$},right of=n] (dist) {distribute};
-  \standard[process,f=$\noexpand\mathit{center}$,moc=sdf,type=comb,right of=dist,xshift=1.7cm](mid){mid};
+  \standard[process,f=$\noexpand\mathit{center}$,moc=sdf,type=comb,right of=dist,xshift=1.7cm](mid){pres};
   \resetportinfo{mid}\wpinfo{$1$}\epinfo{$1$}
   \standard[process,f=$\noexpand\mathit{early}$,moc=sdf,type=comb,above of=mid](early){early};
   \resetportinfo{early}\wpinfo{$1$}\epinfo{$1$}

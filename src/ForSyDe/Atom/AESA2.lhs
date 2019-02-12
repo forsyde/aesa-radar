@@ -283,16 +283,37 @@ follow stencil accessing patterns as suggested in @fig:cfar-cube-atom.
 ![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cfar-cube-atom}
 
 Strictly speaking from a functional point of view, we could implement
-the CFAR in the same manner as the previous DFB stage in
-@sec:dfb-atom-net, i.e. for each beam: consume $N_{b}\times N_{FFT}$
-sample tokens $\rightarrow$ apply $f_{CFAR}$ $\rightarrow$ produce
-$N_{b'}\times N_{FFT}$ sample tokens, where $f_{CFAR}$ is _exactly_
-the same matrix-wise operation as in
-[@sec:cfar-shallow;@sec:cfar-atom]. However, for didactic purpose, we
-would like to describe the same behavior by lifting the main
-operations (to some extent) and exposing their inherent potential for
-being executed in parallel or concurently. Translating $f_{CFAR}$ into
-a network of processes, we obtain the design in @fig:cfar-net-atom.
+the CFAR in manny different manners for example:
+
+1. following the style of the previous DFB stage in @sec:dfb-atom-net,
+i.e. for each beam: consume $N_{b}\times N_{FFT}$ sample tokens
+$\rightarrow$ apply $f_{CFAR}$ $\rightarrow$ produce $N_{b'}\times
+N_{FFT}$ sample tokens, where $f_{CFAR}$ is _exactly_ the same
+matrix-wise operation as in [@sec:cfar-shallow;@sec:cfar-atom].
+
+2. following the style presented for the DBF stage in
+@sec:dbf-atom-net, i.e. for each beam lift _all_ the elementary
+operations into the signal domain, associating a process (i.e. a time
+behavior) for each data interaction (e.g. arithmetic function). This
+would expose the inherent potential of these interactions to be
+executed in parallel or concurrently.
+
+3. a combination of the two styles exposing parts of the algorithm as
+a concurrent process network and "concealing" other parts within
+process functions.
+
+From a design automation point of view choosing one style over the
+other should not really matter since, if designed correctly, any of
+the three approaches should be perfectly isomorphic and semantically
+equivalent. In other words they inherently express the same potential
+for concurrency, the only thing being shaped is the desiner's
+intuition on "how the system behaves".
+
+For didactic purpose, we describe the behavior of the CFAR stage by
+employing a third approach: we lift some operations (to some extent)
+into the signal domain. Translating the matrix operation $f_{CFAR}$
+from @sec:cfar-shallow into a network of processes, we obtain the
+design in @fig:cfar-net-atom.
 
 ![CFAR network](figs/cfar-net-atom.pdf){#fig:cfar-net-atom}
 
@@ -352,8 +373,9 @@ _late_ range bins, as described by @eq:cfar.
   passing "one token" which consists of a matrix does not necessarily
   mean that we transmit the whole matrix data to another physical
   process; in the case of the `assign` process passing "tokens of
-  matrices" around sublty represents the communication of positioning
-  information in existing data sets rather than the sets themselves.
+  matrices" around sublty represents the designer's intuition of
+  communicating position information in existing data sets rather than
+  the sets themselves.
 
 [^distributeA]: see `ForSyDe.Atom.MoC.SDF.distribute` from the
             `forsyde-atom-extensions` documentation.
@@ -385,15 +407,31 @@ _early_, _present_ and _late_ Doppler windows. Each worker is
 processing these matrices accordingly, we obtain one window of
 $N_{FFT}$ normalized Doppler bins. Finally, the resulting $N_{b'}$
 windows are `merge`[^mergeA]d into a consistent SDF signal of doppler
-bins, and thus producing $N_{b'}\times N_{FFT}$ tokens.
-
+bins, and thus producing $N_{b'}\times N_{FFT}$ tokens which are
+passed further in the downstream processing.
 
 [^mergeA]: see `ForSyDe.Atom.MoC.SDF.merge` from the
             `forsyde-atom-extensions` documentation.
 
  #### Integrator (INT)
 
+During the last stage of the video processing chain each data sample
+of the video cube is integrated against its 8 previous values using an
+8-tap FIR filter, as presented earlier in @sec:int-shallow and
+suggested by the drawing in @fig:int-cube-atom.
+
 ![Integration on cubes of complex samples](figs/int-cube.pdf){#fig:int-cube-atom}
+
+For modeling the INT stage we choose the fully-exposed network
+approach from @fig:int-net-atom by distributing each $N_{b'}\times
+N_{FFT}$ tokens received from the previous stage into an _own signal_,
+i.e. obtaining a matrix of signals. This is done for each path
+associated with a beam, thus in the end we obtain a _cube of
+signals_. Each signals is synchronous with each other and the event
+rate is in fact the rate of processing a corner-turned cube. We
+express this by interfacing all signals back to the SY domain. From
+there on we can pass each one through an own FIR filter and obtain, on
+each channel, the integrated radar output.
 
 ![INT network](figs/int-net-atom.pdf){#fig:int-net-atom}
 
@@ -409,7 +447,23 @@ bins, and thus producing $N_{b'}\times N_{FFT}$ tokens.
 >     addSY    = SY.comb21 (+)
 >     mulSY c  = SY.comb11 (*c)
 
+**NOTE:** continuing the side idea started in the previous section, it
+  is easy to observe that the last `merge` process from CFAR and the
+  first `distribute` process from INT are in fact inverse
+  transformations and cancel each other. These "artifices", along with
+  other similar examples throughout the design, are perfectly
+  acceptable in a design, once we understand that they are merely
+  semantic interfaces resulted from the chosen modeling paradigm(s)
+  and should not affect at all the final implementation of the
+  system. Even more, these modeling artifacts aids the designer to
+  partition the design into logical components with clearly defined
+  interfaces, as seen below.
+
  ### System Process Network
+
+Finally, when putting all the instantiated blocks together in an
+equational style (see code), we obtain the system in
+@fig:aesa-net-atom.
 
 ![AESA network as black-box components](figs/aesa-net-atom.pdf){#fig:aesa-net-atom}
 
@@ -421,3 +475,12 @@ bins, and thus producing $N_{b'}\times N_{FFT}$ tokens.
 >     rDfb      = cfar $ dfb rCt
 >     (lCt,rCt) = ct $ pc $ dbf video
 
+The system model in @fig:aesa-net-atom can further be refined once we
+understand that from PC to INT the processing path is replicated for
+each beam generated by the DBF. Therefore it is possible to fuse the
+related `farm` skeletons into the much simpler and more elegant model
+from @fig:aesa-net-atom2. As both models are semantically-equivalent
+an automated or tool-assisted transformation process should be
+trivial.
+
+![AESA network when fusing the related `farm`s](figs/aesa-net-atom2.pdf){#fig:aesa-net-atom2}
