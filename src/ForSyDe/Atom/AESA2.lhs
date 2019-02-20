@@ -8,7 +8,7 @@ expressed as operating on elementary streams of data, i.e. originating
 from each antenna element in particular, and skeletons rather describe
 patterns of interaction and synchronization between these
 processes. We thus trade the monolithic view of processes computing
-"cubes" of data for a much finer-grained view which allows to quantize
+"cubes" of data for a much finer-grained view which allows to quantify
 the potential for parallelism by exploiting 1) the arithmetic/data
 dependencies; 2) the precedence relations.
 
@@ -21,7 +21,7 @@ module definition and exported functions.
 > {-# LANGUAGE PackageImports #-}  -- you can ignore this line
 > module ForSyDe.Atom.AESA2 where
 
-By now the imported libraries are not a mistery any longer. Check
+By now the imported libraries are not a mystery any longer. Check
 [@sec:atom-operation] for more details on what each is imported for.
 
 > import Data.Complex
@@ -56,10 +56,10 @@ converter."_
 This allows us to "unroll" the video cubes into parallel (synchronous)
 streams, each stream being able to be processed as soon as it contains
 enough data. This unrolling can be simply depicted in
-[@fig:cube-unrolling] as chaining the pulses as they arive: range bin
+[@fig:cube-unrolling] as chaining the pulses as they arrive: range bin
 by range bin. We say that we partition the data _in time_ rather than
 _in space_, which is a more appropriate partition judging by the
-speciffication's assumptions.
+specification's assumptions.
 
 ![Video cube unrolling](figs/cube-unrolling.pdf){#fig:cube-unrolling}
 
@@ -99,7 +99,7 @@ equivalent semantic "lifting" of the vector skeletons in
 [@sec:dbf-shallow;@sec:dbf-atom] into the _signal_ domain. In other
 words instead of representing signals as carrying (multi-dimensional)
 vectors of values in their events, signals themselves are organized
-into (multi-dimensional) vectors and are carying values in their
+into (multi-dimensional) vectors and are carrying values in their
 events. Consequently, the "elementary" operations passed to skeletons
 are thus _processes_ rather than simple functions on values. The
 visual depiction in @fig:dbf-net-atom suggests the interaction of
@@ -202,7 +202,7 @@ which, under the SDF execution semantics, consumes $N_{FFT}\times N_b$
 (ordered) samples, interprets it as a matrix, transposes it, and
 $N_b\times N_{FFT}$ samples ordered in the direction suggested in the
 right side of @fig:ct-samp. Like before, in order to achieve 50%
-overlapping betwen the two output channels, the channel one needs to
+overlapping between the two output channels, the channel one needs to
 be "delayed" with a prefix signal equivalent to half a video cube. In
 this case that prefix is formed of $\frac{N_b \times N_{FFT}}{2}$
 zeroes on each beam path.
@@ -232,7 +232,7 @@ occur as soon as a window of $N_{FFT}$ samples arrive, like in
 
 ![Doppler Filter Bank on streams of complex samples](figs/dfb-samp.pdf){#fig:dfb-samp}
 
-As compared with the pulse compression (PC) stage in @sec:pc-atom-net,
+In contrast with the pulse compression (PC) stage in @sec:pc-atom-net,
 the DFB is not carried out in a "sliding window" fashion, i.e. it
 cannot be processed "one sample at a time", but rather it needs the
 whole $N_{FFT}$ batch in order to apply the FFT algorithm. As such,
@@ -283,7 +283,7 @@ follow stencil accessing patterns as suggested in @fig:cfar-cube-atom.
 ![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cfar-cube-atom}
 
 Strictly speaking from a functional point of view, we could implement
-the CFAR in manny different manners for example:
+the CFAR in many different manners for example:
 
 1. following the style of the previous DFB stage in @sec:dfb-atom-net,
 i.e. for each beam: consume $N_{b}\times N_{FFT}$ sample tokens
@@ -306,7 +306,7 @@ From a design automation point of view choosing one style over the
 other should not really matter since, if designed correctly, any of
 the three approaches should be perfectly isomorphic and semantically
 equivalent. In other words they inherently express the same potential
-for concurrency, the only thing being shaped is the desiner's
+for concurrency, the only thing being shaped is the designer's
 intuition on "how the system behaves".
 
 For didactic purpose, we describe the behavior of the CFAR stage by
@@ -326,8 +326,8 @@ We describe the CFAR network as a
 distributed over all beams, where each worker is logically separated
 into two stages:
 
- * `assign`, which partitions the data into the appropriate worksets
-   based on the algorithm acessing patterns of @eq:cfar.
+ * `assign`, which partitions the data into the appropriate work sets
+   based on the algorithm accessing patterns of @eq:cfar.
 
  * `pCFAR` maps @eq:cfar on the partitioned data and obtains the
    output matrix of normalized Doppler bins.
@@ -373,7 +373,7 @@ _late_ range bins, as described by @eq:cfar.
   passing "one token" which consists of a matrix does not necessarily
   mean that we transmit the whole matrix data to another physical
   process; in the case of the `assign` process passing "tokens of
-  matrices" around sublty represents the designer's intuition of
+  matrices" around subtly represents the designer's intuition of
   communicating position information in existing data sets rather than
   the sets themselves.
 
@@ -406,7 +406,7 @@ CFAR system of @eq:cfar on each of the $N_{b'}$ triples formed of
 _early_, _present_ and _late_ Doppler windows. Each worker is
 processing these matrices accordingly, we obtain one window of
 $N_{FFT}$ normalized Doppler bins. Finally, the resulting $N_{b'}$
-windows are `merge`[^mergeA]d into a consistent SDF signal of doppler
+windows are `merge`[^mergeA]d into a consistent SDF signal of Doppler
 bins, and thus producing $N_{b'}\times N_{FFT}$ tokens which are
 passed further in the downstream processing.
 

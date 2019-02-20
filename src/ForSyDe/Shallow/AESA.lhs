@@ -47,7 +47,7 @@ terms of vector skeletons.
   needs to be generated locally using the `haddock` commands, as
   described in the `README.md` file.
 
-> -- | explicit inport from extensions package. Will be imported
+> -- | explicit import from extensions package. Will be imported
 > -- normally once the extensions are merged into forsyde-shallow
 > import "forsyde-shallow-extensions" ForSyDe.Shallow.Core.Vector
 > import "forsyde-shallow-extensions" ForSyDe.Shallow.Utility.Matrix
@@ -68,14 +68,14 @@ all types and structures throughout this design:
 
 * `Range` is a vector container for range bins. All antennas have the
   same number of range bins $N_b$, rendering each $\text{Antenna}
-  \times \text{Range}$ a pefect matrix of samples for every pulse.
+  \times \text{Range}$ a perfect matrix of samples for every pulse.
 
 * For ease of problem dimensioning, we use another vector alias
   `CRange` for the _center range bins_ calculated after the Constant
   False Alarm Ratio (CFAR) has been applied. Its length is $N_b' =
   N_b-2N_{FFT}-2$.
 
-* `Window` stands for a doppler window of $N_{FFT}$ pulses.
+* `Window` stands for a Doppler window of $N_{FFT}$ pulses.
 
 > type Antenna     = Vector -- length: nA
 > type Beam        = Vector -- length: nB
@@ -108,10 +108,10 @@ matrix or on a cube of antenna samples.
 
  ### Digital Beamforming (DBF){#sec:dbf-shallow label="DBF in ForSyDe-Shallow"}
 
- The DBF receives complex indata, from $N_A$ antenna elements and
+ The DBF receives complex in data, from $N_A$ antenna elements and
  forms $N_B$ simultaneous receiver beams, or "listening directions",
- by summing individually phase-shifted indata signals from all
- elements. Basically, considering the input video "cube", the the
+ by summing individually phase-shifted in data signals from all
+ elements. Basically, considering the input video "cube", the
  transformation applied by DBF, could be depicted as in
  [@fig:dbf-cube], where the _pulse_ dimension goes to infinity
  (i.e. data is received pulse by pulse). 
@@ -125,8 +125,8 @@ arriving from the antennas are synchronized with the A/D converter
 rate, thus we can consider the pulse matrices to be synchronized as
 well. As such, we can say that the system's (timed) behavior follows
 the perfect synchrony assumption, and therefore can be modeled under
-the the synchronous reactive model of computation (MoC)
-(@halbwachs91,@lee98). The DBF stage can be described as a
+the synchronous reactive model of computation (MoC)
+(@Benveniste03,@lee98). The DBF stage can be described as a
 combinational SY process
 [`combSY`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-MoC-Synchronous.html#v:combSY)
 acting upon signals of
@@ -208,10 +208,10 @@ $$ {#eq:dbf-mat}
 
  ### Pulse Compression (PC){#sec:pc-shallow label="PC in ForSyDe-Shallow"}
 
-In this stage the received echo of the modulated pulse, i.e. the the
+In this stage the received echo of the modulated pulse, i.e. the
 information contained by the range bins, is passed through a matched
 filter for decoding their modulation. Similarly to the previous stage,
-considering the input video, the the transformation applied by PC,
+considering the input video, the transformation applied by PC,
 could be depicted as in [@fig:pc-cube], also considering _pulse_ to be
 an infinite (streaming) dimension.
 
@@ -241,7 +241,7 @@ for this application.
 In this case, for simplicity we generate statically (i.e. hard-code)
 the FIR coefficients with the function `mkPcCoefs` defined in
 [@sec:coefs-shallow]. Making them dependent on the pulse code length
-would require modeling an additional external depenency which we left
+would require modeling an additional external dependency which we left
 out of the scope of this use case.
 
 [^fir]: see `fir` from the `forsyde-shallow-extensions` documentation.
@@ -252,13 +252,13 @@ out of the scope of this use case.
 
  ### Corner Turn (CT){#sec:ct-shallow label="CT in ForSyDe-Shallow"}
 
-In order to be able to calculate the Doppler channels fuher in the
+In order to be able to calculate the Doppler channels further in the
 processing pipeline, during a CT, a rearrangement of data must be
 performed between functions that process data in “different”
 directions, e.g. range and pulse. This rearrangement is called corner
 turn. In order to maximize the efficiency (overall
 throughput)\todo{true?}\ of the AESA radar application this stage is
-combined with an _overapped memory_ technique, which means that the
+combined with an _overlapped memory_ technique, which means that the
 datapath is split into two concurrent processing channels with 50%
 overlapped data, as depicted below in [@fig:ct-cube].
 
@@ -267,7 +267,7 @@ overlapped data, as depicted below in [@fig:ct-cube].
 This figure shows an important particularity of this stage as compared
 to others: the _pulse_ axis is partitioned in finite _windows_ of
 $N_{FFT}$ pulse matrices. This implies that whatever function a `ct`
-process migh perform is applied to a _window of $N_{FFT}$ consecutive_
+process might perform is applied to a _window of $N_{FFT}$ consecutive_
 pulse samples _at once_. As such we alter the notion of _total_ order
 inferred by the synchronous MoC into a notion of _partial_ order among
 samples, with respect to (i.e. relative to) the application of the FFT
@@ -287,7 +287,7 @@ The overlapping memory processing is depicted simply by splitting the
 input signal as specified in [@sec:video-chain-spec] into the right
 and the left channel, and to "delay" the left channel with $N_{FFT}/2$
 samples in order to achieve 50% overlap in the downstream processes.
-The the network depicted in [@fig:ct-proc-shallow] shows the stream of
+the network depicted in [@fig:ct-proc-shallow] shows the stream of
 pulses now from an _untimed_ SDF perspective. The _left_ signal of
 pulses is filled with $N_{FFT}$ initial tokens, made up of matrices
 filled up with complex $0$s, using the
@@ -333,7 +333,7 @@ token) by using the `:[]` list constructors.
  ### Doppler Filter Bank (DFB){#sec:dfb-shallow label="DFB in ForSyDe-Shallow"}
 
 During the DFB stage The pulse bins in the data set are transformed
-into Doppler channels and the complex samples ar converted to real
+into Doppler channels and the complex samples are converted to real
 numbers by calculating their envelope. Considering the data samples
 being structured like in the previous stages, the transformation
 applied by the DBF can be depicted as in [@fig:dfb-cube]. 
@@ -344,7 +344,7 @@ This figure further suggests that the DBF function $f_{DBF}$ is
 applied to a window of $N_{FFT}$ _consecutive_ pulse samples _at
 once_. However the _cube_ tokens formed in the previous CT stage can
 all be considered synchronous with each other (again), as they
-originate from the same input stream. The 50% ovelapping of data is
+originate from the same input stream. The 50% overlapping of data is
 assured by the $N_{FFT}/2$ initial tokens on the left channel, thus we
 can safely state that the cube tokens themselves follow the perfect
 synchrony assumption. For each channel, the DFB stage is represented
@@ -370,7 +370,7 @@ samples and consists in three consecutive steps:
    clutter rejection.
 
  * apply an $N_{FFT}$-point 2-radix decimation in frequency Fast
-   Fourier Transfor (FFT) algorithm.
+   Fourier Transform (FFT) algorithm.
 
  * compute the envelope of each complex sample when phase information
    is no longer of interest. The envelope is obtained by calculating
@@ -388,7 +388,7 @@ samples and consists in three consecutive steps:
 
  ### Constant False Alarm Ratio (CFAR){#sec:cfar-shallow label="CFAR in ForSyDe-Shallow"}
 
-The CFAR normalises the data within the video cubes in order to
+The CFAR normalizes the data within the video cubes in order to
 maintain a constant false alarm rate with respect to a detection
 threshold. This is done in order to keep the number of false targets
 at an acceptable level by adapting the normalization to the clutter
@@ -414,11 +414,11 @@ originating from a beam.
 >      -> Signal (Beam (CRange (Window RealData)))
 > cfar = combSY (mapV fCFAR)
 
-The $f_{CFAR}$ function normalizes each doppler window, after which
+The $f_{CFAR}$ function normalizes each Doppler window, after which
 the sensitivity will be adapted to the clutter situation in current
 area, as seen in [@fig:cfar-signal]. The blue line indicates the mean
 value of maximum of the left and right reference bins, which means
-that for each doppler sample, a swipe of neighbouring bins is
+that for each Doppler sample, a swipe of neighbouring bins is
 necessary, as suggested by [@fig:cfar-cube]. This is a typical pattern
 in signal processing called
 [stencil](https://en.wikipedia.org/wiki/Stencil_code), which will
@@ -428,14 +428,14 @@ constitute the main parallel skeleton within the $f_{CFAR}$ function.
 
 The $f_{CFAR}$ function itself can be described with the system of [@eq:cfar], where
 
- * $MD$ is the the minimum value over all Doppler channels in a batch
-   for a specific data channel and range bin.
+ * $MD$ is the minimum value over all Doppler channels in a batch for
+   a specific data channel and range bin.
 
  * $EMV$ and $LMV$ calculate the early and respectively late mean
    values from the neighboring range bins as a combination of
    geometric and arithmetic mean values.
 
-* $eb$ and $lb$ are the ealiest bin, respectively latest bin for which
+* $eb$ and $lb$ are the earliest bin, respectively latest bin for which
   the CFAR can be calculated as $EMV$ and $LMV$ require at least
   $N_{FFT}$ bins + 1 guard bin before and respectively after the
   current bin. This phenomenon is also called the "stencil halo",
@@ -488,15 +488,15 @@ as follows.
 >     addV      = zipWithV (+)
 >     n         = fromIntegral nFFT
 
-The first thing we calculate is the $MD$ for each doppler window (row)
+The first thing we calculate is the $MD$ for each Doppler window (row)
 belonging to the _center bins_, thus dropping the unnecessary earliest
 $N_{FFT}+1$ bin rows from the input matrix `r_of_d` (i.e. _ranges_ of
-_doppler windows_). for each one of these rows we look for the minimum
+_Doppler windows_). for each one of these rows we look for the minimum
 (`reduceV min`) and apply the binary logarithm on it.
 
 Another action performed over the matrix `r_of_d` is to form a stencil
-"cube" by gathering for each doppler window (row) $N_s=2N_{FFT}+3$
-closest neighbors (including it), as sugessted by
+"cube" by gathering for each Doppler window (row) $N_s=2N_{FFT}+3$
+closest neighbors (including it), as suggested by
 [@eq:cfar-stencil]. 
 
 $$
@@ -530,7 +530,7 @@ $$
 $${#eq:cfar-stencil}
 
 Each one of these neighbors matrices will constitute the input data
-for calculating the $EMV$ and $LMV$ for each doppler window. $EMV$ is
+for calculating the $EMV$ and $LMV$ for each Doppler window. $EMV$ is
 calculated by taking the first $N_{FFT}$ bin rows from each neighbors
 matrix and applying the mean function `arithMean` over
 them. Similarly, $LMV$ drops the first $N_{FFT}+3$ bin rows (thus
@@ -593,7 +593,7 @@ element are integrated using an 8-tap FIR filter, as suggested in
 
 ![INT on video structure](figs/int-cube.pdf){#fig:int-cube}
 
-The input data arrives from both left and right doppler channels and
+The input data arrives from both left and right Doppler channels and
 it is merged before applying the FIR filter. This is simply done by
 mapping the element-wise $+$\todo{correct?}\ on each arriving pair of cubes, as shown
 in [@fig:int-proc-shallow].
@@ -612,7 +612,7 @@ in [@fig:int-proc-shallow].
 
 
 Previously in [@sec:pc-shallow] we have used the `fir` skeleton to
-apply a FIR filter upon a vector of _numbers_. However itself, `fir`
+apply a FIR filter upon a vector of _numbers_. However `fir` itself
 is an algorithmic skeleton which describes a common pattern of
 communication and computation and does not care of the type of data it
 operates on. We finally highlight a question that was probably in the
@@ -633,8 +633,8 @@ well-known structure from [@fig:fir-proc-shallow].
 
 [^firP]: see `fir'` from the `forsyde-shallow-extensions` documentation.
 
-Come to think of it, we could have depicted much more parallelism had
-exploited the concurrent nature of processes and described the
+Come to think of it, we could have depicted much more parallelism if
+we had exploited the concurrent nature of processes and described the
 dataflow relations between each datum arriving from the
 antennas. Nevertheless this was a didactic exercise to get used to the
 partition of data in _space_ (i.e. vectors manipulated by skeletons)
@@ -701,7 +701,7 @@ $$ \varphi_{kl}=\frac{(k-9.5)\cdot 2\pi\cdot d \sin\theta}{\lambda}$$ {#eq:beam-
 For the scope of this project we use some pre-computed arbitrary
 numbers for $d$, $\theta_l$, $\lambda$\todo{correct?}. The beam
 constants themselves can be pre-computed for multiple realistic
-alignment scenarios to form lookup tables which adapt the execution
+alignment scenarios to form look-up tables which adapt the execution
 parameters, however this falls out of the scope for this model.
 
 The `mkPcCoefs` generator for the FIR filter in [@sec:pc-shallow] is

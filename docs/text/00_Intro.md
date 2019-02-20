@@ -8,6 +8,7 @@ linkReferences: true
 header-includes: |
     \usepackage{todonotes}
 	\usepackage[margin=1in]{geometry}
+	\hypersetup{colorlinks=true,citecolor=gray,urlcolor=cyan}
 ---
 
 # Introduction

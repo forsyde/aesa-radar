@@ -31,7 +31,7 @@ same constants and vectors of coefficients as the ones described in
 
 Recall that for describing temporal (i.e. streaming) behavior of the
 application our design will use a heterogeneous approach, using a
-combination of _synchronous reactive (SY)_ processes [@halbwachs91],
+combination of _synchronous reactive (SY)_ processes [@Benveniste03],
 where the main assumption is that all events in the system are
 synchronized, and _synchronous data flow (SDF)_ processes [@lee95],
 where the temporal behavior is formulated in terms of partial order
@@ -89,13 +89,13 @@ the A/D converter. Each processing stage is transforming this stream
 of numbers as follows.
 
 In this model pulses are dimensioned in time, where the time aspect is
-captured by the properly "one pulse arrives after the
+captured by the property "one pulse arrives after the
 other". Furthermore, we can safely assume that, at least for the first
-part of the signal processing pipeline, all pulses are syncronized
+part of the signal processing pipeline, all pulses are synchronized
 with the A/D converter rate, thus an _infinite stream of pulses_ can
 be modeled as a ForSyDe SY signal. After Corner Turn (CT), as long as
 we operate on chunks/windows of data the most natural MoC to describe
-processing is SDF, which drops the assumption of _total synchrony_
+processing is SDF, which drops the assumption of _perfect synchrony_
 throughout the system in favor of a _partial synchrony_
 (i.e. consistent cut) with respect to the firing of the actor. In
 ForSyDe-Atom SY signals are distinguished from SDF signals in the
@@ -110,7 +110,7 @@ represented by a SY
 [`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:comb22)
 process applying a
 [`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
-of $f_{DBF}$ functions over each row of the the `transpose`d[^transpV]
+of $f_{DBF}$ functions over each row of the `transpose`d[^transpV]
 input $\mathtt{Antenna}\times\mathtt{Range}$ matrix carried by each
 $\mathtt{Pulse}$. The function $f_{DBF}$ is defined similarly to its
 ForSyDe-Shallow counterpart, in terms of the skeletons
@@ -119,7 +119,7 @@ ForSyDe-Shallow counterpart, in terms of the skeletons
 [`fanout`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:fanout)
 and
 [`length`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:length)
-applied over eithe
+applied over either
 [`Vector`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html)s
 or `Matrix`es.
 
@@ -209,9 +209,9 @@ in order to operate in the synchronous domain again[^fn:1].
 
 ![DFB process](figs/dfb-proc-atom.pdf){#fig:dfb-proc-atom}
 
-[^fn:1]: note that we have carried the SY domain accross stages mainly
+[^fn:1]: note that we have carried the SY domain across stages mainly
   for didactic purposes to expose this domain transition through the
-  type signature. the `SDF.toSY` conversion chould have very well been
+  type signature. the `SDF.toSY` conversion could have very well been
   performed within the CT stage.
 
 > dfb :: SDF.Signal (Beam (Range (Window CpxData)))
