@@ -32,7 +32,7 @@ index=$(word 1,$(subst :, ,$(1)))
 name=$(word 2,$(subst :, ,$(1)))
 
 define md-template
-  $(2) : $(1)
+  $(2) : $(1) 
 	sed -nf scripts/bird2md.sed < $$(<) > $$@
 	sed -i 's/^ #/#/g' $$@
 endef
@@ -41,18 +41,21 @@ html: $(DOC).html
 
 pdf: $(DOC).pdf
 
-$(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(TX_FILES) $(MD_FILES)
+$(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(TX_FILES) $(MD_FILES) template/html.template
 	pandoc $(MD_DIR)/* \
-		--mathml --number-sections --toc\
+		--mathml --number-sections --toc \
+		--template template/html.template \
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--filter=scripts/includes-png.hs \
 		--bibliography=refs.bib \
 		-f markdown -t html -s -o $@
 
-$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(TX_FILES) $(MD_FILES)
+
+$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(TX_FILES) $(MD_FILES) template/latex.template
 	pandoc $(MD_DIR)/* \
-		--number-sections --toc\
+		--number-sections --toc \
+		--template template/latex.template \
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--bibliography=refs.bib \
