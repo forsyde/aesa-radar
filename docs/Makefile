@@ -20,6 +20,7 @@ TIKZ_FIGS:= $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_S
 PDF_FIGS := $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.pdf, $(wildcard $(FIGS_SRC)/*.pdf))
 PNG_FIGS := $(patsubst $(FIGS_SRC)/%.tex, $(FIGS_DIR)/%.png, $(wildcard $(FIGS_SRC)/*.tex))
 PNG_FIGS += $(patsubst $(FIGS_SRC)/%.pdf, $(FIGS_DIR)/%.png, $(wildcard $(FIGS_SRC)/*.pdf))
+PNG_ORIG_FIGS += $(patsubst $(FIGS_SRC)/%.png, $(FIGS_DIR)/%.png, $(wildcard $(FIGS_SRC)/*.png))
 
 MD_FILES = $(sort $(foreach file,$(LHS_FILES),$(call make-md-targets,$(call index,$(file)),$(call name,$(file)))))
 
@@ -33,15 +34,17 @@ name=$(word 2,$(subst :, ,$(1)))
 
 define md-template
   $(2) : $(1) 
-	sed -nf scripts/bird2md.sed < $$(<) > $$@
-	sed -i 's/^ #/#/g' $$@
+	bash scripts/bird2md.sh $$(<) $$@
+#	sed -nf scripts/bird2md.sed < $$(<) > $$@
+#	sed -i 's/^ #/#/g' $$@
+
 endef
 
 html: $(DOC).html
 
 pdf: $(DOC).pdf
 
-$(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(TX_FILES) $(MD_FILES) template/html.template
+$(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/html.template
 	pandoc $(MD_DIR)/* \
 		--mathml --number-sections --toc \
 		--template template/html.template \
@@ -52,7 +55,7 @@ $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(TX_FILES) 
 		-f markdown -t html -s -o $@
 
 
-$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(TX_FILES) $(MD_FILES) template/latex.template
+$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/latex.template
 	pandoc $(MD_DIR)/* \
 		--number-sections --toc \
 		--template template/latex.template \
@@ -83,6 +86,10 @@ $(PNG_FIGS): figs/%.png: figs/%.pdf
 	convert -density 150 $< -scale 80% -quality 90 $@
 #	 sed -i 's|<svg|<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" |g' $@
 #	pdf2svg $(<) $@
+
+$(PNG_ORIG_FIGS): figs/%.png: figs_src/%.png
+	cp $(<) $@
+
 
 clean:
 	rm -f $(MD_DIR)/*
