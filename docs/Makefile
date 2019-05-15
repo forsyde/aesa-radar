@@ -1,14 +1,14 @@
 DOC  = aesa-report
 
-CODE_DIR = ../src
+CODE_DIR = ../aesa-atom/src
 MD_DIR   = ./input
 TXT_DIR  = ./text
 FIGS_SRC = ./figs_src
 FIGS_DIR = ./figs
 
-LHS_FILES :=	21:../src/ForSyDe/Shallow/AESA.lhs \
-		32:../src/ForSyDe/Atom/AESA1.lhs \
-		34:../src/ForSyDe/Atom/AESA2.lhs 
+LHS_FILES :=	21:../aesa-atom/src/ForSyDe/Shallow/AESA.lhs \
+		32:../aesa-atom/src/ForSyDe/Atom/AESA1.lhs \
+		34:../aesa-atom/src/ForSyDe/Atom/AESA2.lhs 
 #		31:../src/ForSyDe/Atom/AESA/Types.lhs \
 #		33:../src/ForSyDe/Atom/AESA/Coefs.lhs \
 
@@ -42,7 +42,8 @@ endef
 
 html: $(DOC).html
 
-pdf: $(DOC).pdf
+pdf: title.pdf $(DOC).pdf
+	gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=aesa-full.pdf title.pdf aesa-report.pdf
 
 $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/html.template
 	pandoc $(MD_DIR)/* \
@@ -63,6 +64,11 @@ $(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) 
 		--filter pandoc-citeproc \
 		--bibliography=refs.bib \
 		-s -o $@
+
+
+title.pdf : title.tex
+	pdflatex title.tex
+	rm -f title.aux title.log
 
 # generate rules for Markdown files
 $(foreach file,$(LHS_FILES),\
@@ -93,7 +99,7 @@ $(PNG_ORIG_FIGS): figs/%.png: figs_src/%.png
 
 clean:
 	rm -f $(MD_DIR)/*
-	rm -f $(DOC).html $(DOC).pdf
+	rm -f $(DOC).html $(DOC).pdf title.pdf aesa-full.pdf
 
 superclean: clean
 	rm -rf $(FIGS_DIR)

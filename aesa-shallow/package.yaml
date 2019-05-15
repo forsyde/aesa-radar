@@ -1,10 +1,10 @@
-name:                saab-aesa
+name:                aesa-shallow
 version:             0.1.0.0
-github:              "ugeorge/uc2-aesa"
+github:              "githubuser/aesa-shallow"
 license:             BSD3
-author:              "George Ungureanu"
-maintainer:          "ugeorge@kth.se"
-copyright:           "2018 George Ungureanu, KTH"
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2019 Author name here"
 
 extra-source-files:
 - README.md
@@ -17,20 +17,27 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/uc2-aesa#readme>
+description:         Please see the README on GitHub at <https://github.com/githubuser/aesa-shallow#readme>
 
 dependencies:
 - base >= 4.7 && < 5
-- forsyde-atom
-- forsyde-atom-extensions
-- forsyde-shallow
-- forsyde-shallow-extensions
 
 library:
   source-dirs: src
 
+executables:
+  aesa-shallow-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - aesa-shallow
+
 tests:
-  uc2-aesa-test:
+  aesa-shallow-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -38,4 +45,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - uc2-aesa
+    - aesa-shallow

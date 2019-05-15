@@ -2,16 +2,20 @@
 
 module ForSyDe.Atom.Skeleton.Vector(
   module V,
-  rotate, take, drop, get, (<@), (<@!), indexes, group, indexesTo, stencil,
+  length, rotate, take, drop, get, (<@), (<@!), indexes, group, indexesTo, stencil,
 ) where
 
 import "forsyde-atom" ForSyDe.Atom.Skeleton.Vector as V hiding (
-  take, drop, get, (<@), (<@!), indexes, group
+  length, take, drop, get, (<@), (<@!), indexes, group
   )
 
 import "forsyde-atom" ForSyDe.Atom.Skeleton as S
 import Data.Maybe
-import Prelude hiding (take, drop)
+import Prelude hiding (take, drop, length)
+
+length :: Vector a -> Int
+length Null = 0
+length (v:>vs) = 1 + length vs
 
 reducei1 p i v1 vs       = S.farm21 p v1 vs =<<= i
 tail'  Null = Null
@@ -105,4 +109,4 @@ stencil :: Int               -- ^ stencil size @= n@
         -> Vector a          -- ^ /length/ = @la@ 
         -> Vector (Vector a) -- ^ /length/ = @la - n + 1@ 
 stencil n v = V.farm11 (take n) $ dropFromEnd n $ V.tails v
-  where dropFromEnd n = take (V.length v - n + 1)
+  where dropFromEnd n = take (length v - n + 1)

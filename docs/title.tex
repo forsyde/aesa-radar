@@ -1,0 +1,127 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% Multi-Purpose Large Font Title Page
+% LaTeX Template
+% Version 2.0 (19/7/17)
+% 
+% This template was downloaded from:
+% http://www.LaTeXTemplates.com
+% 
+% Authors:
+% Frits Wenneker and Vel (vel@latextemplates.com)
+% 
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+
+% This template can be used in one of two ways:
+% 
+% 1) Content can be added at the end of this file just before the \end{document}
+% to use this title page as the starting point for your document.
+% 
+% 2) Alternatively, if you already have a document which you wish to add this
+% title page to, copy everything between the \begin{document} and
+% \end{document} and paste it where you would like the title page in your
+% document. You will then need to insert the packages and document 
+% configurations into your document carefully making sure you are not loading
+% the same package twice and that there are no clashes.
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+% ----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+% ----------------------------------------------------------------------------------------
+
+\documentclass[10pt]{article}
+
+\usepackage[a4paper, left=2cm, right=2cm]{geometry} % A4 paper size and thin margins
+
+\usepackage{xcolor} % Required for specifying custom colours
+\definecolor{grey}{rgb}{0.9,0.9,0.9} % Colour of the box surrounding the title
+
+\usepackage[utf8]{inputenc} % Required for inputting international characters
+\usepackage[T1]{fontenc} % Output font encoding for international characters
+\usepackage[sfdefault]{ClearSans} % Use the Clear Sans font (sans serif)
+% \usepackage{XCharter} % Use the XCharter font (serif)
+\usepackage{ccicons}
+\usepackage{hyperref}
+
+\begin{document}
+
+% ----------------------------------------------------------------------------------------
+%	TITLE PAGE
+% ----------------------------------------------------------------------------------------
+
+\begin{titlepage} % Suppresses displaying the page number on the title page and the subsequent page counts as page 1
+  
+  % ------------------------------------------------
+  %	Grey title box
+  % ------------------------------------------------
+  
+  \colorbox{grey}{
+    \parbox[t]{0.93\textwidth}{ % Outer full width box
+      \parbox[t]{0.91\textwidth}{ % Inner box for inner right text margin
+        \raggedleft % Right align the text
+        % Title font size, the first argument is the font size and the
+        % second is the line spacing, adjust depending on title length
+        \fontsize{37pt}{60pt}\selectfont
+        \vspace{0.7cm} % Space between the start of the title and the top of the grey box
+        
+        Design of Sensor Signal Processing with ForSyDe\\
+        \fontsize{25pt}{60pt}\selectfont
+        Modeling, Validation and Synthesis\\
+        
+        \vspace{0.7cm} % Space between the end of the title and the bottom of the grey box
+      }
+    }
+  }
+  
+  \vfill % Space between the title box and author information
+  
+  % ------------------------------------------------
+  %	Author name and information
+  % ------------------------------------------------
+  
+  \parbox[t]{0.93\textwidth}{ % Box to inset this section slightly
+    \raggedleft % Right align the text
+    %\large % Increase the font size
+    {\Large George Ungureanu}\\[4pt] % Extra space after name
+    School of EECS\\
+    KTH Royal Institute of Technology\\[4pt] % Extra space before URL
+    \texttt{ugeorge@kth.se}\\[20pt]
+        {\Large Timmy Sundstr\"{o}m}\\[4pt] % Extra space after name
+    Business Area Aeronautics\\
+    Saab AB\\[4pt] % Extra space before URL
+    \texttt{timmy.sundstrom@saabgroup.com}\\[20pt]
+        {\Large Anders \r{A}hlander}\\[4pt] % Extra space after name
+    Business Area Surveillance\\
+    Saab AB\\[4pt] % Extra space before URL
+    \texttt{anders.ahlander@saabgroup.com}\\[20pt]
+        {\Large Ingo Sander}\\[4pt] % Extra space after name
+    School of EECS\\
+    KTH Royal Institute of Technology\\[4pt] % Extra space before URL
+    \texttt{íngo@kth.se}\\
+    
+    \hfill\rule{0.2\linewidth}{1pt}% Horizontal line, first argument width, second thickness
+  }
+  
+\end{titlepage}
+
+%\{timmy.sundstrom1, anders.ahlander, ingemar.soderquist\}@saabgroup.com
+
+\newgeometry{margin=2cm}
+\thispagestyle{empty}
+\par\vspace*{\fill}\small
+\begin{tabular}{p{.73\textwidth}r}
+  \vspace{-.5cm} This work is licensed under a Creative Commons  Attribution-ShareAlike 4.0 Unported (CC BY-SA 4.0) License. & {\Huge\ccbysa}\\[3ex]
+  \multicolumn{2}{p{\textwidth}}{The code listed throughout this document is generated from several projects licensed under the BSD-3 Clause License, unless specified otherwise.}\\[4ex]
+  \multicolumn{2}{p{\textwidth}}{This report was partially funded by the Vinnova NFFP7 Swedish National project: Correct by construction design methodology \href{https://www.vinnova.se/en/p/correct-by-construction-design-methodology/}{\#2017-04892}}. \\
+\end{tabular}
+\clearpage
+
+% ----------------------------------------------------------------------------------------
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

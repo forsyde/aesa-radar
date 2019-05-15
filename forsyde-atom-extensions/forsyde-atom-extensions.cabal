@@ -18,10 +18,14 @@ library
                    , ForSyDe.Atom.Skeleton.Vector.Matrix
                    , ForSyDe.Atom.Skeleton.Vector.Cube
                    , ForSyDe.Atom.Skeleton.Vector.DSP
+                   , ForSyDe.Atom.MoC.SY
                    , ForSyDe.Atom.MoC.SDF
   other-modules:     Paths_forsyde_atom_extensions
   -- other-extensions:
   build-depends:       base >=4.2 && <5,
-                       forsyde-atom
+                       numbers,
+                       forsyde-atom,
+                       forsyde-shallow
+                       
   hs-source-dirs:      src
   default-language:    Haskell2010
