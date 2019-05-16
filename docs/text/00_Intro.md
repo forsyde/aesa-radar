@@ -35,6 +35,8 @@ header-includes: |
 <!--   The author would like to thank Anders Åhlander (Saab Group) for providing the application specification and for putting effort into clarifying many technical details; and Timmy Sundström (Saab Group) for his valuable feedback throughout the development process of this report. -->
 <!-- In ForSyDe-Atom we cover more advanced usage of models and their interpretation by showing two isomorphic, but intuitively different approaches to describing the same system: as a chain of processes operating on data blocks, vs. as a parallel network of streaming processes. -->
 
+\clearpage
+
 # Introduction{#sec:intro}
 
 In order to develop more cost-efficient implementation methods for complex systems, we
@@ -127,7 +129,7 @@ the VHDL code is generated, validated and tested in @sec:synth-vhdl.
 dependencies. The dashed line between @sec:shallow and @sec:synth-model suggests that
 understanding the latter is not directly dependent on the former, but since ForSyDe-Deep
 sytax is derived from ForSyDe-Shallow, it is recommended to get acquainted with the
-Shallow syntax and its equivalence with the Atom one.
+ForSyDe-Shallow syntax and its equivalence with the ForSyDe-Atom syntax.
 
 ## Application Specification{#sec:video-chain-spec label="Application Specification"}
 
@@ -189,7 +191,7 @@ please refer to [@sec:shallow;@sec:atom] respectively.
 
 ## Using This Document
 
-**PREREQUISITES:** the document assumes that the reader is familiar with the functional programming language [Haskell](https://www.haskell.org/), its syntax, and the usage of a Haskell interpreter (e.g. [`ghci`](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/ghci.html)). Otherwise, we recommend consulting at least the introductory chapters of one of the following books by @Lipovaca11 and @hutton-2016 or other recent books in Haskell. The reader also needs to be familiar with some basic ForSyDe modeling concepts, such as _process constructor_, _process_ or _signal_. We recommend going through at least the online getting started [tutorial on ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/getting_started) or (optionally) the one [on ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/assets/manual.pdf), and if possible, consulting the (slightly outdated) book chapter on ForSyDe [@Sander2017].
+**PREREQUISITES:** the document assumes that the reader is familiar with the functional programming language [Haskell](https://www.haskell.org/), its syntax, and the usage of a Haskell interpreter (e.g. [`ghci`](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/ghci.html)). Otherwise, we recommend consulting at least the introductory chapters of one of the following books by @Lipovaca11 and @hutton-2016 or other recent books in Haskell. The reader also needs to be familiar with some basic ForSyDe modeling concepts, such as _process constructor_, _process_ or _signal_. We recommend going through at least the online getting started [tutorial on ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/getting_started) or the one [on ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/assets/manual.pdf), and if possible, consulting the (slightly outdated) book chapter on ForSyDe [@Sander2017].
 
 This document has been created using literate programming. This means that all code shown in the listings is compilable and executable. There are two types of code listing found in this document. This style
 
@@ -203,11 +205,24 @@ shows _source code_ as it is found in the implementation files, where the line n
 	Prelude> 1 + 1
 	2
 
-suggests _interactive commands_ given by the user in a terminal or an interpreter session. The listing above shows a typical `ghci` session, where the string after the prompter symbol `>` suggests the user input (e.g. `1 + 1`). Whenever relevant, the expected output is printed one row below that (e.g. `2`).
+suggests _interactive commands_ given by the user in a terminal or an interpreter session. The listing above shows a typical `ghci` session, where the string after the prompter symbol `>` suggests the user input (e.g. `1 + 1`). Whenever relevant, the expected output is printed one row below (e.g. `2`).
 
-The way this document is meant to be parsed efficiently is to load the source files themselves in an interpreter and test the exported functions gradually, while reading the document at the same time. For convenience, the source files are shipped as a [Stack](https://docs.haskellstack.org/en/stable/README/) project which creates a sandbox on the user's local machine with all dependencies and requirements taken care of. Please refer to the project's `README` file for instructions on how to install and compile or run the Haskell files. 
+The way this document is meant to be parsed efficiently is to load the source files themselves in an interpreter and test the exported functions gradually, while reading the document at the same time. Due to multiple (sometimes conflicting) dependencies on external packages, for convenience the source files are shipped as _multiple_ [Stack](https://docs.haskellstack.org/en/stable/README/) packages each creating an own sandbox on the user's local machine with all dependencies and requirements taken care of. Please refer to the project's `README` file for instructions on how to install and compile or run the Haskell files. 
 
-Each major section of this document is written within a library *module*, pointed out in the beginning of the respective section by the line:
+At the beginning of each chapter there is metadata guiding the reader what tools and packages are used, like:
+
+
+|         | Target                        | Info                                               |
+| -----   | ----------------------------- | -------------------------------------------------- |
+| Package | aesa-atom-0.1.0               | path: `./aesa-atom/README.md`                      |
+| Deps    | forsyde-atom-0.3.0            | url: `https://forsyde.github.io/forsyde-atom/api/` |
+|         | forsyde-atom-extensions-0.1.1 | path: `./forsyde-atom-extensions/README.md`        |
+| Bin     | aesa-hl                       | usage: `aesa-hl --help`                            |
+| Tests   | main-suite                    | usage: `stack test :main-suite`                    |
+
+This table tells that the package where the current chapter's code resides is `aesa-atom`, version 0.1.0. The 'Info' column provides a pointer to additional information or documentation on the respective package, either as a relative path to the project root, or as a web URL. Under 'Deps' are shown the main dependency packages which contain important functions, and which should be consulted while reading the code in the current chapter. If the main package generates an executable binary or a test suite, these are pointed out, along with execution suggestions.
+
+Each section of a chapter is written within a library *module*, pointed out in the beginning of the respective section by the line:
 
 ``` {.haskell .numberLines}
 module ForSyDe.X.Y where
@@ -228,3 +243,5 @@ myTest = functionFromForSyDeXY myData
 ```
 
 This file can be loaded and/or compiled from within the sandbox, e.g. with `stack ghci MyTest.hs`.
+
+\clearpage
