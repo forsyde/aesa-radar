@@ -42,8 +42,11 @@ endef
 
 html: $(DOC).html
 
-pdf: title.pdf $(DOC).pdf
-	gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=aesa-full.pdf title.pdf aesa-report.pdf
+pdf: $(DOC).pdf
+#	pdflatex --jobname aesa-full \
+#		"\documentclass{article}\usepackage{pdfpages}\begin{document}\includepdf[pages=-]{title}\includepdf[pages=-]{aesa-report}\end{document}"
+#	rm aesa-full.log
+#	gs -q -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=aesa-full.pdf title.pdf aesa-report.pdf
 
 $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/html.template
 	pandoc $(MD_DIR)/* \
@@ -56,7 +59,7 @@ $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(PNG_ORIG_F
 		-f markdown -t html -s -o $@
 
 
-$(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/latex.template
+$(DOC).pdf: Makefile title.pdf $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/latex.template
 	pandoc $(MD_DIR)/* \
 		-V papersize:a4 \
 		--number-sections --toc \
@@ -64,12 +67,12 @@ $(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) 
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--bibliography=refs.bib \
-		-s -o $@
+		-f markdown+raw_tex -s -o $@
 
 
 title.pdf : title.tex
 	pdflatex title.tex
-	rm -f title.aux title.log
+	rm -f title.aux title.log title.out
 
 # generate rules for Markdown files
 $(foreach file,$(LHS_FILES),\

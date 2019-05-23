@@ -1,0 +1,54 @@
+## Pulse compression atom
+
+In fact, as shown in @fig:pc-samp samples _are_ actually arriving in synchronous
+streams from the DBF stage, as an effect of the initial assumption. This in turn
+creates a perfect match to exploit the application's inherent potential for
+parallelism by feeding each arriving beam into a pipelined $N$-tap FIR filter. The
+resulting process network is depicted in @fig:pc-net-atom where the
+[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
+and
+[`reduce`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:reduce)
+skeletons are captured by appropriate graphical primitives, suggesting the structured
+replication of a certain composite process.
+
+
+> pc :: Beam (SY.Signal CpxData)
+>    -> Beam (SY.Signal CpxData)
+> pc = V.farm11 (fir' addProc mulProc delayCount mkPcCoefs)
+>   where
+>     addProc    = SY.comb21 (+)
+>     mulProc c  = SY.comb11 (*c)
+>     delayCount = fst . SY.stated12 countBin (0, nb)
+>     countBin _ 0 _ = (0, nb)
+>     countBin _ c s = (s, c-1)
+
+![PC network](figs/pc-net-atom.pdf){#fig:pc-net-atom}
+
+In @fig:pc-net-atom we instantiate an $N$-tap FIR filter for each beam
+signal by using the `fir'`[^firA] skeleton which takes as arguments a)
+a process used as kernel operation for reduction; b) a process for
+scaling each tap with the according coefficient; c) a process for
+delaying each tap and d) a vector with $N$ coefficients; and
+replicates and connects each process accordingly to form the
+well-known FIR-filter pattern.
+
+The FIR skeleton, as other skeletons, is not only parametric, but also
+orthogonal from "what" it is performing. Its role is simply to
+describe a "pattern" of structured composition, abstracting away the
+operations which are actually performed. The operations passed as
+arguments fix the semantics of the process network: if they are
+functions on values, then the network becomes a parallel algorithm; if
+they are processes on signals, then it becomes a network of concurrent
+processes. Another advantage with this orthogonal scheme is that we
+can elegantly customize our design, as seen in @fig:pc-net-atom, where
+instead of a simple
+[`delay`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:delay)
+process for delaying the FIR taps, we pass a
+[`stated`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:stated22)
+process structured like in @fig:pc-counter-atom which both delays the
+taps, but also flushes the FIR pipeline after $N_b$ samples. This
+needs to be done in order to preserve the behavior of the application
+as specified in @sec:video-chain-spec: each pulse of range bins needs
+to be computed independently from each other.
+
+![`countDelay` process structure](figs/pc-counter-atom.pdf){#fig:pc-counter-atom}

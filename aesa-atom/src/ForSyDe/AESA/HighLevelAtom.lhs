@@ -56,7 +56,7 @@ For describing parallel operations on data we use algorithmic skeletons
 (@Fischer-2003,@skillicorn05), formulated on ForSyDe-Atom's in-house
 [`Vector`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html)
 data type, which is a shallow, lazy-evaluated implementation of unbounded arrays,
-ideal for early design validation. Although type-checked, bounded, and even boxed
+ideal for early design validation. Although dependent, bounded, and even boxed
 (i.e. memory-mapped) alternatives exist, such as
 [`FSVec`](http://hackage.haskell.org/package/parameterized-data/docs/Data-Param-FSVec.html)
 or REPA [`Array`](http://hackage.haskell.org/package/repa)s, for the scope of this
@@ -73,94 +73,74 @@ skeletons.
 
  ### Type Aliases and Constants{#sec:aliases-shallow label="Type Aliases and Constants"}
 
-For ease of documentation we will be using type synonyms (aliases) for
-all types and structures throughout this design:
+For ease of documentation we will be using type synonyms (aliases) for all types and
+structures throughout this design:
 
-* `Antenna` denotes a vector container for the antenna elements. Its
-  length is equal to the number of antennas in the radar $N_A$.
+* `Antenna` denotes a vector container for the antenna elements. Its length is equal
+  to the number of antennas in the radar $N_A$.
 
-* After Digital Beamforming (DBF), the antenna elements are
-  transformed into $N_B$ beams, thus we associate the `Beam` alias for
-  the vector container wrapping those beams.
+* After Digital Beamforming (DBF), the antenna elements are transformed into $N_B$
+  beams, thus we associate the `Beam` alias for the vector container wrapping those
+  beams.
 
-* `Range` is a vector container for range bins. All antennas have the
-  same number of range bins $N_b$, rendering each $\text{Antenna}
-  \times \text{Range}$ a perfect matrix of samples for every pulse.
-
-* For ease of problem dimensioning, we use another vector alias
-  `CRange` for the _center range bins_ calculated after the Constant
-  False Alarm Ratio (CFAR) has been applied. Its length is $N_b' =
-  N_b-2N_{FFT}-2$.
+* `Range` is a vector container for range bins. All antennas have the same number of
+  range bins $N_b$, rendering each $\text{Antenna} \times \text{Range}$ a perfect
+  matrix of samples for every pulse.
 
 * `Window` stands for a Doppler window of $N_{FFT}$ pulses.
 
 > type Antenna     = Vector -- length: nA
 > type Beam        = Vector -- length: nB
 > type Range       = Vector -- length: nb
-> type CRange      = Vector -- length: nb'
 > type Window      = Vector -- length: nFFT
 
-Here we define the size constants. The only parameters needed by this
-system and used for the correct partitioning of data are `nB` and
-`nFFT`. The rest can be inferred from the size of input data and the
-vector operations.
+Here we define the size constants, for a simple test scenario provided by Saab AB. The
+size `nA` can be inferred from the size of input data and the vector operations.
 
-> nB   = 8   :: Int
-> nFFT = 256 :: Int
-> -- nA = 16 :: Int
-> -- nb = 1024 :: Int
-> -- nb' = nb - 2 * nFFT - 2
+> nA   =   16 :: Int -- does not really affect the application
+> nB   =    8 :: Int
+> nb   = 1024 :: Int
+> nFFT =  256 :: Int
 
-Finally we provide two aliases for the basic Haskell data types used
-in the system, to stay consistent with the application specification.
+Finally we provide two aliases for the basic Haskell data types used in the system, to
+stay consistent with the application specification.
 
-> type CpxData     = Complex Float
-> type RealData    = Float
+> type CpxData  = Complex Float
+> type RealData = Float
 
- ### Video Processing Pipeline Stages
+ ### Video Processing Stages
 
-By now the functional specification of each stage in the video
-processing pipe should be quite clear clear. The modeling approaches
-used until now tried to _translate_ this functional specification into
-an _executable_ ForSyDe specification. We now stretch the intuition
-gained with these models and exploit the initial assumption stated as
-early as [@sec:video-chain-spec]: _"For each antenna the data arrives
-_pulse by pulse_, and each pulse arrives _range bin by range
-bin_. This happens _for all antennas in parallel_, and all complex
-samples are synchronized with the same sampling rate, e.g. of the A/D
-converter."_
+In this section we follow each stage described in [@sec:video-chain-spec], and exploit
+the initial assumption on the order of events stating: _"For each antenna the data
+arrives _pulse by pulse_, and each pulse arrives _range bin by range bin_. This
+happens _for all antennas in parallel_, and all complex samples are synchronized with
+the same sampling rate, e.g. of the A/D converter."_
 
-This allows us to "unroll" the video cubes into parallel (synchronous)
-streams, each stream being able to be processed as soon as it contains
-enough data. This unrolling can be simply depicted in
-[@fig:cube-unrolling] as chaining the pulses as they arrive: range bin
-by range bin. We say that we partition the data _in time_ rather than
-_in space_, which is a more appropriate partition judging by the
-specification's assumptions.
+This allows us to "unroll" the indata video cubes into $N_A$ parallel synchronous
+streams, each stream being able to be processed as soon as it contains enough
+data. This unrolling is depicted in [@fig:cube-unrolling] as streaming the pulses as
+soon as they arrive: range bin by range bin. We say that we partition the data _in
+time_ rather than _in space_, which is a more appropriate partition judging by the
+assumption above.
 
 ![Video cube unrolling](figs/cube-unrolling.pdf){#fig:cube-unrolling}
 
  #### Digital Beamforming (DBF){#sec:dbf-atom-net}
 
-Recall that the DBF $N_B$ simultaneous receiver beams from the complex
-data received from $N_A$ antenna elements, as explained in
-[@sec:dbf-shallow]. Depicted from a streaming point of view, DBF would
-look more like in @fig:dbf-samp.
+The DBF receives complex in data, from $N_A$ antenna elements and forms $N_B$
+simultaneous receiver beams, or "listening directions", by summing individually
+phase-shifted in data signals from all elements. Depicted from a streaming point of
+view, DBF would like in @fig:dbf-samp.
 
 ![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
 
-As can be seen in @fig:dbf-samp, a beam can be formed _as soon as_ all
-antennas have produced a complex sample each. We thus represent the
-parallel streams of data coming from each antenna element as a _vector
-of synchronous signals_, i.e. vector of signals where each event is
-synchronous with each other. This allows us to depict the dataflow
-interaction between the streams during digital beamforming as the
-process network in @fig:dbf-net-atom, where (for the sake of space) we
-represent a combinational process
-[`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html#v:comb22)
-as a node with the $\oplus$ symbol.
-
-![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom}
+As can be seen in @fig:dbf-samp, a beam can be formed _as soon as_ all antennas have
+produced a complex sample. The parallel streams of data coming from each antenna
+element are represented as a _vector of synchronous (SY) signals_, i.e. vector of
+signals where each event is synchronous with each other. This allows us to depict the
+dataflow interaction between the streams during digital beamforming as the process
+network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational process
+[`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html#v:comb22).
 
 > dbf :: Antenna (SY.Signal CpxData)
 >     -> Beam    (SY.Signal CpxData)
@@ -171,94 +151,83 @@ as a node with the $\oplus$ symbol.
 >     sigMatrix  = V.farm11 V.fanout antennaSigs
 >     beamConsts = mkBeamConsts (V.length antennaSigs) nB
 
-In fact the code listing above, depicted in @fig:dbf-net-atom, is an
-equivalent semantic "lifting" of the vector skeletons in
-[@sec:dbf-shallow;@sec:dbf-atom] into the _signal_ domain. In other
-words instead of representing signals as carrying (multi-dimensional)
-vectors of values in their events, signals themselves are organized
-into (multi-dimensional) vectors and are carrying values in their
-events. Consequently, the "elementary" operations passed to skeletons
-are thus _processes_ rather than simple functions on values. The
-visual depiction in @fig:dbf-net-atom suggests the interaction of
-processes and signals, for example through the
-[`fanout`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:fanout)
-skeleton which distributes one signal to a whole row (i.e. vector) of
-processes, the matrix `farm`[^farmM] applies a matrix of partially
-applied processes on a matrix of signals, and
-[`reduce`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:reduce),
-which creates a reduction network of binary processes pair-wise
-applying the function $+$ on all events in signals. Practically the
-DBF network transforms $N_A$ synchronous signals originating from each
-antenna element into $N_B$ synchronous signals for each beam. The
-internal structure of the transformation though exposes multiple
-degrees of potential for parallel exploitation.
+![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom width=70% }
 
-[^farmM]: see `ForSyDe.Atom.Skeleton.Vector.Matrix.farm22` from
-            the `forsyde-atom-extensions` documentation.
+| Function                     | Original module                       | Package                 |
+|------------------------------|---------------------------------------|-------------------------|
+| `farm11`, `reduce`, `length` | [`ForSyDe.Atom.Skeleton.Vector`]      | forsyde-atom            |
+| `farm21`                     | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
+| `comb11`, `comb21`           | [`ForSyDe.Atom.MoC.SY`]               | forsyde-atom            |
+| `mkBeamConsts`               | `ForSyDe.AESA.Coefs`                  | aesa-atom               |
+
+The previous code listing, depicted in @fig:dbf-net-atom, is actually showing the
+"internals" of a matrix-vector dot product[^dotMatMat]. However, the elementary
+operations, instead of regular arithmetic operations $\times$ and $+$, are _processes_
+applying these operations on SY streams. As such, the `fanout` skeleton distributes
+one signal to a whole row (i.e. vector) of processes, the matrix `farm` applies
+pair-wise a matrix of partially applied processes on this matrix of signals, and
+`reduce` creates a reduction network of binary processes pair-wise applying the
+function $+$ on all events in signals. Practically the DBF network transforms $N_A$
+synchronous signals originating from each antenna element into $N_B$ synchronous
+signals for each beam. The internal structure of this transformation exposes multiple
+degrees of potential distribution on parallel synchronous resources.
+
+
+The table above gives some pointers where to look for additional documentation of each
+imported function. The formula to generate the beam constants `mkBeamConsts` is
+presented later in [@sec:atom-coefs].
+
+[^dotMatMat]: see `dotMatMat` in the `ForSyDe.Atom.Skeleton.Vector.DSP` module from package `forsyde-atom-extensions`.
 
  #### Pulse Compression (PC){#sec:pc-atom-net}
 
-Recall from @sec:pc-shallow that the pulse compression stage decodes
-the modulation of the pulse by applying a matched filer on the range
-bins. This essentially applies a sliding window (i.e. a FIR filter) on
-the bin samples and we have already seen in @sec:int-shallow that this
-operation expands nicely into a pipelined network structure provided
-the samples are streamed through a signal.
+In this stage the received echo of the modulated pulse, i.e. the information contained
+by the range bins, is passed through a matched filter for decoding their modulation.
+This essentially applies a sliding window, or a moving average (MAV) on the range bin
+samples.
  
 ![Pulse Compression on streams of complex samples](figs/pc-samp.pdf){#fig:pc-samp}
 
-In fact, as shown in @fig:pc-samp samples _are_ actually arriving in
-synchronous streams from the DBF stage, as an effect of the initial
-assumption. This in turn creates a perfect match to exploit the
-application's inherent potential for parallelism by feeding each
-arriving beam into a pipelined $N$-tap FIR filter. The resulting
-process network is depicted in @fig:pc-net-atom where the
-[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
-and
-[`reduce`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:reduce)
-skeletons are captured by appropriate graphical primitives, suggesting
-the structured replication of a certain composite process.
+In @fig:pc-samp we can see that, in order to apply the MAV algorithm on all the range
+bins of every pulse, we need to accumulate $N_b$ samples and process them in
+batches. Intuitively this can be done by processing each beam with a _synchronous
+dataflow_ (SDF) actor which, with each firing, consumes $N_b$ samples and produces
+$N_b$ samples. Note that at this stage of modeling we value intuition and the
+capturing of the right application properties rather than efficiency. We will tackle
+this problem later in the design stages (see [@sec:refinement]) where we will try to
+transform the model toward more "efficient" implementation models (with respect to
+some constraint, e.g. throughput) which preserve these behavioral properties.
 
-![PC network](figs/pc-net-atom.pdf){#fig:pc-net-atom}
+> pc :: Beam ( SY.Signal CpxData)
+>    -> Beam (SDF.Signal CpxData)
+> pc = V.farm11 (procPC . SY.toSDF)
 
-> pc :: Beam (SY.Signal CpxData)
->    -> Beam (SY.Signal CpxData)
-> pc = V.farm11 (fir' addProc mulProc delayCount mkPcCoefs)
->   where
->     addProc    = SY.comb21 (+)
->     mulProc c  = SY.comb11 (*c)
->     delayCount = fst . SY.stated12 countBin (0, nb)
->     countBin _ 0 _ = (0, nb)
->     countBin _ c s = (s, c-1)
+![PC stage process](figs/pc-proc-atom.pdf){#fig:pc-proc-atom}
 
-In @fig:pc-net-atom we instantiate an $N$-tap FIR filter for each beam
-signal by using the `fir'`[^firA] skeleton which takes as arguments a)
-a process used as kernel operation for reduction; b) a process for
-scaling each tap with the according coefficient; c) a process for
-delaying each tap and d) a vector with $N$ coefficients; and
-replicates and connects each process accordingly to form the
-well-known FIR-filter pattern.
+Following the reasoning above, we instantiate the PC video processing stage as a
+`farm` of SDF processes `procPC` as depicted in [@fig:pc-proc-atom]. Notice that
+before being able to apply the SDF actors we need to translate the SY signals yielded
+by the DBF stage into SDF signals. This is done by the `toSDF` interface which is an
+injective mapping from the (timed) domain of a SY MoC tag system, to the (untimed)
+codomain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
 
-The FIR skeleton, as other skeletons, is not only parametric, but also
-orthogonal from "what" it is performing. Its role is simply to
-describe a "pattern" of structured composition, abstracting away the
-operations which are actually performed. The operations passed as
-arguments fix the semantics of the process network: if they are
-functions on values, then the network becomes a parallel algorithm; if
-they are processes on signals, then it becomes a network of concurrent
-processes. Another advantage with this orthogonal scheme is that we
-can elegantly customize our design, as seen in @fig:pc-net-atom, where
-instead of a simple
-[`delay`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:delay)
-process for delaying the FIR taps, we pass a
-[`stated`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:stated22)
-process structured like in @fig:pc-counter-atom which both delays the
-taps, but also flushes the FIR pipeline after $N_b$ samples. This
-needs to be done in order to preserve the behavior of the application
-as specified in @sec:video-chain-spec: each pulse of range bins needs
-to be computed independently from each other.
+> procPC :: Fractional a => SY.Signal a -> SDF.Signal a 
+> procPC = SDF.comb11 (nb, nb, V.fromVector . mav mkPcCoefs . V.vector)
 
-![`countDelay` process structure](figs/pc-counter-atom.pdf){#fig:pc-counter-atom}
+| Function    | Original module                    | Package                 |
+|-------------|------------------------------------|-------------------------|
+| `farm11`    | [`ForSyDe.Atom.Skeleton.Vector`]   | forsyde-atom            |
+| `toSDF`     | [`ForSyDe.Atom.MoC.SY`]            | forsyde-atom            |
+| `comb11`    | [`ForSyDe.Atom.MoC.SDF`]           | forsyde-atom            |
+| `mav`       | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
+| `mkPcCoefs` | `ForSyDe.AESA.Coefs`               | aesa-atom               |
+
+The `procPC` actor consumes and produces `nb` tokens each firing, forms a `Vector`
+from these tokens, and applies the `mav` skeleton on these vectors. The `mav` skeleton
+is a utility formulated in terms of primitive skeletons (i.e. `map` and `reduce`) on
+numbers, i.e. lifting arithmetic functions. We will study this skeleton later in this
+report and for now we take it "for granted", as conveniently provided by the `DSP`
+utility library.
 
  #### Corner Turn (CT)
 

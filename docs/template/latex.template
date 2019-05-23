@@ -32,6 +32,9 @@ $for(classoption)$
   $classoption$$sep$,
 $endfor$
 ]{$documentclass$}
+
+
+
 $if(beamer)$
 $if(background-image)$
 \usebackgroundtemplate{%
@@ -390,11 +393,21 @@ $if(logo)$
 $endif$
 $endif$
 
+\usepackage[margin=1in]{geometry}
+
 \begin{document}
 $if(title)$
 $if(beamer)$
 \frame{\titlepage}
 $else$
+$if(pdfcover)$
+\savegeometry{Mem}
+\newgeometry{margin=0pt}
+\includegraphics[page=1,width=\linewidth]{$pdfcover$}
+\includegraphics[page=2,width=\linewidth]{$pdfcover$}
+\clearpage
+\loadgeometry{Mem}
+$endif$
 \maketitle
 $endif$
 $if(abstract)$

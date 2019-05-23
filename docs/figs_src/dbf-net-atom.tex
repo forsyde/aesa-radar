@@ -3,15 +3,18 @@
 \usepackage[tikz,math]{forsyde}
 \usepackage{ifthen}
 
+
+\definecolor{blackboxcolor}{gray}{.95}
+
 \begin{document}
-\begin{tikzpicture}[scale=1.5]
+\begin{tikzpicture}[scale=1.3]
   \foreach \j/\y/\off in {1/0/1.2, 2/1/.4, 3/3/0}{
     \newcommand{\cy}{\ifthenelse{\j=3}{N_A}{\j}}
-    \foreach \i/\x in {1/0, 2/2, 3/6}{
+    \foreach \i/\x in {1/0, 2/2, 3/5}{
       \newcommand{\cx}{\ifthenelse{\i=3}{N_B}{\i}}
       \basic[primitive,f={$\times\alpha_{\noexpand\cy\noexpand\cx}$}](a\i\j)<\x,-\y>{$\MocCmb$};
       \draw[s=sy]
-      (a\i\j)++(-.5,.5) coordinate (i\i\j) edge[->] (a\i\j)
+      (a\i\j)++(-.5,.66) coordinate (i\i\j) edge[->] (a\i\j)
       (a\i\j.300)++(\off,-\off) coordinate (o\i\j) edge[] (a\i\j)
       ;
       \gettikzx{(o\i\j)}{\xout}
@@ -21,44 +24,48 @@
   }
   \foreach \i in {1,2,3}{
     \newcommand{\cx}{\ifthenelse{\i=3}{N_B}{\i}}
-    \node[fill=white] at ($(a\i2)!.4!(a\i3)$) {$\vdots$};
+    \node[fill=blackboxcolor] at ($(a\i2)!.4!(a\i3)$) {$\vdots$};
     \basic[primitive,f=$+$](m\i 1)<$(r\i 3)!.5!(r\i 2)-(0,.2)$>{$\MocCmb$};
-    \basic[primitive,f=$+$](m\i 2)<$(r\i 1)-(.2,.2)$>{$\MocCmb$};
-    \basic[primitive,f=$+$](m\i 3)<$(r\i 1)!.5!(r\i 3)-(0,1.1)$>{$\MocCmb$};
-    \node[anchor=south east] at ($(r\i 1)+(-.3,0)$) {\tiny$\ddots$};
-    \node[] (tmp1) at ($(m\i 1)!.5!(m\i 3)-(.15,0)$) {$\cdots$};
-    \node[] (tmp2) at ($(m\i 2)!.5!(m\i 3)+(.15,0)$) {$\cdots$};
-    \node[] (out\i) at ($(m\i 3)+(0,-1)$) {$b_{\cx}$}; 
+    \basic[primitive,f=$+$](m\i 2)<$(r\i 1)-(.2,1.1)$>{$\MocCmb$};
     \draw[s=sy]
-    (m\i 1) edge[<-] (r\i 3) edge[<-] (r\i 2)
-    (m\i 2) edge[<-] (r\i 1) edge[<-] ++(-.2,.2)
-    (tmp1) edge[<-] (m\i 1) edge[->] (m\i 3)
-    (tmp2) edge[<-] (m\i 2) edge[->] (m\i 3)
-    (m\i 3) edge[->] (out\i)
+    (m\i 1) edge (r\i 3) edge (r\i 2)
+    (m\i 2.25) edge (r\i 1) (m\i 2) edge (m\i 1) edge[->] ++(0,-1)
     ;
-    \cluster[inner sep=13pt](redu\i)<(m\i 2)(m\i 3)(m\i 1)>{};
+    \cluster[inner sep=12pt](redu\i)<(m\i 2)(m\i 1)>{};
+    \node[fill=white,inner sep=2pt] at ($(m\i 1)!.5!(m\i 2)$) {$\cdots$};
+    \node[anchor=north] (out\i) at ($(m\i 2)-(0,1)$) {$b_{\cx}$};
   }
-  \cluster[composite,type=farm,inner xsep=20pt](mapfin)<(redu1)(redu2)(redu3)>{};
+
+  % reduce chain
+  \coordinate[xshift=-.6cm] (hack1) at (redu1.west);
+  \cluster[embed,class=blackbox,type=farm,inner sep=4pt](mapfin)<(hack1)(redu1)(redu2)(redu3)>{};
   \foreach \i in {1,2,3}{
-    \cluster[process,type=reduce,inner sep=13pt](redu\i)<(m\i 2)(m\i 3)(m\i 1)>{};
+    \cluster[process,type=reduce,inner sep=12pt](redu\i)<(m\i 2)(m\i 1)>{};
   }
-  \coordinate (hack) at ($(a33)+(1.5,.5)$);
-  \cluster[composite,type=farm,inner xsep=20pt, inner ysep=35pt,
-  f={$\langle\langle\noexpand\mathtt{beamConsts}\rangle\rangle$}](mapbeam)<(a11)(hack)>{};
+
+  % matrix map
+  \coordinate (hack) at ($(a33)+(1.13,.4)$);
+  \cluster[embed,class=blackbox,type=farm, type=farm,inner xsep=22pt, inner ysep=30pt,
+  f={$\langle\langle\noexpand\alpha_{ij}\rangle\rangle$}
+  ](mapbeam)<(a11)(hack)>{};
 
   \foreach \j in {1,2,3}{
     \newcommand{\cy}{\ifthenelse{\j=3}{N_A}{\j}}
     \draw
-    (i1\j)++(-1,0) node{$a_{\cy}$} edge[trans={->,s=sy}{mapbeam-west}{v=sy}] (i3\j)
+    (i1\j)++(-1,0) node[] (inp\j) {$a_{\cy}$} edge[trans={->,s=sy}{mapbeam-west}{v=sy}] (i3\j)
     (i3\j) edge[v=sy] ++(.9,0)
     ;
-    \node[anchor=south,xshift=.4cm] at (i1\j) {\scriptsize\tt fanout};
-    \node[fill=white,inner xsep=20pt] at ($(i2\j)!.7!(i3\j)$) {$\cdots$};    
-  }  
+    \node[anchor=south east,xshift=.6cm] at (i1\j) {\scriptsize\tt fanout};
+    \node[fill=blackboxcolor,inner xsep=5pt] at ($(i2\j)!.8!(i3\j)$) {$\cdots$};    
+  }
+  \node[anchor=west,xshift=1cm] at (out3) {\texttt{beamSigs}};
+  \node[anchor=west,xshift=2.1cm,yshift=6mm] at (r33) {\texttt{beamMatrix}};
+  \node[anchor=east,yshift=-5mm,rotate=90] at (inp3) {\texttt{antennaSigs}};
 \end{tikzpicture}
 \end{document}
 
 %%% Local Variables:
+%%% TeX-command-default: "Make"
 %%% mode: latex
-%%% TeX-master: t
+%%% TeX-master: "../paper"
 %%% End:

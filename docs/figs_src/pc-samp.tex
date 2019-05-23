@@ -1,6 +1,45 @@
 \documentclass[tikz,border=10pt,multi]{standalone}
 \usetikzlibrary{decorations.pathmorphing,calc}
 
+\newsavebox{\videocubein}
+\savebox{\videocubein}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (7,0,0) node [very near end, above, sloped] {\footnotesize pulse};
+
+    \draw[dashed,gray]
+    (2,0,0) -- (2,5,0) -- (2,5,5) -- (2,0,5) -- (2,0,0);
+
+    \draw[very thick, fill=blue]
+    (2,2,5) -- (2,3,5) -- (3,3,5) -- (3,2,5) -- cycle
+    (2,3,5) -- (2,3,0) -- (3,3,0) -- (3,3,5) -- cycle
+    (3,3,5) -- (3,3,0) -- (3,2,0) -- (3,2,5) -- cycle
+    ;
+
+    \foreach \i in {1,...,4} {
+      \draw[thick] (2,3,\i) -- (3,3,\i) --  (3,2,\i);
+    }
+
+    \draw[dashed,gray]
+    (3,0,0) -- (3,5,0) -- (3,5,5) -- (3,0,5) -- (3,0,0)
+    (2,0,5) node[anchor=north west] {\scriptsize\it pulse}
+    ;
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_B$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    ;
+
+    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
+    (5,0,0) coordinate (x) -- (5,5,0) -- (5,5,5) -- (5,0,5) -- (x);
+
+  \end{tikzpicture}%
+}
+
+
 \newsavebox{\videoin}
 \savebox{\videoin}{%
   \begin{tikzpicture}[scale=.5,>=latex]
@@ -30,7 +69,9 @@
 \begin{tikzpicture}
   \node (in) {\usebox{\videoin}};
   \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\videoin}};
-  \node[anchor=west] at ($(in)!.5!(out)$) {\Huge $\Rightarrow$};
+  \node[anchor=east,xshift=-1cm] (cin) at (in.west) {\usebox{\videocubein}};
+  \node[anchor=west] at ($(in)!.45!(out)$) {\Huge $\Rightarrow$};
+  \node[anchor=west] at ($(in)!.55!(cin)$) {\Huge $\equiv$};
 \end{tikzpicture}
 \end{document}
 
