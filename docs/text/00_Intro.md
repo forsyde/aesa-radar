@@ -13,6 +13,9 @@ author:
   - name: Ingo Sander
     email: ingo@kth.se
     affiliation: KTH Royal Institute of Technology, Sweden
+  - name: Ingemar Söderquist
+    email: ingemar.soderquist@saabgroup.com
+    affiliation: Saab AB, Sweden
 figPrefix: [Figure, Figures]
 secPrefix: [section, sections]
 link-citations: true
@@ -189,11 +192,23 @@ please refer to [@sec:shallow;@sec:atom] respectively.
   envelope detected video. Each Doppler channel, range bin and antenna element shall be
   integrated.
 
-## Using This Document
+## Using This Document{#sec:usage}
 
-**PREREQUISITES:** the document assumes that the reader is familiar with the functional programming language [Haskell](https://www.haskell.org/), its syntax, and the usage of a Haskell interpreter (e.g. [`ghci`](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/ghci.html)). Otherwise, we recommend consulting at least the introductory chapters of one of the following books by @Lipovaca11 and @hutton-2016 or other recent books in Haskell. The reader also needs to be familiar with some basic ForSyDe modeling concepts, such as _process constructor_, _process_ or _signal_. We recommend going through at least the online getting started [tutorial on ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/getting_started) or the one [on ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/assets/manual.pdf), and if possible, consulting the (slightly outdated) book chapter on ForSyDe [@Sander2017].
+**PREREQUISITES:** the document assumes that the reader is familiar with the functional
+programming language [Haskell](https://www.haskell.org/), its syntax, and the usage of a
+Haskell interpreter
+(e.g. [`ghci`](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/ghci.html)). Otherwise,
+we recommend consulting at least the introductory chapters of one of the following books
+by @Lipovaca11 and @hutton-2016 or other recent books in Haskell. The reader also needs to
+be familiar with some basic ForSyDe modeling concepts, such as _process constructor_,
+_process_ or _signal_. We recommend going through at least the online getting started
+[tutorial on ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/getting_started)
+or the one [on ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/assets/manual.pdf),
+and if possible, consulting the (slightly outdated) book chapter on ForSyDe [@Sander2017].
 
-This document has been created using literate programming. This means that all code shown in the listings is compilable and executable. There are two types of code listing found in this document. This style
+This document has been created using literate programming. This means that all code shown
+in the listings is compilable and executable. There are two types of code listing found in
+this document. This style
 
 ``` {.haskell .numberLines}
 -- | API documentation comment
@@ -205,34 +220,51 @@ shows _source code_ as it is found in the implementation files, where the line n
 	Prelude> 1 + 1
 	2
 
-suggests _interactive commands_ given by the user in a terminal or an interpreter session. The listing above shows a typical `ghci` session, where the string after the prompter symbol `>` suggests the user input (e.g. `1 + 1`). Whenever relevant, the expected output is printed one row below (e.g. `2`).
+suggests _interactive commands_ given by the user in a terminal or an interpreter
+session. The listing above shows a typical `ghci` session, where the string after the
+prompter symbol `>` suggests the user input (e.g. `1 + 1`). Whenever relevant, the
+expected output is printed one row below (e.g. `2`).
 
-The way this document is meant to be parsed efficiently is to load the source files themselves in an interpreter and test the exported functions gradually, while reading the document at the same time. Due to multiple (sometimes conflicting) dependencies on external packages, for convenience the source files are shipped as _multiple_ [Stack](https://docs.haskellstack.org/en/stable/README/) packages each creating an own sandbox on the user's local machine with all dependencies and requirements taken care of. Please refer to the project's `README` file for instructions on how to install and compile or run the Haskell files. 
+The way this document is meant to be parsed efficiently is to load the source files
+themselves in an interpreter and test the exported functions gradually, while reading the
+document at the same time. Due to multiple (sometimes conflicting) dependencies on
+external packages, for convenience the source files are shipped as _multiple_
+[Stack](https://docs.haskellstack.org/en/stable/README/) packages each creating an own
+sandbox on the user's local machine with all dependencies and requirements taken care
+of. Please refer to the project's `README` file for instructions on how to install and
+compile or run the Haskell files.
 
-At the beginning of each chapter there is metadata guiding the reader what tools and packages are used, like:
+At the beginning of each chapter there is metadata guiding the reader what tools and
+packages are used, like:
 
-
-|         | Target                        | Info                                               |
+|         |                               |                                                    |
 | -----   | ----------------------------- | -------------------------------------------------- |
 | Package | aesa-atom-0.1.0               | path: `./aesa-atom/README.md`                      |
-| Deps    | forsyde-atom-0.3.0            | url: `https://forsyde.github.io/forsyde-atom/api/` |
-|         | forsyde-atom-extensions-0.1.1 | path: `./forsyde-atom-extensions/README.md`        |
-| Bin     | aesa-hl                       | usage: `aesa-hl --help`                            |
-| Tests   | main-suite                    | usage: `stack test :main-suite`                    |
 
-This table tells that the package where the current chapter's code resides is `aesa-atom`, version 0.1.0. The 'Info' column provides a pointer to additional information or documentation on the respective package, either as a relative path to the project root, or as a web URL. Under 'Deps' are shown the main dependency packages which contain important functions, and which should be consulted while reading the code in the current chapter. If the main package generates an executable binary or a test suite, these are pointed out, along with execution suggestions.
+This table tells that the package where the current chapter's code resides is `aesa-atom`,
+version 0.1.0.  This table might contain information on the main dependency packages which
+contain important functions, and which should be consulted while reading the code in the
+current chapter. If the main package generates an executable binary or a test suite, these
+are also pointed out. The third column provides additional information such as a pointer
+to documentation (relative path to the project root, or web URL), or usage suggestions.
 
-Each section of a chapter is written within a library *module*, pointed out in the beginning of the respective section by the line:
+It is recommended to read the main package's `README` file which contains instructions on
+how to install, compile and test the software, before proceeding with following a
+chapter. Each section of a chapter is written within a library *module*, pointed out in
+the beginning of the respective section by the line:
 
 ``` {.haskell .numberLines}
 module ForSyDe.X.Y where
 ```
 
-The most convenient way to test out all functions used in module `ForSyDe.X.Y` is by loading its source file in the sandboxed interpreter, i.e. by running the following command from the project root:
+The most convenient way to test out all functions used in module `ForSyDe.X.Y` is by
+loading its source file in the sandboxed interpreter, i.e. by running the following
+command from the project root:
 
 	stack ghci src/ForSyDe/X/Y.lhs
 	
-An equally convenient way is to create an own `.hs` file somewhere under the project root, which imports and uses module `ForSyDe.X.Y`, e.g.
+An equally convenient way is to create an own `.hs` file somewhere under the project root,
+which imports and uses module `ForSyDe.X.Y`, e.g.
 
 ``` {.haskell .numberLines}
 -- MyTest.hs

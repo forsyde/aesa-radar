@@ -6,7 +6,7 @@ TXT_DIR  = ./text
 FIGS_SRC = ./figs_src
 FIGS_DIR = ./figs
 
-LHS_FILES :=	34:../aesa-atom/src/ForSyDe/Atom/.lhs #\
+LHS_FILES :=	21:../aesa-atom/src/ForSyDe/AESA/HighLevelAtom.lhs #\
 #		21:../aesa-atom/src/ForSyDe/Shallow/AESA.lhs \
 #		32:../aesa-atom/src/ForSyDe/Atom/AESA1.lhs 
 #		31:../src/ForSyDe/Atom/AESA/Types.lhs \
@@ -58,6 +58,7 @@ $(DOC).html: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(PNG_ORIG_F
 
 $(DOC).pdf: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(TIKZ_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/latex.template
 	pandoc $(MD_DIR)/* \
+		-V papersize:a4 \
 		--number-sections --toc \
 		--template template/latex.template \
 		--filter pandoc-crossref \

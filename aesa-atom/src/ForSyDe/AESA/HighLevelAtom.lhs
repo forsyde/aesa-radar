@@ -1,44 +1,121 @@
- ## A Process Network-Oriented Approach to Modeling{#sec:atom-network}
+ ## The High-Level Model{#sec:atom-network}
 
-The second approach to modeling the radar signal processing
-application carries on the idea incepted earlier in
-[@sec:int-shallow], namely to use skeletons to express parallelism at
-the process level rather than at datum level. This way processes are
-expressed as operating on elementary streams of data, i.e. originating
-from each antenna element in particular, and skeletons rather describe
-patterns of interaction and synchronization between these
-processes. We thus trade the monolithic view of processes computing
-"cubes" of data for a much finer-grained view which allows to quantify
-the potential for parallelism by exploiting 1) the arithmetic/data
-dependencies; 2) the precedence relations.
+This section presents a high-level behavioral model of the AESA signal processing
+chain presented in [@sec:video-chain-spec], which is, in any circumstance, _not_ the
+only modeling alternative, but rather shows an intuitive and didactic way to tackle
+the challenge of translating the _textual_ specifications into an _executable_ ForSyDe
+specification. While most design choices are driven by the ambition to introduce the
+new modeling concepts presented in [@sec:crash-atom], they can be justified by the
+need to capture the essential behavioral properties in a formal way, in order to be
+exploitable in future stages of a design flow towards efficient implementations.  The
+main design approach is to exploit the relative independence between each data path
+associated with each antenna element or beam, and to model these paths as skeletons
+(e.g. farms) of (chains of) processes. Each design decision will infer a
+re-partitioning of the indata cubes between the time/causality and space dimensions
+following the design patters depicted in [@fig:atom-layers], namely:
 
-The ForSyDe-Atom definition file for the second approach to modeling
-the Saab-AESA application is found at
-`<root>/src/ForSyDe/Atom/AESA2.lhs` and it can be imported as a
-generic library (e.g. in the interpreter session). Below you find the
-module definition and exported functions.
+* _skeletons of processes_ which: 1) express parallelism at the process level; 2)
+depicts processes as operating on elementary streams of data, e.g. originating from
+each antenna element in particular, and skeletons as the structured interactions
+between these streams; 3) expose a fine-grained modular view allowing to quantify the
+potential for _load distribution_, since each "operation" (i.e. process) clearly captures the aspect of precedence constraints.
 
-> {-# LANGUAGE PackageImports #-}  -- you can ignore this line
-> module ForSyDe.Atom.AESA2 where
+* _process of skeletons_ which : 1) express parallelism at the datum level; 2) depicts processes as operating on structures of data (e.g. vectors, matrices or cubes); 3) expose a monolithic view of processes where precedence constraints are expressed "outside" of the algorithm, and where the algorithm itself expresses potential for _data parallelism_.
 
-By now the imported libraries are not a mystery any longer. Check
-[@sec:atom-operation] for more details on what each is imported for.
+The code for this section is written in the following module, see [@sec:usage] on how
+to use it:
+
+> {-# LANGUAGE PackageImports #-} -- allows explicit import of modules from custom
+>                                 -- libraries instead of standard ones. Will be taken
+>                                 -- out once the extensions are merged upstream.
+> module ForSyDe.AESA.HighLevelAtom where
+
+ ### Imported Libraries
+
+As the AESA application uses complex numbers, we use Haskell's
+[`Complex`](http://hackage.haskell.org/package/base/docs/Data-Complex.html) type.
 
 > import Data.Complex
-> import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
-> import ForSyDe.Atom.MoC.SY  as SY
 
-> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
+For describing streaming behavior of the application our design will use a
+heterogeneous approach, using a combination of _synchronous reactive (SY)_ processes
+(@leeseshia-15,@Benveniste03), where the main assumption is that all events in the
+system are synchronized; and _synchronous data flow (SDF)_ processes
+(@leeseshia-15,@lee95), where the temporal behavior is formulated in terms of partial
+order constraints between events. We import the
+[`SY`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html) and
+[`SDF`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html)
+libraries described in the
+_[MoC](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html) layer_, see
+[@ungureanu17], using an appropriate alias for each.
+
+> import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY
+> import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
+
+For describing parallel operations on data we use algorithmic skeletons
+(@Fischer-2003,@skillicorn05), formulated on ForSyDe-Atom's in-house
+[`Vector`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html)
+data type, which is a shallow, lazy-evaluated implementation of unbounded arrays,
+ideal for early design validation. Although type-checked, bounded, and even boxed
+(i.e. memory-mapped) alternatives exist, such as
+[`FSVec`](http://hackage.haskell.org/package/parameterized-data/docs/Data-Param-FSVec.html)
+or REPA [`Array`](http://hackage.haskell.org/package/repa)s, for the scope of this
+project the functional validation and (by-hand) requirement analysis on the properties
+of skeletons will suffice. We also import the `Matrix` and `Cube` utility libraries
+which contain type synonyms for nested `Vector`s along with their derived skeletons,
+as well a `DSP` which contain commonly used DSP blocks defined in terms of vector
+skeletons.
+
+> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector        as V
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Cube   as C
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Matrix as M
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.DSP
 
-As in the previous section, we import these local submodule containing
-the type synonym declarations presented in [@sec:aliases-shallow] and
-the coefficient windows like in [@sec:coefs-shallow].
+ ### Type Aliases and Constants{#sec:aliases-shallow label="Type Aliases and Constants"}
 
-> import ForSyDe.Atom.AESA.Types
-> import ForSyDe.Atom.AESA.Coefs
+For ease of documentation we will be using type synonyms (aliases) for
+all types and structures throughout this design:
+
+* `Antenna` denotes a vector container for the antenna elements. Its
+  length is equal to the number of antennas in the radar $N_A$.
+
+* After Digital Beamforming (DBF), the antenna elements are
+  transformed into $N_B$ beams, thus we associate the `Beam` alias for
+  the vector container wrapping those beams.
+
+* `Range` is a vector container for range bins. All antennas have the
+  same number of range bins $N_b$, rendering each $\text{Antenna}
+  \times \text{Range}$ a perfect matrix of samples for every pulse.
+
+* For ease of problem dimensioning, we use another vector alias
+  `CRange` for the _center range bins_ calculated after the Constant
+  False Alarm Ratio (CFAR) has been applied. Its length is $N_b' =
+  N_b-2N_{FFT}-2$.
+
+* `Window` stands for a Doppler window of $N_{FFT}$ pulses.
+
+> type Antenna     = Vector -- length: nA
+> type Beam        = Vector -- length: nB
+> type Range       = Vector -- length: nb
+> type CRange      = Vector -- length: nb'
+> type Window      = Vector -- length: nFFT
+
+Here we define the size constants. The only parameters needed by this
+system and used for the correct partitioning of data are `nB` and
+`nFFT`. The rest can be inferred from the size of input data and the
+vector operations.
+
+> nB   = 8   :: Int
+> nFFT = 256 :: Int
+> -- nA = 16 :: Int
+> -- nb = 1024 :: Int
+> -- nb' = nb - 2 * nFFT - 2
+
+Finally we provide two aliases for the basic Haskell data types used
+in the system, to stay consistent with the application specification.
+
+> type CpxData     = Complex Float
+> type RealData    = Float
 
  ### Video Processing Pipeline Stages
 
