@@ -4,11 +4,11 @@
 
 \begin{document}
 \begin{tikzpicture}[scale=1.5]
-  \standard[process,f={$f_{DFB}$},moc=sdf,type=comb](dfb){};
+  \standard[process,f={$f_{DFB}$},moc=sdf,type=comb](dfb){procDFB};
   \resetportinfo{dfb}\wpinfo{$N_{FFT}$}\epinfo{$N_{FFT}$}
   \cluster[farmstyle,type=farm,inner xsep=30pt](all)<(dfb)>{DFB};
-  \draw[trans={s=sdf,<-}{all-west}{v=sdf,srcport}] (dfb) --++(-1.5,0) node[black,anchor=east]{$\langle b^{ct}_{1}...b^{ct}_{N_B}\rangle$};
-  \draw[trans={s=sdf}{all-east}{v=sdf,srcport,->}] (dfb) --++(1.5,0) node[black,anchor=west]{$\langle b^{dfb}_{1}...b^{dfb}_{N_B}\rangle$};
+  \draw[trans={s=sdf,<-}{all-west}{v=sdf,srcport}] (dfb) --++(-2,0) node[black,anchor=east]{$\langle b^{ct}_{1}...b^{ct}_{N_B}\rangle$};
+  \draw[trans={s=sdf}{all-east}{v=sdf,srcport,->}] (dfb) --++(2,0) node[black,anchor=west]{$\langle b^{dfb}_{1}...b^{dfb}_{N_B}\rangle$};
 \end{tikzpicture}
 \end{document}
 

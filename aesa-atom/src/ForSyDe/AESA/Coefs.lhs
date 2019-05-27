@@ -33,3 +33,9 @@
 
 > mkFirCoefs = vector [1,1,1,1,0,0,0,0] :: Vector RealData
 
+> maxFloat :: Float
+> maxFloat = x
+>  where n = floatDigits x
+>        b = floatRadix x
+>        (_, u) = floatRange x
+>        x = encodeFloat (b^n - 1) (u - n)

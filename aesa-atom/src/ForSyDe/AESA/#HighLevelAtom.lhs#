@@ -549,7 +549,7 @@ filter and obtain, on each channel, the integrated radar output.
 
 ![INT network](figs/int-proc-atom.pdf){#fig:int-net-atom}
 
-> int :: SDF.Signal (Beam (Range (Window RealData)))
+> int :: BeamSDF.Signal (Range (Window RealData)))
 >     -> SDF.Signal (Beam (Range (Window RealData)))
 >     -> SY.Signal  (Beam (Range (Window RealData)))
 > int = V.farm21 (\cr cl -> firNet $ SDF.toSY $ merge cr cl)
