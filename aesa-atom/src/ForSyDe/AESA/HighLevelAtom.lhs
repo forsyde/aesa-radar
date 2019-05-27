@@ -370,7 +370,7 @@ the video cubes.
 > cfar :: Beam (SDF.Signal RealData)
 >      -> Beam (SDF.Signal RealData)
 > cfar = V.farm11 (SDF.comb11 (nb * nFFT, 1, 
->                              fCFAR . M.matrix nFFT nb))
+>                              (:[]) . fCFAR . M.matrix nFFT nb))
 
 Similar to the `cornerTurn` process in @sec:ct-atom-net, the `procCFAR` process builds
 up matrices of $N_b\times N_{FFT}$ samples and applies $f_{CFAR}$ function on these
@@ -492,9 +492,7 @@ applying the mean function `arithMean` over them, as shown (only for the window
 associated with the $eb$ bin) in [@eq:cfar-emv]. The resulting `emv` and `lmv`
 matrices are padded with rows of the minimum representable value `-maxFloat`, so that
 they align properly with `rbins` in order to combine into the 2D farm/stencil defined
-at @eq:cfar. Finally, `fCFAR` yields a matrix of normalized Doppler windows, which is
-then transformed back to sample streams by its parent SDF process.
-
+at @eq:cfar. Finally, `fCFAR` yields a matrix of normalized Doppler windows. The resulting matrices are not transformed back into sample streams by the parent process, but rather they are passed as single tokens downstream to the INT stage, where they will be processed as such.
 
 $$\begin{aligned}
   &\begin{bmatrix}
@@ -533,47 +531,73 @@ $${#eq:cfar-emv}
  #### Integrator (INT)
 
 During the last stage of the video processing chain each data sample of the video cube
-is integrated against its 8 previous values using an 8-tap FIR filter, as presented
-earlier in @sec:int-shallow and suggested by the drawing in @fig:int-cube-atom.
+is integrated against its 8 previous values using an 8-tap FIR filter, as suggested by
+the drawing in @fig:int-cube-atom.
 
 ![Integration on cubes of complex samples](figs/int-cube.pdf){#fig:int-cube-atom}
 
-For modeling the INT stage we choose the fully-exposed network approach from
-@fig:int-net-atom by distributing each $N_{b'}\times N_{FFT}$ tokens received from the
-previous stage into an _own signal_, i.e. obtaining a matrix of signals. This is done
-for each path associated with a beam, thus in the end we obtain a _cube of
-signals_. Each signals is synchronous with each other and the event rate is in fact
-the rate of processing a corner-turned cube. We express this by interfacing all
-signals back to the SY domain. From there on we can pass each one through an own FIR
-filter and obtain, on each channel, the integrated radar output.
+The integration depicted in @fig:int-cube-atom, like each stage until now, can be
+modeled in dozens of different ways based on how the designer envisions the
+partitioning of the data "in time" or "in space". This partitioning could be as
+coarse-grained as streams of cubes of samples, or as fine-grained as networks of
+streams of indvidual samples. For convenience and for simulation efficiency[^eff] we
+choose a middle approach: video cubes are represented as farms (i.e. vectors) of
+streams of matrices, as conveniently bundled by the previous DFB stages. We pass the
+responsibility of re-partitioning and interpreting the data accordingly to the
+downstream process, e.g. a control/monitoring system, or a testbench sink.
 
-![INT network](figs/int-proc-atom.pdf){#fig:int-net-atom}
+> int :: Beam (SDF.Signal (Range (Window RealData)))
+>     -> Beam (SDF.Signal (Range (Window RealData)))
+>     -> Beam (SY.Signal  (Range (Window RealData)))
+> int = V.farm21 procINT
 
-> int :: SDF.Signal (Beam (Range (Window RealData)))
->     -> SDF.Signal (Beam (Range (Window RealData)))
->     -> SY.Signal  (Beam (Range (Window RealData)))
-> int = V.farm21 (\cr cl -> firNet $ SDF.toSY $ merge cr cl)
+Before integrating though, the data from both the left and the right channel need to
+be merged. This is done by the process `merge` below, which consumes one (matrix)
+token from each channel and interleaves them at its output. When considering only
+abstract tokens, the `merge` process can be regarded as an up-sampler with the rate
+2/1. When taking into consideration the size of the entire data set (i.e. token rates
+$\times$ structure sizes $\times$ data size), we can easily see that the overall
+required system bandwidth (ratio) remains the same between the PC and INT stages,
+i.e. $\frac{2\times N_B \times N_{b} \times N_{FFT}\times
+\mathit{size}(\mathtt{RealData})}{N_B \times N_{b} \times N_{FFT}\times
+\mathit{size}(\mathtt{CpxData})}=1/1$. For the integration stage `firNet` it is more
+appropriate to translate back to SY MoC semantics, hence the `toSY` domain interface.
+
+![INT network](figs/int-net.pdf){#fig:int-net-atom}
+
+The 8-tap FIR filter used for integration is also a moving average, but as compared to
+the `mav` function used in @sec:pc-atom-net, the window slides in time domain,
+i.e. over streaming samples rather than over vector elements. To instantiate a FIR
+system we use the `firSk` skeleton provided by the ForSyDe-Atom utility libraries,
+which constructs the the well-recognizable FIR pattern in @fig:int-net-atom, i.e. a
+recur-farm-reduce composition. In order to do so, `firSk` needs to know _what_ to fill
+this template with, thus we need to provide as arguments its "basic" operations, which
+in our case are processes operating on signals of matrices.  In fact, `mav` itself is
+a _specialization_ of the `firSk` skeleton, which defines its basic operations as
+corresponding functions on vectors. This feature derives from a powerful algebra of
+skeletons which grants them both modularity, and the possibility to transform them
+into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
+
+> procINT :: Num a => Vector a 
+>         -> SDF.Signal (Matrix a) -> SDF.Signal (Matrix a) -> SY.Signal (Matrix a)
+> procINT coefs cr = firNet . SDF.toSY . merge cr
 >   where
->     merge = SDF.comb21 ((1,1), 2, \[r] [l] -> [r, l])
+>     merge   = SDF.comb21 ((1,1), 2, \[r] [l] -> [r, l])
+>     firNet  = firSk addSC mulSM dlySM coefs
+>     addSM   = SY.comb21 (M.farm21 (+))
+>     mulSM c = SY.comb11 (M.farm11 (*c))
+>     dlySM   = SY.delay  (M.fanout 0)
 
-> firNet :: Num a => Vector a -> SY.Signal (Matrix a) -> SY.Signal (Matrix a)
-> firNet coefs = fir' addSC mulSC dlySC coefs
->   where
->     addSC   = SY.comb21 (C.farm21 (+))
->     mulSC c = SY.comb11 (C.farm11 (*c))
->     dlySC   = SY.delay (C.fanout 0)
+| Function          | Original module                     | Package                 |
+|-------------------|-------------------------------------|-------------------------|
+| `farm21`          | [`ForSyDe.Atom.Skeleton.Vector`]    | forsyde-atom            |
+| `farm21`,`farm11`,`fanout` | ForSyDe.Atom.Skeleton.Vector.Matrix | forsyde-atom-extensions |
+| `firSk`           | ForSyDe.Atom.Skeleton.Vector.DSP    | forsyde-atom-extensions |
+| `comb21`,`comb11` | [`ForSyDe.Atom.MoC.SDF`]            | forsyde-atom            |
+| `mkFirCoefs`      | ForSyDe.AESA.Coefs                  | aesa-atom               |
+\suppressfloats
 
-**NOTE:** continuing the side idea started in the previous section, it
-  is easy to observe that the last `merge` process from CFAR and the
-  first `distribute` process from INT are in fact inverse
-  transformations and cancel each other. These "artifices", along with
-  other similar examples throughout the design, are perfectly
-  acceptable in a design, once we understand that they are merely
-  semantic interfaces resulted from the chosen modeling paradigm(s)
-  and should not affect at all the final implementation of the
-  system. Even more, these modeling artifacts aids the designer to
-  partition the design into logical components with clearly defined
-  interfaces, as seen below.
+[^eff]: we try to avoid unnecessary transposes (i.e. type traversals) which are time-consuming.
 
  ### System Process Network
 
@@ -581,6 +605,7 @@ Finally, when putting all the instantiated blocks together in an
 equational style (see code), we obtain the system in
 @fig:aesa-net-atom.
 
+\suppressfloats
 ![AESA network as black-box components](figs/aesa-net-atom.pdf){#fig:aesa-net-atom}
 
 > aesa :: Antenna (SY.Signal CpxData)
