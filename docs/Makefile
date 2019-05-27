@@ -67,7 +67,7 @@ $(DOC).pdf: Makefile title.pdf $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(T
 		--filter pandoc-crossref \
 		--filter pandoc-citeproc \
 		--bibliography=refs.bib \
-		-f markdown+raw_tex -s -o $@
+		-f markdown+table_captions+raw_tex -s -o $@
 
 
 title.pdf : title.tex

@@ -15,12 +15,17 @@ re-partitioning of the indata cubes between the time/causality and space dimensi
 following the design patters depicted in [@fig:atom-layers], namely:
 
 * _skeletons of processes_ which: 1) express parallelism at the process level; 2)
-depicts processes as operating on elementary streams of data, e.g. originating from
-each antenna element in particular, and skeletons as the structured interactions
-between these streams; 3) expose a fine-grained modular view allowing to quantify the
-potential for _load distribution_, since each "operation" (i.e. process) clearly captures the aspect of precedence constraints.
+  depicts processes as operating on elementary streams of data, e.g. originating from
+  each antenna element in particular, and skeletons as the structured interactions
+  between these streams; 3) expose a fine-grained modular view allowing to quantify
+  the potential for _load distribution_, since each "operation" (i.e. process) clearly
+  captures the aspect of precedence constraints.
 
-* _process of skeletons_ which : 1) express parallelism at the datum level; 2) depicts processes as operating on structures of data (e.g. vectors, matrices or cubes); 3) expose a monolithic view of processes where precedence constraints are expressed "outside" of the algorithm, and where the algorithm itself expresses potential for _data parallelism_.
+* _process of skeletons_ which : 1) express parallelism at the datum level; 2) depicts
+  processes as operating on structures of data (e.g. vectors, matrices or cubes); 3)
+  expose a monolithic view of processes where precedence constraints are expressed
+  "outside" of the algorithm, and where the algorithm itself expresses potential for
+  _data parallelism_.
 
 The code for this section is written in the following module, see [@sec:usage] on how
 to use it:
@@ -132,7 +137,9 @@ simultaneous receiver beams, or "listening directions", by summing individually
 phase-shifted in data signals from all elements. Depicted from a streaming point of
 view, DBF would like in @fig:dbf-samp.
 
-![Digital Beam Forming on streams of complex samples](figs/dbf-samp.pdf){#fig:dbf-samp}
+\suppressfloats
+![Digital Beam Forming on streams of complex
+samples](figs/dbf-samp.pdf){#fig:dbf-samp}
 
 As can be seen in @fig:dbf-samp, a beam can be formed _as soon as_ all antennas have
 produced a complex sample. The parallel streams of data coming from each antenna
@@ -141,6 +148,9 @@ signals where each event is synchronous with each other. This allows us to depic
 dataflow interaction between the streams during digital beamforming as the process
 network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational process
 [`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html#v:comb22).
+
+\suppressfloats
+![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom}
 
 > dbf :: Antenna (SY.Signal CpxData)
 >     -> Beam    (SY.Signal CpxData)
@@ -151,7 +161,6 @@ network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational proc
 >     sigMatrix  = V.farm11 V.fanout antennaSigs
 >     beamConsts = mkBeamConsts (V.length antennaSigs) nB
 
-![DBF network](figs/dbf-net-atom.pdf){#fig:dbf-net-atom width=70% }
 
 | Function                     | Original module                       | Package                 |
 |------------------------------|---------------------------------------|-------------------------|
@@ -159,6 +168,7 @@ network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational proc
 | `farm21`                     | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
 | `comb11`, `comb21`           | [`ForSyDe.Atom.MoC.SY`]               | forsyde-atom            |
 | `mkBeamConsts`               | `ForSyDe.AESA.Coefs`                  | aesa-atom               |
+\suppressfloats
 
 The previous code listing, depicted in @fig:dbf-net-atom, is actually showing the
 "internals" of a matrix-vector dot product[^dotMatMat]. However, the elementary
@@ -185,7 +195,7 @@ In this stage the received echo of the modulated pulse, i.e. the information con
 by the range bins, is passed through a matched filter for decoding their modulation.
 This essentially applies a sliding window, or a moving average (MAV) on the range bin
 samples.
- 
+
 ![Pulse Compression on streams of complex samples](figs/pc-samp.pdf){#fig:pc-samp}
 
 In @fig:pc-samp we can see that, in order to apply the MAV algorithm on all the range
@@ -198,21 +208,11 @@ this problem later in the design stages (see [@sec:refinement]) where we will tr
 transform the model toward more "efficient" implementation models (with respect to
 some constraint, e.g. throughput) which preserve these behavioral properties.
 
+![PC stage process](figs/pc-proc-atom.pdf){#fig:pc-proc-atom}
+
 > pc :: Beam ( SY.Signal CpxData)
 >    -> Beam (SDF.Signal CpxData)
 > pc = V.farm11 (procPC . SY.toSDF)
-
-![PC stage process](figs/pc-proc-atom.pdf){#fig:pc-proc-atom}
-
-Following the reasoning above, we instantiate the PC video processing stage as a
-`farm` of SDF processes `procPC` as depicted in [@fig:pc-proc-atom]. Notice that
-before being able to apply the SDF actors we need to translate the SY signals yielded
-by the DBF stage into SDF signals. This is done by the `toSDF` interface which is an
-injective mapping from the (timed) domain of a SY MoC tag system, to the (untimed)
-codomain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
-
-> procPC :: Fractional a => SY.Signal a -> SDF.Signal a 
-> procPC = SDF.comb11 (nb, nb, V.fromVector . mav mkPcCoefs . V.vector)
 
 | Function    | Original module                    | Package                 |
 |-------------|------------------------------------|-------------------------|
@@ -221,89 +221,123 @@ codomain of a SDF MoC tag system. For more on tag systems please consult [@lee98
 | `comb11`    | [`ForSyDe.Atom.MoC.SDF`]           | forsyde-atom            |
 | `mav`       | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
 | `mkPcCoefs` | `ForSyDe.AESA.Coefs`               | aesa-atom               |
+\suppressfloats
+
+Following the reasoning above, we instantiate the PC video processing stage as a
+`farm` of SDF processes `procPC` as depicted in [@fig:pc-proc-atom]. Notice that
+before being able to apply the SDF actors we need to translate the SY signals yielded
+by the DBF stage into SDF signals. This is done by the `toSDF` interface which is an
+injective mapping from the (timed) domain of a SY MoC tag system, to the (untimed)
+codomain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
+
+> procPC :: Fractional a => SDF.Signal a -> SDF.Signal a 
+> procPC = SDF.comb11 (nb, nb, V.fromVector . mav mkPcCoefs . V.vector)
 
 The `procPC` actor consumes and produces `nb` tokens each firing, forms a `Vector`
 from these tokens, and applies the `mav` skeleton on these vectors. The `mav` skeleton
 is a utility formulated in terms of primitive skeletons (i.e. `map` and `reduce`) on
 numbers, i.e. lifting arithmetic functions. We will study this skeleton later in this
 report and for now we take it "for granted", as conveniently provided by the `DSP`
-utility library.
+utility library. Also notice that the type signature for `procPC` is left polymorphic
+as to be more convenient later when we formulate properties over it.
+
 
  #### Corner Turn (CT)
 
-During the corner turning the sampled data is re-aligned to form rows
-of $N_{FFT}$ samples for each range bin. _How_ to do this was already
-presented in [@sec:ct-shallow;@sec:ct-atom], namely to consume as many
-pulses (matrices) as necessary to form full video cubes, transpose
-these cubes and then pass them as single tokens for the upcoming
-processing stages. However, in this approach we use the awareness that
-for each beam samples arrive in order, one range bin at a time, and
-fill the video cube in the direction suggested in the left side of
-@fig:ct-samp.
+In order to be able to calculate the Doppler channels further in the processing
+pipeline, during a CT, a rearrangement of data must be performed between functions
+that process data in “different” directions, e.g. range and pulse. This rearrangement
+is called corner turn.  We make use of the knowledge that for each beam samples arrive
+in order, one range bin at a time, in the direction of consumption suggested in
+@fig:ct-samp, and "fill back in" the video cube in the direction of production. In
+order to maximize the efficiency of the AESA processing the datapath is split into two
+concurrent processing channels with 50% overlapped data, as shown in [@fig:ct-cube].
 
 ![Building matrices of complex samples during CT](figs/ct-samp.pdf){#fig:ct-samp}
 
-Our CT network thus maps on each beam signal a corner turn process
-which, under the SDF execution semantics, consumes $N_{FFT}\times N_b$
-(ordered) samples, interprets it as a matrix, transposes it, and
-$N_b\times N_{FFT}$ samples ordered in the direction suggested in the
-right side of @fig:ct-samp. Like before, in order to achieve 50%
-overlapping between the two output channels, the channel one needs to
-be "delayed" with a prefix signal equivalent to half a video cube. In
-this case that prefix is formed of $\frac{N_b \times N_{FFT}}{2}$
-zeroes on each beam path.
+![Concurrent processing on 50% overlapped data](figs/ct-cube.pdf){#fig:ct-cube} 
+
+Our CT network thus maps on each beam signal a corner turn process which, under the
+SDF execution semantics, consumes $N_{FFT}\times N_b$ ordered samples, interprets them
+as a matrix, transposes this matrix, and produces $N_b\times N_{FFT}$ samples ordered
+in the direction suggested in @fig:ct-samp. In order to achieve 50% overlapping
+between the two output channels, the left one needs to be "delayed" with a prefix
+signal equivalent to half a video cube. In this case that prefix is formed of
+$\frac{N_b \times N_{FFT}}{2}$ complex zeroes on each beam path. This way, whatever
+input arrives from the PC stage, will be observed at the left channel only after
+$N_{FFT}/2$ samples.
 
 ![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
 
-> ct :: Beam (SY.Signal CpxData)
+> ct :: Beam (SDF.Signal CpxData)
 >    -> (Beam (SDF.Signal CpxData),
 >        Beam (SDF.Signal CpxData))
-> ct sigs = (V.farm11 rightCorner sigs, V.farm11 leftCorner sigs)
+> ct = V.farm12 procCT
+> 
+> procCT :: Num a => SDF.Signal a -> (SDF.Signal a, SDF.Signal a)
+> procCT sig = (rightChannel, leftChannel)
 >   where
->     rightCorner = cornerTurn . SY.toSDF
->     leftCorner  = SDF.delay initBatch . rightCorner
->     initBatch   = replicate (nb * nFFT `div` 2) (cis 0)
->     cornerTurn  = SDF.comb11 (nFFT * nb, nb * nFFT,
->                               fromMatrix . M.transpose . matrix nb nFFT)
+>     rightChannel = cornerTurn sig
+>     leftChannel  = SDF.delay initBatch rightChannel
+>     initBatch    = replicate (nb * nFFT `div` 2) 0
+>     cornerTurn   = SDF.comb11 (nFFT * nb, nb * nFFT,
+>                                fromMatrix . M.transpose . matrix nb nFFT)
+
+| Function                       | Original module                       | Package                 |
+|--------------------------------|---------------------------------------|-------------------------|
+| `farm12`                       | [`ForSyDe.Atom.Skeleton.Vector`]      | forsyde-atom            |
+| (`from`-)`matrix`, `transpose` | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
+| `comb11`, `delay`              | [`ForSyDe.Atom.MoC.SDF`]              | forsyde-atom            |
+
+*Modeling tips:* the application specification mentions that the first $N_{FFT}$ batch
+ of pulses is ignored, yet we do the other way around: we "fill in" with dummy
+ data. In fact ForSyDe-Atom does not allow "cleaning up" (i.e. dropping, ignoring)
+ events from signals, due to non-determinism introduced in case of possible feedback
+ loops. Only an observer (i.e. testbench, sink) is allowed to do that, outside the
+ process network, as we shall see soon, when testing the system.
 
  #### Doppler Filter Bank (DFB){#sec:dfb-atom-net}
 
-During the Doppler filter bank, every window of samples, associated
-with each range bin goes through a transformation consisting in
-weighting, FFT, and envelope calculation, as already presented in
-@sec:dfb-shallow. Since the samples have been arranged in pulse
-window-order during the previous stage, the DFB transformation can
-occur as soon as a window of $N_{FFT}$ samples arrive, like in
-@fig:dfb-samp.
+
+During the Doppler filter bank, every window of samples, associated with each range
+bin is transformed into a Doppler channel and the complex samples are converted to
+real numbers by calculating their envelope. Since the samples have been arranged in
+pulse window-order during the previous stage, the DFB transformation is applied over a
+window of $N_{FFT}$ samples arriving in-order, like in @fig:dfb-samp.
 
 ![Doppler Filter Bank on streams of complex samples](figs/dfb-samp.pdf){#fig:dfb-samp}
 
-In contrast with the pulse compression (PC) stage in @sec:pc-atom-net,
-the DFB is not carried out in a "sliding window" fashion, i.e. it
-cannot be processed "one sample at a time", but rather it needs the
-whole $N_{FFT}$ batch in order to apply the FFT algorithm. As such,
-the best-fitted MoC execution semantics to describe the process(es)
-associated with DFB is still SDF. We can simply describe the DFB stage
-as a
-[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22)
-of
-[`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html#v:comb22)
-SDF actors which apply the $f_{DFB}$ function on $N_{FFT}$ tokens
-every firing cycle, as seen in @fig:dfb-net-atom.
+The `dfb` process applies the the following chain of functions on each window of
+complex samples, in three consecutive steps:
+
+ * scale the window samples with a set of coefficients to decrease the Doppler side
+   lobes from each FFT output and thereby to increase the clutter rejection.
+
+ * apply an $N_{FFT}$-point 2-radix decimation in frequency Fast Fourier Transform
+   (FFT) algorithm.
+
+ * compute the envelope of each complex sample when phase information is no longer of
+   interest. The envelope is obtained by calculating the absolute value of the complex
+   number, converting it into a real number.
 
 ![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
 
 > dfb :: Beam (SDF.Signal CpxData)
 >     -> Beam (SDF.Signal RealData)
-> dfb = V.farm11
->       (SDF.comb11 (nFFT, nFFT,
->                    fromVector . fDFB . vector))
+> dfb = V.farm11 procDFB
+> 
+> procDFB = SDF.Signal CpxData -> SDF.Signal RealData
+> procDFB = SDF.comb11 (nFFT, nFFT, fromVector . fDFB . vector)
 >   where
->     fDFB       = V.farm11 envelope . fft nFFT . weight 
->     weight     = V.farm21 (*) mkWeightCoefs
->     envelope a = let i = realPart a
->                      q = imagPart a
+>     fDFB       = V.farm11 envelope . fft 8 . V.farm21 (*) mkWeightCoefs 
+>     envelope a = let (i, q) = (realPart a, imagPart a)
 >                  in sqrt (i * i + q * q)
+
+| Function           | Original module                    | Package                 |
+|--------------------|------------------------------------|-------------------------|
+| `farm11`,` farm21` | [`ForSyDe.Atom.Skeleton.Vector`]   | forsyde-atom            |
+| `fft`              | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
+| `mkWeightCoefs`    | `ForSyDe.AESA.Coefs`               | aesa-atom               |
 
 Each function composing $f_{DFB}$ is itself inherently parallel, as it
 is described in terms of parallel skeletons. We could have "lifted"

@@ -4,8 +4,13 @@
 
 \begin{document}
 \begin{tikzpicture}[]
-  \standard[process,moc=sy,f={$\noexpand\mathtt{farm}(f_{PC})$},type=comb](a){pc};
-  \draw[s=sy] (a) edge[<-] ++(-1.5,0) edge[->] ++(1.5,0);
+  \standard[process,moc=sdf,f={$\noexpand\mathtt{mav}(\noexpand\mathit{coefs})$},type=comb](a){procPC};
+  \resetportinfo{a}\wpinfo{$N_b$}\epinfo{$N_b$}
+  \interface[left of=a] (b) {sy}{sdf};
+  \cluster[farmstyle,type=farm] (pc) <(a)(b)> {pc};
+  \draw[trans={<-,s=sy}{pc-west}{v=sy}] (b) --++(-2,0) node[black,anchor=east]{$\langle b^{\mathit{dbf}}_{1}...b^{\mathit{dbf}}_{N_B}\rangle$};
+  \draw (a) edge[<-,s=sdf] (b);
+  \draw[trans={s=sdf}{pc-east}{v=sdf,->}] (a)--++(2,0) node[black,anchor=west]{$\langle b^{\mathit{pc}}_{1}...b^{\mathit{pc}}_{N_B}\rangle$};
 \end{tikzpicture}
 \end{document}
 

@@ -1,6 +1,41 @@
 \documentclass[tikz,border=10pt,multi]{standalone}
 \usetikzlibrary{decorations.pathmorphing,calc}
 
+\newsavebox{\videocubein}
+\savebox{\videocubein}{%
+  \begin{tikzpicture}[scale=.5,>=latex]
+    \coordinate (o) at (0,0,0);
+    \draw[->] (o) -- (0,0,9) node [very near end, above, sloped] {\footnotesize range bins};
+    \draw[->] (o) -- (0,7,0) node [very near end, above, sloped] {\footnotesize beams};
+    \draw[->] (o) -- (9,0,0) node [very near end, above, sloped] {\footnotesize pulse windows};
+
+    \draw[dashed,gray]
+    (0,2,0) -- (5,2,0) -- (5,2,5) -- (0,2,5) -- (0,2,0);
+
+    \draw[very thick, fill=blue]
+    (5,2,2) -- (5,2,3) -- (5,3,3) -- (5,3,2) -- cycle
+    (5,2,3) -- (0,2,3) -- (0,3,3) -- (5,3,3) -- cycle
+    (5,3,3) -- (0,3,3) -- (0,3,2) -- (5,3,2) -- cycle
+    ;
+
+    \foreach \i in {1,...,4} {
+      \draw[thick] (\i,2,3) -- (\i,3,3) --  (\i,3,2);
+    }
+
+    \draw[dashed,gray]
+    (0,3,0) -- (5,3,0) -- (5,3,5) -- (0,3,5) -- (0,3,0)
+    (0,2,5) node[anchor=south west] {\scriptsize\it beam}
+    ;
+    
+    \draw
+    (0,5,0) node[anchor=south west] {\scriptsize $N_A$} -- (5,5,0)
+    (0,5,0) -- (0,5,5) -- (0,0,5) node[anchor=north west] {\scriptsize $N_b$} -- (5,0,5)
+    (0,5,5) -- (5,5,5)
+    (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
+    ;
+  \end{tikzpicture}%
+}
+
 \newsavebox{\videoin}
 \savebox{\videoin}{%
   \begin{tikzpicture}[scale=.5,>=latex]
@@ -29,8 +64,10 @@
 \begin{document}
 \begin{tikzpicture}
   \node (in) {\usebox{\videoin}};
+  \node[anchor=east,xshift=-1cm] (cin) at (in.west) {\usebox{\videocubein}};
   \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\videoin}};
   \node[] at ($(in)!.5!(out)$) {\Huge $\Rightarrow$};
+  \node[] at ($(in)!.45!(cin)$) {\Huge $\equiv$};
 \end{tikzpicture}
 \end{document}
 

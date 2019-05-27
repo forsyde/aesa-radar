@@ -1,17 +1,15 @@
 \documentclass{standalone}
 \usepackage[tikz,math]{forsyde}
-\usepackage{ifthen}
 
 \begin{document}
 \begin{tikzpicture}[scale=1.5]
-  \interface[] (if) <0,0> {sy}{sdf};
-  \standard[process,f={$^T$},moc=sdf,type=comb,right of=if, xshift=2cm](ct){cornerTurn};
+  \standard[process,f={$^T$},moc=sdf,type=comb](ct){cornerTurn};
   \resetportinfo{ct}\wpinfo{$N_{FFT}\times N_b$}\epinfo{$N_b\times N_{FFT}$}
-  \draw[s=sdf] (ct) edge[<-] (if);
   \basic[primitive,f={$\SkelVec{0}_{\noexpand\frac{N_b \times N_{FFT}}{2}}$}](tok)<$(ct.east)+(1.6,-.5)$>{$\MocDel$}
-  \node[] (dum) at ($(ct.east)+(2,0)$) {};
-  \cluster[farmstyle,type=farm,inner ysep=20pt](all)<(if)(ct)(dum)>{CT};
-  \draw[trans={s=sy,<-}{all-west}{v=sy,srcport}] (if) --++(-1,0) node[black,anchor=east]{$\langle b^{pc}_{1}...b^{pc}_{N_B}\rangle$};
+  \node[] (dum) at ($(ct.east)+(1,0)$) {};
+  \cluster[composite,inner ysep=25pt, inner xsep=55](ctproc)<(ct)(dum)>{procCT};
+  \cluster[farmstyle,type=farm](all)<(ctproc)>{CT};
+  \draw[trans={s=sdf,<-}{all-west}{v=sdf,srcport}] (ct) --++(-3,0) node[black,anchor=east]{$\langle b^{pc}_{1}...b^{pc}_{N_B}\rangle$};
   \draw[s=sdf] (ct.east) -|++(1,.5) edge[trans={s=sdf}{all-east}{v=sdf,->,srcport}]++(2.2,0)
        ++(2.2,0) node[black,anchor=west]{$\langle b^{ct,r}_{1}...b^{ct,r}_{N_B}\rangle$};
   \draw[s=sdf] (ct.east) -|++(1,-.5) -- (tok) (tok) edge[trans={s=sdf}{all-east}{v=sdf,->,srcport}]++(1.6,0)
