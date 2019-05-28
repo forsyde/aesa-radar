@@ -6,21 +6,22 @@
 \begin{tikzpicture}[constructors=shallow,xscale=2,yscale=2.4]
   \standard[process,moc=blackbox](dbf){dbf};
   \standard[process,moc=blackbox,xshift=2.5cm](pc)<dbf>{pc};
-  \standard[process,moc=blackbox,no=2,right of=pc,inner ysep=20pt](p1){ct};
-  \resetportinfo{p1}\epinfo{$N_b\times N_{FFT}$}\epinfo{$N_b\times N_{FFT}$}
+  \resetportinfo{pc}\epinfo{$N_b$}
+  \standard[process,moc=blackbox,no=2,right of=pc,inner ysep=20pt,xshift=2.5cm](p1){ct};
+  \resetportinfo{p1}\wpinfo{$N_{FFT}\times N_b$}\epinfo{$N_b\times N_{FFT}$}\epinfo{$N_b\times N_{FFT}$}
   \foreach \i in {1,2}{
     \standard[process,moc=blackbox,xshift=3.5cm](dfb\i)<p1.e\i>{dfb};
     \resetportinfo{dfb\i}\wpinfo{$N_{FFT}$}\epinfo{$N_{FFT}$}
     \standard[process,moc=blackbox,xshift=3.5cm](cfar\i)<dfb\i.e1>{cfar};
-    \resetportinfo{cfar\i}\wpinfo{$N_{b}\times N_{FFT}$}\epinfo{$N_{b'}\times N_{FFT}$}
+    \resetportinfo{cfar\i}\wpinfo{$N_{b}\times N_{FFT}$}\epinfo{1}
   }
-  \standard[process,moc=blackbox,ni=2,xshift=4cm,inner ysep=10pt](int)<$(cfar1.e1)!.5!(cfar2.e1)$>{int};
-  \resetportinfo{int}\wpinfo{$N_{b'}\times N_{FFT}$}\wpinfo{$N_{b'}\times N_{FFT}$}
+  \standard[process,moc=blackbox,ni=2,xshift=1.5cm,inner ysep=10pt](int)<$(cfar1.e1)!.5!(cfar2.e1)$>{int};
+  \resetportinfo{int}\wpinfo{1}\wpinfo{1}
   \cluster[skeleton,type=mapReduce](dbfnet)<(dbf)>{};
   \cluster[farmstyle,type=farm](aesanet)<(pc)(p1)(int)>{};
   \draw[trans={<-,s=sy}{dbfnet-west}{v=sy,srcport}] (dbf) --++(-1,0) node[anchor=south,rotate=90]{$\SkelVec{a}_{N_A}$};
   \draw[trans={v=sy}{aesanet-west}{s=sy,srcport,->}] (dbfnet.e1) -- (pc);
-  \draw[s=sy,dstport] (dbf) -- (dbfnet.e1) (pc) edge[->] (p1);
+  \draw[s=sy,dstport] (dbf) -- (dbfnet.e1) (pc) edge[s=sdf,->] (p1);
   \draw[s=sdf]
   (p1.e1) edge[->] (dfb1) (dfb1) edge[->] (cfar1) (cfar1.e1) edge[-|-,->] (int.w1)
   (p1.e2) edge[->] (dfb2) (dfb2) edge[->] (cfar2) (cfar2.e1) edge[-|-,->] (int.w2)

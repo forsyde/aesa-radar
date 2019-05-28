@@ -6,13 +6,9 @@ TXT_DIR  = ./text
 FIGS_SRC = ./figs_src
 FIGS_DIR = ./figs
 
-LHS_FILES :=	21:../aesa-atom/src/ForSyDe/AESA/HighLevelAtom.lhs #\
-#		21:../aesa-atom/src/ForSyDe/Shallow/AESA.lhs \
-#		32:../aesa-atom/src/ForSyDe/Atom/AESA1.lhs 
-#		31:../src/ForSyDe/Atom/AESA/Types.lhs \
-#		33:../src/ForSyDe/Atom/AESA/Coefs.lhs \
-
-
+LHS_FILES :=	21:../aesa-atom/src/ForSyDe/AESA/HighLevelAtom.lhs \
+		22:../aesa-atom/src/ForSyDe/AESA/Params.lhs \
+		23:../aesa-atom/src/ForSyDe/AESA/Coefs.lhs #\
 
 BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))

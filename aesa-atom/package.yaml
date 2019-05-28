@@ -27,8 +27,20 @@ dependencies:
 library:
   source-dirs: src
 
+executables:
+  aesa-hl:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -eventlog 
+    - -with-rtsopts=-N
+    dependencies:
+    - aesa-atom
+  
 tests:
-  uc2-aesa-test:
+  tests-hl:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -36,5 +48,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - uc2-aesa
-x
+    - aesa-atom

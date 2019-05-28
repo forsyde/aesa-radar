@@ -76,7 +76,18 @@ skeletons.
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Matrix as M
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.DSP
 
+Finally, we import the local project module defining different coefficients for the
+AESA algorithms, presented in detail in @sec:coefs-atom.
+
+> import ForSyDe.AESA.Coefs
+
  ### Type Aliases and Constants{#sec:aliases-shallow label="Type Aliases and Constants"}
+
+The system parameters are integer constants defining the size of the application. For
+a simple test scenario provided by Saab AB, we have bundled these parameters in the
+following module, and we shall use their variable names throughout the whole report:
+
+> import ForSyDe.AESA.Params
 
 For ease of documentation we will be using type synonyms (aliases) for all types and
 structures throughout this design:
@@ -98,14 +109,6 @@ structures throughout this design:
 > type Beam        = Vector -- length: nB
 > type Range       = Vector -- length: nb
 > type Window      = Vector -- length: nFFT
-
-Here we define the size constants, for a simple test scenario provided by Saab AB. The
-size `nA` can be inferred from the size of input data and the vector operations.
-
-> nA   =   16 :: Int -- does not really affect the application
-> nB   =    8 :: Int
-> nb   = 1024 :: Int
-> nFFT =  256 :: Int
 
 Finally we provide two aliases for the basic Haskell data types used in the system, to
 stay consistent with the application specification.
@@ -130,7 +133,7 @@ assumption above.
 
 ![Video cube unrolling](figs/cube-unrolling.pdf){#fig:cube-unrolling}
 
- #### Digital Beamforming (DBF){#sec:dbf-atom-net}
+ #### Digital Beamforming (DBF){#sec:dbf-atom}
 
 The DBF receives complex in data, from $N_A$ antenna elements and forms $N_B$
 simultaneous receiver beams, or "listening directions", by summing individually
@@ -159,7 +162,7 @@ network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational proc
 >     beamSigs   = V.farm11 (V.reduce (SY.comb21 (+))) beamMatrix
 >     beamMatrix = M.farm21 (\c -> SY.comb11 (*c)) beamConsts sigMatrix
 >     sigMatrix  = V.farm11 V.fanout antennaSigs
->     beamConsts = mkBeamConsts (V.length antennaSigs) nB
+>     beamConsts = mkBeamConsts dElements waveLength nA nB :: Matrix CpxData
 
 
 | Function                     | Original module                       | Package                 |
@@ -168,6 +171,7 @@ network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational proc
 | `farm21`                     | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
 | `comb11`, `comb21`           | [`ForSyDe.Atom.MoC.SY`]               | forsyde-atom            |
 | `mkBeamConsts`               | `ForSyDe.AESA.Coefs`                  | aesa-atom               |
+| `dElements`, `waveLenth`, `nA`, `nB` | `ForSyDe.AESA.Params`         | aesa-atom               |
 \suppressfloats
 
 The previous code listing, depicted in @fig:dbf-net-atom, is actually showing the
@@ -189,7 +193,7 @@ presented later in [@sec:atom-coefs].
 
 [^dotMatMat]: see `dotMatMat` in the `ForSyDe.Atom.Skeleton.Vector.DSP` module from package `forsyde-atom-extensions`.
 
- #### Pulse Compression (PC){#sec:pc-atom-net}
+ #### Pulse Compression (PC){#sec:pc-atom}
 
 In this stage the received echo of the modulated pulse, i.e. the information contained
 by the range bins, is passed through a matched filter for decoding their modulation.
@@ -219,9 +223,9 @@ some constraint, e.g. throughput) which preserve these behavioral properties.
 | `farm11`    | [`ForSyDe.Atom.Skeleton.Vector`]   | forsyde-atom            |
 | `toSDF`     | [`ForSyDe.Atom.MoC.SY`]            | forsyde-atom            |
 | `comb11`    | [`ForSyDe.Atom.MoC.SDF`]           | forsyde-atom            |
-| `mav`       | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
+| `fir`       | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
 | `mkPcCoefs` | `ForSyDe.AESA.Coefs`               | aesa-atom               |
-\suppressfloats
+| `nb`        | `ForSyDe.AESA.Params`              | aesa-atom               |
 
 Following the reasoning above, we instantiate the PC video processing stage as a
 `farm` of SDF processes `procPC` as depicted in [@fig:pc-proc-atom]. Notice that
@@ -231,18 +235,19 @@ injective mapping from the (timed) domain of a SY MoC tag system, to the (untime
 codomain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
 
 > procPC :: Fractional a => SDF.Signal a -> SDF.Signal a 
-> procPC = SDF.comb11 (nb, nb, V.fromVector . mav mkPcCoefs . V.vector)
+> procPC = SDF.comb11 (nb, nb, V.fromVector . fir (mkPcCoefs 5) . V.vector)
 
 The `procPC` actor consumes and produces `nb` tokens each firing, forms a `Vector`
-from these tokens, and applies the `mav` skeleton on these vectors. The `mav` skeleton
-is a utility formulated in terms of primitive skeletons (i.e. `map` and `reduce`) on
-numbers, i.e. lifting arithmetic functions. We will study this skeleton later in this
-report and for now we take it "for granted", as conveniently provided by the `DSP`
-utility library. Also notice that the type signature for `procPC` is left polymorphic
-as to be more convenient later when we formulate properties over it.
+from these tokens, and applies the `fir` skeleton on these vectors (which computes the
+MAV if considering vectors). The `fir` skeleton is a utility formulated in terms of
+primitive skeletons (i.e. `map` and `reduce`) on numbers, i.e. lifting arithmetic
+functions. We will study this skeleton later in this report and for now we take it
+"for granted", as conveniently provided by the `DSP` utility library. Also notice that
+the type signature for `procPC` is left polymorphic as to be more convenient later
+when we formulate properties over it.
 
 
- #### Corner Turn (CT){#sec:ct-atom-net}
+ #### Corner Turn (CT){#sec:ct-atom}
 
 In order to be able to calculate the Doppler channels further in the processing
 pipeline, during a CT, a rearrangement of data must be performed between functions
@@ -267,8 +272,6 @@ $\frac{N_b \times N_{FFT}}{2}$ complex zeroes on each beam path. This way, whate
 input arrives from the PC stage, will be observed at the left channel only after
 $N_{FFT}/2$ samples.
 
-![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
-
 > ct :: Beam (SDF.Signal CpxData)
 >    -> (Beam (SDF.Signal CpxData),
 >        Beam (SDF.Signal CpxData))
@@ -283,11 +286,7 @@ $N_{FFT}/2$ samples.
 >     cornerTurn   = SDF.comb11 (nFFT * nb, nb * nFFT,
 >                                fromMatrix . M.transpose . matrix nb nFFT)
 
-| Function                       | Original module                       | Package                 |
-|--------------------------------|---------------------------------------|-------------------------|
-| `farm12`                       | [`ForSyDe.Atom.Skeleton.Vector`]      | forsyde-atom            |
-| (`from`-)`matrix`, `transpose` | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
-| `comb11`, `delay`              | [`ForSyDe.Atom.MoC.SDF`]              | forsyde-atom            |
+![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
 
 *Modeling tips:* the application specification mentions that the first $N_{FFT}$ batch
  of pulses is ignored, yet we do the other way around: we "fill in" with dummy
@@ -296,7 +295,14 @@ $N_{FFT}/2$ samples.
  loops. Only an observer (i.e. testbench, sink) is allowed to do that, outside the
  process network, as we shall see soon, when testing the system.
 
- #### Doppler Filter Bank (DFB){#sec:dfb-atom-net}
+| Function                 | Original module                       | Package                 |
+|--------------------------|---------------------------------------|-------------------------|
+| `farm12`                 | [`ForSyDe.Atom.Skeleton.Vector`]      | forsyde-atom            |
+| (`from`-)`matrix`, `transpose` | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
+| `comb11`, `delay`        | [`ForSyDe.Atom.MoC.SDF`]              | forsyde-atom            |
+| `nb`, `nFFT`             | `ForSyDe.AESA.Params`                 | aesa-atom               |
+
+ #### Doppler Filter Bank (DFB){#sec:dfb-atom}
 
 
 During the Doppler filter bank, every window of samples, associated with each range
@@ -326,10 +332,10 @@ complex samples, in three consecutive steps:
 >     -> Beam (SDF.Signal RealData)
 > dfb = V.farm11 procDFB
 > 
-> procDFB = SDF.Signal CpxData -> SDF.Signal RealData
+> procDFB :: SDF.Signal CpxData -> SDF.Signal RealData
 > procDFB = SDF.comb11 (nFFT, nFFT, fromVector . fDFB . vector)
 >   where
->     fDFB       = V.farm11 envelope . fft 8 . V.farm21 (*) mkWeightCoefs 
+>     fDFB       = V.farm11 envelope . fft nS . V.farm21 (*) (mkWeightCoefs nFFT)
 >     envelope a = let (i, q) = (realPart a, imagPart a)
 >                  in sqrt (i * i + q * q)
 
@@ -338,11 +344,12 @@ complex samples, in three consecutive steps:
 | `farm11`,` farm21` | [`ForSyDe.Atom.Skeleton.Vector`]   | forsyde-atom            |
 | `fft`              | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
 | `mkWeightCoefs`    | `ForSyDe.AESA.Coefs`               | aesa-atom               |
+| `nS`, `nFFT`       | `ForSyDe.AESA.Params`              | aesa-atom               |
 
 *Modeling tips:* each function composing $f_{DFB}$ is itself inherently parallel, as
 it is described in terms of parallel skeletons. We could have "lifted" these skeletons
 as far as associating a process for each elementary arithmetic operation, following
-the example set in @sec:dbf-atom-net. Although the two representation (if carefully
+the example set in @sec:dbf-atom. Although the two representation (if carefully
 modeled) are semantically equivalent, at this stage the modeling choice should be
 driven by the designer's intuition of the application's behavior. Only further in the
 design process, thanks to the formal description, can choose, or transform (ideally
@@ -368,11 +375,12 @@ the video cubes.
 ![CFAR network](figs/cfar-proc-atom.pdf){#fig:cfar-net-atom}
 
 > cfar :: Beam (SDF.Signal RealData)
->      -> Beam (SDF.Signal RealData)
-> cfar = V.farm11 (SDF.comb11 (nb * nFFT, 1, 
->                              (:[]) . fCFAR . M.matrix nFFT nb))
+>      -> Beam (SDF.Signal (Range (Window RealData)))
+> cfar = V.farm11 procCFAR
+>
+> procCFAR = SDF.comb11 (nb * nFFT, 1, (:[]) . fCFAR . M.matrix nFFT nb)
 
-Similar to the `cornerTurn` process in @sec:ct-atom-net, the `procCFAR` process builds
+Similar to the `cornerTurn` process in @sec:ct-atom, the `procCFAR` process builds
 up matrices of $N_b\times N_{FFT}$ samples and applies $f_{CFAR}$ function on these
 matrices. The $f_{CFAR}$ function normalizes each Doppler window, after which the
 sensitivity will be adapted to the clutter situation in current area, as seen in
@@ -388,7 +396,7 @@ parallel skeleton within the $f_{CFAR}$ function.
 > fCFAR :: Range (Window RealData) -> Range (Window RealData)
 > fCFAR rbins = V.farm41 (\m -> V.farm31 (normCfa m)) md rbins lmv emv
 >   where
->     md  = V.farm11 (logBase 2 . V.reduce min) bin
+>     md  = V.farm11 (logBase 2 . V.reduce min) rbins
 >     emv = (V.fanoutn (nFFT + 1) dummy) <++> (V.farm11 aritMean neighbors)
 >     lmv = (V.drop 2 $ V.farm11 aritMean neighbors) <++> (V.fanout dummy) 
 >     -----------------------------------------------
@@ -410,7 +418,7 @@ parallel skeleton within the $f_{CFAR}$ function.
 | `drop`, `fanout`, `fanoutn`, `stencil `   |                                  |              |
 | `comb11`                                  | [`ForSyDe.Atom.MoC.SDF`]         | forsyde-atom |
 | `maxFloat`                                | ForSyDe.AESA.Coefs               | aesa-atom    |
-
+| `nb`, `nFFT`                              | `ForSyDe.AESA.Params`            | aesa-atom    |
 
 The $f_{CFAR}$ function itself can be described with the system of [@eq:cfar], where
 
@@ -528,7 +536,7 @@ $$\begin{aligned}
 $${#eq:cfar-emv}
 
 
- #### Integrator (INT)
+ #### Integrator (INT){#sec:int-atom}
 
 During the last stage of the video processing chain each data sample of the video cube
 is integrated against its 8 previous values using an 8-tap FIR filter, as suggested by
@@ -565,8 +573,13 @@ appropriate to translate back to SY MoC semantics, hence the `toSY` domain inter
 
 ![INT network](figs/int-net.pdf){#fig:int-net-atom}
 
+> procINT :: Fractional a => SDF.Signal (Matrix a) -> SDF.Signal (Matrix a) -> SY.Signal (Matrix a)
+> procINT cr = firNet mkIntCoefs . SDF.toSY . merge cr
+>   where
+>     merge   = SDF.comb21 ((1,1), 2, \[r] [l] -> [r, l])
+ 
 The 8-tap FIR filter used for integration is also a moving average, but as compared to
-the `mav` function used in @sec:pc-atom-net, the window slides in time domain,
+the `mav` function used in @sec:pc-atom, the window slides in time domain,
 i.e. over streaming samples rather than over vector elements. To instantiate a FIR
 system we use the `firSk` skeleton provided by the ForSyDe-Atom utility libraries,
 which constructs the the well-recognizable FIR pattern in @fig:int-net-atom, i.e. a
@@ -578,16 +591,13 @@ corresponding functions on vectors. This feature derives from a powerful algebra
 skeletons which grants them both modularity, and the possibility to transform them
 into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
 
-> procINT :: Num a => Vector a 
->         -> SDF.Signal (Matrix a) -> SDF.Signal (Matrix a) -> SY.Signal (Matrix a)
-> procINT coefs cr = firNet . SDF.toSY . merge cr
+> firNet :: Num a => Vector a -> SY.Signal (Matrix a) -> SY.Signal (Matrix a)
+> firNet coefs = fir' addSM mulSM dlySM coefs
 >   where
->     merge   = SDF.comb21 ((1,1), 2, \[r] [l] -> [r, l])
->     firNet  = firSk addSC mulSM dlySM coefs
 >     addSM   = SY.comb21 (M.farm21 (+))
 >     mulSM c = SY.comb11 (M.farm11 (*c))
 >     dlySM   = SY.delay  (M.fanout 0)
-
+   
 | Function          | Original module                     | Package                 |
 |-------------------|-------------------------------------|-------------------------|
 | `farm21`          | [`ForSyDe.Atom.Skeleton.Vector`]    | forsyde-atom            |
@@ -601,27 +611,43 @@ into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
 
  ### System Process Network
 
-Finally, when putting all the instantiated blocks together in an
-equational style (see code), we obtain the system in
-@fig:aesa-net-atom.
+Finally, when putting all the blocks together in an equation, we obtain the system
+`aesa'` in @fig:aesa-net-atom.
 
 \suppressfloats
 ![AESA network as black-box components](figs/aesa-net-atom.pdf){#fig:aesa-net-atom}
 
-> aesa :: Antenna (SY.Signal CpxData)
->      -> Beam (CRange (Window (SY.Signal RealData)))
-> aesa video = int lDfb rDfb
+> aesa' :: Antenna (SY.Signal CpxData) -> Beam (SY.Signal (Range (Window RealData)))
+> aesa' video = int rCfar lCfar
 >   where
->     lDfb      = cfar $ dfb lCt
->     rDfb      = cfar $ dfb rCt
->     (lCt,rCt) = ct $ pc $ dbf video
+>     lCfar     = cfar $ dfb lCt
+>     rCfar     = cfar $ dfb rCt
+>     (rCt,lCt) = ct $ pc $ dbf video
 
-The system model in @fig:aesa-net-atom can further be refined once we
-understand that from PC to INT the processing path is replicated for
-each beam generated by the DBF. Therefore it is possible to fuse the
-related `farm` skeletons into the much simpler and more elegant model
-from @fig:aesa-net-atom2. As both models are semantically-equivalent
-an automated or tool-assisted transformation process should be
-trivial.
+Although completely functional and modular, the system depicted in @fig:aesa-net-atom
+is not the most "pleasant" to look at. For the sake of code elegance and to increase
+the potential of simulation distribution (see @sec:parallel-sim), we refine the system
+`aesa'` to avoid unnecessary merging-splitting of vectors between stages. On the other
+hand, from the point of view of sequential performance it does not really matter,
+because these patterns are "ignored" (reduced) by Haskell's lazy evaluation system
+which can easily identify them as compositions of inverse functions. Once we
+understand that between PC and INT the processing path is replicated for each beam
+generated by the DBF. Therefore it is possible to fuse the related `farm` skeletons
+into the much simpler and more elegant model from @fig:aesa-net-atom2. As both models
+are semantically-equivalent an automated or tool-assisted transformation process
+should be trivial.
 
 ![AESA network when fusing the related `farm`s](figs/aesa-net-atom2.pdf){#fig:aesa-net-atom2}
+
+> aesa :: Antenna (SY.Signal CpxData) -> Beam (SY.Signal (Range (Window RealData)))
+> aesa = V.farm11 pcToInt . dbf
+>   where
+>     pcToInt beam = let (rb,lb) = procCT $ procPC $ SY.toSDF beam
+>                        lCFAR   = procCFAR $ procDFB lb
+>                        rCFAR   = procCFAR $ procDFB rb
+>                    in  procINT rCFAR lCFAR
+
+ ## Coefficients, constants and parameters {#sec:consts-coefs-atom}
+
+This section briefly presents the constants and coefficients which have been used
+until now, and which shall be further used throughout this report.

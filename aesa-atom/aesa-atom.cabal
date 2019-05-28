@@ -1,0 +1,71 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 3d1c0c91684d56f75b09eed95a301776f5d23187b062800d2c153109f61a6187
+
+name:           aesa-atom
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/ugeorge/saab-aesa>
+homepage:       https://github.com/ugeorge/saab-aesa#readme
+bug-reports:    https://github.com/ugeorge/saab-aesa/issues
+author:         George Ungureanu
+maintainer:     ugeorge@kth.se
+copyright:      2019 George Ungureanu, KTH
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/ugeorge/saab-aesa
+
+library
+  exposed-modules:
+      ForSyDe.AESA.Coefs
+      ForSyDe.AESA.HighLevelAtom
+      ForSyDe.AESA.Params
+  other-modules:
+      Paths_aesa_atom
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , forsyde-atom
+    , forsyde-atom-extensions
+  default-language: Haskell2010
+
+executable aesa-hl
+  main-is: Main.hs
+  other-modules:
+      Utils
+      Paths_aesa_atom
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -eventlog -with-rtsopts=-N
+  build-depends:
+      aesa-atom
+    , base >=4.7 && <5
+    , forsyde-atom
+    , forsyde-atom-extensions
+  default-language: Haskell2010
+
+test-suite tests-hl
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_aesa_atom
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aesa-atom
+    , base >=4.7 && <5
+    , forsyde-atom
+    , forsyde-atom-extensions
+  default-language: Haskell2010

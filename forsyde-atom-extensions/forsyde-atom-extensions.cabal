@@ -24,8 +24,7 @@ library
   -- other-extensions:
   build-depends:       base >=4.2 && <5,
                        numbers,
-                       forsyde-atom,
-                       forsyde-shallow
+                       forsyde-atom
                        
   hs-source-dirs:      src
   default-language:    Haskell2010

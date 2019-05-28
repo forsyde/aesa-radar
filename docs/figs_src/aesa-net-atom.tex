@@ -5,47 +5,53 @@
 \begin{document}
 \begin{tikzpicture}[constructors=shallow,xscale=2.5,yscale=2.4]
   \standard[process,moc=blackbox](dbf){dbf};
-  \cluster[skeleton,type=mapReduce](dbfnet)<(dbf)>{};
+  \cluster[skeleton,type=mapReduce,inner xsep=20pt](dbfnet)<(dbf)>{DBF};
   
   \standard[process,moc=blackbox,xshift=2.5cm](pc)<dbf>{pc};
-  \cluster[skeleton,type=farm](pcnet)<(pc)>{};
+  \resetportinfo{pc}\epinfo{$N_{b}$}
+  \cluster[skeleton,type=farm](pcnet)<(pc)>{PC};
   
-  \standard[process,moc=blackbox,no=2,xshift=2.5cm](ct)<pc>{ct};
-  \resetportinfo{ct}\epinfo{$N_b\times N_{FFT}$}\epinfo{$N_b\times N_{FFT}$}
-  \node[xshift=1cm] (dum) at (ct.east) {};
-  \cluster[skeleton,type=farm](ctnet)<(ct)(dum)>{};
+  \standard[process,moc=blackbox,no=2,xshift=3.5cm](ct)<pc>{ct};
+  \resetportinfo{ct}\wpinfo{$N_{FFT} \times N_b$}\epinfo{$N_b\times N_{FFT}$}\epinfo{$N_b\times N_{FFT}$}
+  % \node[xshift=1cm] (dum) at (ct.east) {};
+  \cluster[skeleton,type=farm, inner xsep=45pt](ctnet)<(ct)>{CT};
 
   \foreach \i/\y in {1/1,2/-1}{
     \standard[process,moc=blackbox,xshift=3.5cm,yshift=\y cm](dfb\i)<ct.e\i>{dfb};
     \resetportinfo{dfb\i}\wpinfo{$N_{FFT}$}\epinfo{$N_{FFT}$}
-    \cluster[skeleton,type=farm,inner xsep=25pt](dfbnet\i)<(dfb\i)>{};
+    \cluster[skeleton,type=farm,inner xsep=25pt](dfbnet\i)<(dfb\i)>{DFB};
     \standard[process,moc=blackbox,xshift=3.5cm](cfar\i)<dfb\i.e1>{cfar};
-    \resetportinfo{cfar\i}\wpinfo{$N_{b}\times N_{FFT}$}\epinfo{$N_{b'}\times N_{FFT}$}
-    \cluster[skeleton,type=farm,inner xsep=45pt](cfarnet\i)<(cfar\i)>{};
+    \resetportinfo{cfar\i}\wpinfo{$N_{b}\times N_{FFT}$}\epinfo{1}
+    \node[xshift=-1cm] (dum) at (cfar\i.west) {};
+    \cluster[skeleton,type=farm](cfarnet\i)<(cfar\i)(dum)>{CFAR};
   }
-  \standard[process,moc=blackbox,ni=2,xshift=4cm,inner ysep=10pt](int)<$(cfar1.e1)!.5!(cfar2.e1)$>{int};
-  \resetportinfo{int}\wpinfo{$N_{b'}\times N_{FFT}$}\wpinfo{$N_{b'}\times N_{FFT}$}
-  \node[xshift=-1cm] (dum) at (int.west) {};
-  \cluster[skeleton,type=farm](intnet)<(int)(dum)>{};
+  \standard[process,moc=blackbox,ni=2,xshift=2cm,inner ysep=10pt](int)<$(cfar1.e1)!.5!(cfar2.e1)$>{int};
+  \resetportinfo{int}\wpinfo{1}\wpinfo{1}
+  \cluster[skeleton,type=farm](intnet)<(int)>{INT};
 
 
   
   \path (ct.e1) edge[intersect=ctnet-east, as=ctnet1] ++(3,0)  (ct.e2) edge[intersect=ctnet-east, as=ctnet2] ++(3,0)
    (int.w1) edge[intersect=intnet-west, as=intnet1] ++(-3,0)  (int.w2) edge[intersect=intnet-west, as=intnet2] ++(-3,0);
-  \draw[trans={<-,s=sy}{dbfnet-west}{v=sy,srcport}] (dbf) --++(-.8,0) node[anchor=south,rotate=90]{$\SkelVec{a}_{N_A}$};
-  \draw[v=sy] (dbfnet.e1) -- (pcnet.w1)  (pcnet.e1) -- (ctnet.w1);
+  \draw[trans={<-,s=sy,token=vector}{dbfnet-west}{v=sy,srcport}] (dbf) --++(-.8,0) node[anchor=south,rotate=90]{$\SkelVec{a}_{N_A}$};
+  \draw[v=sy] (dbfnet.e1) -- (pcnet.w1) ;
   \draw[v=sy,->] (intnet.e1) --++(.5,0) node[black,anchor=north,rotate=90]{$\SkelVec{\SkelVec{\SkelVec{b}_{N_{FFT}}}_{N_{b'}}}_{N_B}$};
-  \draw[s=sy] (pcnet.w1) edge[srcport,->] (pc.w1) (ctnet.w1) edge[srcport,->] (ct.w1)
-  (dbf.e1) edge[dstport] (dbfnet.e1) (pc.e1) edge[dstport] (pcnet.e1) (int.e1) edge[dstport] (intnet.e1);
+  \draw[s=sy] (pcnet.w1) edge[srcport,->,token=vector] (pc.w1) 
+  (dbf.e1) edge[dstport] (dbfnet.e1) (int.e1) edge[dstport] (intnet.e1);
+  \draw[v=sdf]  (pcnet.e1) -- (ctnet.w1);
+  \draw[s=sdf] (ctnet.w1) edge[srcport,->,token=vector] (ct.w1) (pc.e1) edge[dstport] (pcnet.e1) ;
   \draw[v=sdf] (dfbnet1.e1) -- (cfarnet1.w1)  (dfbnet2.e1) -- (cfarnet2.w1)
   (ctnet1) edge[-|-] (dfbnet1.w1) (ctnet2) edge[-|-] (dfbnet2.w1)
   (cfarnet1.e1) edge[-|-] (intnet1) (cfarnet2.e1) edge[-|-] (intnet2);
   \draw[s=sdf] (ct.e1) edge[dstport] (ctnet1)  (ct.e2) edge[dstport] (ctnet2)
   (dfb1.e1) edge[dstport] (dfbnet1.e1)  (dfb2.e1) edge[dstport] (dfbnet2.e1)
   (cfar1.e1) edge[dstport] (cfarnet1.e1)  (cfar2.e1) edge[dstport] (cfarnet2.e1)
-  (dfbnet1.w1) edge[srcport,->] (dfb1.w1) (dfbnet2.w1) edge[srcport,->] (dfb2.w1)
-  (cfarnet1.w1) edge[srcport,->] (cfar1.w1) (cfarnet2.w1) edge[srcport,->] (cfar2.w1)
-  (intnet1) edge[srcport,->] (int.w1) (intnet2) edge[srcport,->] (int.w2)
+  (dfbnet1.w1) edge[srcport,->,token=vector] (dfb1.w1) (dfbnet2.w1) edge[srcport,->,token=vector] (dfb2.w1)
+  (cfarnet1.w1) edge[srcport,->,token=scalar] (cfar1.w1) (cfarnet2.w1) edge[srcport,->,token=scalar] (cfar2.w1)
+  (intnet1) edge[srcport,->,token=scalar] (int.w1) (intnet2) edge[srcport,->,,token=scalar] (int.w2)
   ;
+
+  \draw[s,->,token=vector] (dbfnet.south)++(0,-.3) node[anchor=east,xshift=-5pt] {Legend:} -- ++(.5,0) node[anchor=west] {\texttt{CpxData}};
+  \draw[s,->,token=scalar] (dbfnet.south)++(0,-.5) -- ++(.5,0) node[anchor=west] {\texttt{RealData}};
 \end{tikzpicture}
 \end{document}
