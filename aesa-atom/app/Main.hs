@@ -1,38 +1,100 @@
+{-# LANGUAGE PackageImports, TypeSynonymInstances, FlexibleInstances #-}
 module Main where
 
 import System.Console.GetOpt
 import System.IO
 import System.Exit
 import System.Environment
+import System.Process
 
 import Control.Exception
 import System.CPUTime
--- import Control.Monad
+import Control.Monad
 -- import Control.Parallel.Strategies
--- import Control.DeepSeq
+import Control.DeepSeq
+import Data.List
+
+import ForSyDe.Atom.MoC.Stream (tailS)
+import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), signal, fromSignal)
+import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF (Signal(..), signal, fromSignal)
+import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11)
 
 import ForSyDe.AESA.HighLevelAtom
--- import ForSyDe.AESA.Params
+import ForSyDe.AESA.Params
 -- import ForSyDe.AESA.Coefs
 
 import Utils
 
 main = do
-  (n,or,imp) <- getArgs >>= parse
-  putStrLn "hallo"
-  -- jfkGen <- generate arbitrary :: IO (Signal Flight)
-  -- laxGen <- generate arbitrary :: IO (Signal Flight)
-  -- ordGen <- generate arbitrary :: IO (Signal Flight)
-  -- let jfkS = clean JFK jfkGen
-  --     laxS = clean LAX laxGen
-  --     ordS = clean ORD ordGen
+  args <- getArgs >>= parse
+  -- Begin execution
+  when (genInps args) $ generateInputs (genPath args) (inFilePath args)
+  putStrLn $ "Reading the indata at: " ++ inFilePath args ++ "..."
+  aesaIn <- readInData (inFilePath args)
+  let nAntennas = length aesaIn
+      nSamples  = length $ head aesaIn
+  putStrLn $ "Read " ++ show nAntennas ++ " * " ++ show nSamples
+    ++ " complex samples which means " ++ show ((nAntennas * nSamples) `div` (nA * nb * nFFT))
+    ++ " indata cube(s)..."
+  -- Re-build & declare an (unsafe) observable AESA system, only for the purpose of testing
+  let iSigs           = V.vector $ map SY.signal $ aesaIn
+      oDBF            = dbf iSigs
+      oPC             = pc oDBF
+      (oCTR,oCTL)     = ct oPC
+      (oDFBR,oDFBL)   = (dfb oCTR,dfb oCTL)
+      (oCFARR,oCFARL) = (cfar oDFBR,cfar oDFBL)
+      oAESA           = int oCFARR $ V.farm11 tailS oCFARL
+      ------------------------------------------------------
+      -- declarations for unwrapped (dumpable) data
+      inData       = toListVecSig SY.fromSignal iSigs
+      outDbfData   = toListVecSig SY.fromSignal oDBF
+      outPcData    = toListVecSig SDF.fromSignal oPC
+      outCtrData   = toListVecSig SDF.fromSignal oCTR
+      outCtlData   = toListVecSig SDF.fromSignal oCTL
+      outDfbrData  = toListVecSig SDF.fromSignal oDFBR  
+      outDfblData  = toListVecSig SDF.fromSignal oDFBL
+      outCfarrData = toListVecMat SDF.fromSignal oCFARR
+      outCfarlData = toListVecMat SDF.fromSignal oCFARL
+      outAesaData  = toListVecMat SY.fromSignal oAESA
+  -- Carry on with the program execution
+  if timeM args
+    then do
+      putStrLn "Only measuring execution time. No data will be dumped, printed or plotted..."
+      runtime <- time oAESA
+      putStrLn $ "Finished execution in " ++ show runtime ++ " sec"
+      exitWith ExitSuccess
+    else do
+      putStrLn "Executing the AESA and dumping eventual intermediate files..."
+      dumpData3 (outFilePath args) showFloat outAesaData
+      printDimen3 ("Dumped at "++ outFilePath args ++" the last cube of AESA output: ") outAesaData  
+      exitWith ExitSuccess
+  where
+    ---------------------------------------------------------
+    inFilePath  args = inPath args  ++ "/AESA_INDATA.csv"
+    outFilePath args = outPath args ++ "/AESA_OUTPUT.csv"
+    dbfOutFile  args = outPath args ++ "/DBF.csv"
+    pcOutFile   args = outPath args ++ "/PC.csv"
+    ctOutFile   args = (outPath args ++ "/CT_R.csv",outPath args ++ "/CT_L.csv")
+    dfbOutFile  args = (outPath args ++ "/DFB_R.csv",outPath args ++ "/DFB_L.csv")
+    cfarOutFile args = (outPath args ++ "/CFAR_R.csv",outPath args ++ "/CFAR_L.csv")
+    ---------------------------------------------------------
+    -- take only the last cube of data!
+    toListVecMat unwrap = map (  (map V.fromVector . V.fromVector) . head . reverse . unwrap) . V.fromVector
+    toListVecSig unwrap = transpose . map unwrap . V.fromVector
+    ---------------------------------------------------------
+    generateInputs scrPath filePath = do
+      putStrLn "Generating AESA radar input, please wait..."
+      (exit,out,errs) <- readProcessWithExitCode  "python3" [scrPath] filePath
+      case exit of
+        ExitSuccess -> do
+          hPutStrLn stdout out
+          putStrLn $ "Generated AESA radar input files in: " ++ filePath
+        ExitFailure n -> do 
+          hPutStrLn stderr errs
+          exitWith (ExitFailure n)
+
   -- mapM_ (executeModel n or jfkS laxS ordS) imp
   -- where
-  --   clean :: Airport -> Signal Flight -> Signal Flight
-  --   clean name NullS = NullS
-  --   clean name (s@(E _ x):-ss)
-  --     | dest x == name = clean name ss
-  --     | otherwise      = s :- clean name ss
   --   executeModel n or jfkS laxS ordS imp = do
   --     let (jfkL, laxL, ordL)  = implem jfkS laxS ordS
   --         implem = case imp of DESeq -> S.threeAirports
@@ -53,25 +115,33 @@ main = do
   --         pprint n ordL
             
 
-data Flag
-  = GenInput            -- -g
-  | GenScript String    -- --gen-path
-  | PlotPath String     -- --plot-path
-  | DumpPath String     -- -o
-  | Intermediate String -- --inter
-  | Help                -- --help
-  deriving (Eq,Ord,Show)
- 
+data Args = Args
+  { genInps :: Bool
+  , pltOuts :: Bool
+  , timeM   :: Bool
+  , genPath :: String
+  , pltPath :: String
+  , inPath  :: String
+  , outPath :: String
+  , inter   :: String
+  } deriving (Eq,Ord,Show)
+             
 flags =
   [Option ['g'] ["gen-data"] (NoArg GenInput)
     "Invokes the antenna input data generator script."
+  ,Option ['p'] ["plot"]     (NoArg PlotOutput)
+    "Invokes the output plotter script."
+  ,Option ['t'] ["time"]     (NoArg MeasureTime)
+    "Measures and prints out execution time."
   ,Option [] ["gen-path"]    (ReqArg GenScript "PATH")
     "Path to input generator script. Default: scripts/generate-input.py"
   ,Option [] ["plot-path"]   (ReqArg PlotPath "PATH")
     "Path to output plotter script. Default: scripts/plot-output.py"
-  ,Option ['o'] ["out"]      (ReqArg DumpPath "PATH")
-    "Runs the concurrent implementation. Default: out"
-  ,Option [] ["inter"]       (ReqArg DumpPath "STAGE")
+  ,Option ['i'] ["input"]    (ReqArg InPath "PATH")
+    "Path to input data files. Default: gen"
+  ,Option ['o'] ["output"]   (ReqArg DumpPath "PATH")
+    "Path to dump generated files. Default: gen"
+  ,Option [] ["inter"]       (ReqArg Intermediate "STAGE")
     ("Dumps and plots data at intermediate stages. Options:\n" ++
        "d: after DBF stage\n" ++
        "p: after PC stage\n" ++
@@ -81,35 +151,60 @@ flags =
   ,Option ['h'] ["help"]   (NoArg Help)
     "Print this help message"
   ]
+
+data Flag
+  = GenInput            -- -g
+  | PlotOutput          -- -p
+  | MeasureTime         -- -t
+  | GenScript String    -- --gen-path
+  | PlotPath String     -- --plot-path
+  | InPath String       -- -i
+  | DumpPath String     -- -o
+  | Intermediate String -- --inter
+  | Help                -- --help
+  deriving (Ord,Show)
+
+instance Eq Flag where
+  GenInput         == GenInput         = True
+  PlotOutput       == PlotOutput       = True
+  MeasureTime      == MeasureTime      = True
+  (GenScript _)    == (GenScript _)    = True
+  (PlotPath _)     == (PlotPath _)     = True
+  (InPath _)       == (InPath _)       = True
+  (DumpPath _)     == (DumpPath _)     = True
+  (Intermediate _) == (Intermediate _) = True
+  Help             == Help = True
+  _ == _ = False
+
+getFlagArg (GenScript s) = s
+getFlagArg (PlotPath s) = s
+getFlagArg (InPath s) = s
+getFlagArg (DumpPath s) = s
+getFlagArg (Intermediate s) = s
+
   
 parse argv = case getOpt Permute flags argv of
                (args,_,[]) -> do
+                 let select x = filter (==x) args
+                     selArg x = let arg =  select (x "") in if null arg then "" else getFlagArg (head arg)
+                     genInps  = if null (select GenInput) then False else True
+                     pltOuts  = if null (select PlotOutput) then False else True
+                     timeM    = if null (select MeasureTime) then False else True
+                     inter    = selArg Intermediate
+                 genPath <- checkIfFile "scripts/generate-input.py" (selArg GenScript)
+                 pltPath <- checkIfFile "scripts/plot-output.py" (selArg PlotPath)
+                 inPath  <- checkIfDir "gen" (selArg InPath)
+                 outPath <- checkIfDir "gen" (selArg DumpPath)
                  if Help `elem` args
                    then do hPutStrLn stderr (usageInfo header flags)
                            exitWith ExitSuccess
-                   else return (1, 2, 3)
-  
+                   else return $ Args genInps pltOuts timeM genPath pltPath inPath outPath inter
                (_,_,errs)   -> do
                  hPutStrLn stderr (concat errs ++ usageInfo header flags)
                  exitWith (ExitFailure 1)
  
   where header = "Usage: aesa-hl [-gh|--out=PATH|--inter=[dpcfa]|...]"
  
-
--- lim :: Int
--- lim = 10^5
-
--- time :: (NFData t) => (Signal t,Signal t,Signal t)  -> IO (Double)
--- time y = do
---     start <- getCPUTime
---     -- replicateM_ lim $ do
---     x <- evaluate $ y
---     rnf x `seq` return ()
---     end   <- getCPUTime
---     let diff = (fromIntegral (end - start)) / (10^12)
---     -- printf "Computation time: %0.9f sec\n" (diff :: Double)
---     -- printf "Individual time: %0.9f sec\n" ( :: Double)
---     return (diff / fromIntegral lim)
 
 
 -- import qualified                           Data.ByteString.Char8 as S
@@ -184,3 +279,26 @@ parse argv = case getOpt Permute flags argv of
 --     --       fw = V.first fr
 --     --   putStrLn $ str ++ show (length sg) ++ " x " ++ show (V.length fb)
 --     --     ++ " x " ++ show (V.length fr) ++ " x " ++ show (V.length fw) 
+
+
+lim :: Int
+lim = 10^5
+
+time :: (NFData t) => (Vector (SY.Signal (Vector (Vector t))))  -> IO (Double)
+time y = do
+    start <- getCPUTime
+    -- replicateM_ lim $ do
+    x <- evaluate $ y
+    rnf x `seq` return ()
+    end   <- getCPUTime
+    let diff = (fromIntegral (end - start)) / (10^12)
+    -- printf "Computation time: %0.9f sec\n" (diff :: Double)
+    -- printf "Individual time: %0.9f sec\n" ( :: Double)
+    return diff
+
+
+instance NFData a => NFData (SY.Signal a) where
+  rnf = rnf . SY.fromSignal
+
+instance NFData a => NFData (V.Vector a) where
+  rnf = rnf . V.fromVector 

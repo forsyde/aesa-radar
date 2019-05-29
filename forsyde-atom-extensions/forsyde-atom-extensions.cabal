@@ -16,7 +16,7 @@ extra-source-files:  CHANGELOG.md
 library
   exposed-modules:   ForSyDe.Atom.Skeleton.Vector
                    , ForSyDe.Atom.Skeleton.Vector.Matrix
-                   , ForSyDe.Atom.Skeleton.Vector.Cube
+                   -- , ForSyDe.Atom.Skeleton.Vector.Cube
                    , ForSyDe.Atom.Skeleton.Vector.DSP
                    , ForSyDe.Atom.MoC.SY
                    , ForSyDe.Atom.MoC.SDF
@@ -24,6 +24,7 @@ library
   -- other-extensions:
   build-depends:       base >=4.2 && <5,
                        numbers,
+                       split,
                        forsyde-atom
                        
   hs-source-dirs:      src

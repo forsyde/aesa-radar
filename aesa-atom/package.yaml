@@ -38,7 +38,13 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - aesa-atom
-  
+    - directory
+    - process
+    - bytestring-lexing
+    - bytestring
+    - double-conversion
+    - deepseq
+    
 tests:
   tests-hl:
     main:                Spec.hs

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3d1c0c91684d56f75b09eed95a301776f5d23187b062800d2c153109f61a6187
+-- hash: 32f3241683e6b89b04b70cf6adab2ad1007a1c516236d5235ebc5f9be873bcfc
 
 name:           aesa-atom
 version:        0.1.0.0
@@ -51,8 +51,14 @@ executable aesa-hl
   build-depends:
       aesa-atom
     , base >=4.7 && <5
+    , bytestring
+    , bytestring-lexing
+    , deepseq
+    , directory
+    , double-conversion
     , forsyde-atom
     , forsyde-atom-extensions
+    , process
   default-language: Haskell2010
 
 test-suite tests-hl

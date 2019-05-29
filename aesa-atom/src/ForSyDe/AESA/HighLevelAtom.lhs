@@ -342,7 +342,6 @@ complex samples, in three consecutive steps:
    interest. The envelope is obtained by calculating the absolute value of the complex
    number, converting it into a real number.
 
-![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
 
 > dfb :: Beam (SDF.Signal CpxData)
 >     -> Beam (SDF.Signal RealData)
@@ -354,6 +353,8 @@ complex samples, in three consecutive steps:
 >     fDFB       = V.farm11 envelope . fft nS . V.farm21 (*) (mkWeightCoefs nFFT)
 >     envelope a = let (i, q) = (realPart a, imagPart a)
 >                  in sqrt (i * i + q * q)
+
+![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
 
 | Function           | Original module                    | Package                 |
 |--------------------|------------------------------------|-------------------------|
@@ -388,13 +389,14 @@ the video cubes.
 
 ![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cfar-cube}
 
-![CFAR network](figs/cfar-proc-atom.pdf){#fig:cfar-net-atom}
-
 > cfar :: Beam (SDF.Signal RealData)
 >      -> Beam (SDF.Signal (Range (Window RealData)))
 > cfar = V.farm11 procCFAR
 >
 > procCFAR = SDF.comb11 (nb * nFFT, 1, (:[]) . fCFAR . M.matrix nFFT nb)
+
+![CFAR network](figs/cfar-proc-atom.pdf){#fig:cfar-net-atom}
+
 
 Similar to the `cornerTurn` process in @sec:ct-atom, the `procCFAR` process builds
 up matrices of $N_b\times N_{FFT}$ samples and applies $f_{CFAR}$ function on these
@@ -621,7 +623,6 @@ into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
 | `firSk`           | ForSyDe.Atom.Skeleton.Vector.DSP    | forsyde-atom-extensions |
 | `comb21`,`comb11` | [`ForSyDe.Atom.MoC.SDF`]            | forsyde-atom            |
 | `mkFirCoefs`      | ForSyDe.AESA.Coefs                  | aesa-atom               |
-\suppressfloats
 
 [^eff]: we try to avoid unnecessary transposes (i.e. type traversals) which are time-consuming.
 
@@ -630,7 +631,6 @@ into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
 Finally, when putting all the blocks together in an equation, we obtain the system
 `aesa'` in @fig:aesa-net-atom.
 
-\suppressfloats
 ![AESA network as black-box components](figs/aesa-net-atom.pdf){#fig:aesa-net-atom}
 
 > aesa' :: Antenna (SY.Signal CpxData) -> Beam (SY.Signal (Range (Window RealData)))
@@ -653,7 +653,6 @@ into the much simpler and more elegant model from @fig:aesa-net-atom2. As both m
 are semantically-equivalent an automated or tool-assisted transformation process
 should be trivial.
 
-![AESA network when fusing the related `farm`s](figs/aesa-net-atom2.pdf){#fig:aesa-net-atom2}
 
 > aesa :: Antenna (SY.Signal CpxData) -> Beam (SY.Signal (Range (Window RealData)))
 > aesa = V.farm11 pcToInt . dbf
@@ -662,6 +661,8 @@ should be trivial.
 >                        lCFAR   = procCFAR $ procDFB lb
 >                        rCFAR   = procCFAR $ procDFB rb
 >                    in  procINT rCFAR lCFAR
+
+![AESA network when fusing the related `farm`s](figs/aesa-net-atom2.pdf){#fig:aesa-net-atom2}
 
  ## Coefficients, constants and parameters {#sec:consts-coefs-atom}
 

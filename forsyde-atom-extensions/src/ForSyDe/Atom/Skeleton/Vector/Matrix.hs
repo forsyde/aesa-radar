@@ -2,7 +2,7 @@ module ForSyDe.Atom.Skeleton.Vector.Matrix where
 
 import qualified GHC.List as L (take, drop)
 import Prelude hiding (take, drop)
-import Data.List (intercalate)
+import qualified Data.List as L
 import ForSyDe.Atom.Skeleton.Vector (Vector(..), vector, fromVector, (<++>))
 import qualified ForSyDe.Atom.Skeleton.Vector as V
 
@@ -27,14 +27,14 @@ pretty sep mat = mapM_ putStrLn $ fromVector $ printMat maxWdt strMat
     maxWdt = V.reduce (V.farm21 max) $ farm11 length strMat
     strMat = farm11 show mat
     printMat w  = V.farm11 (printRow w)
-    printRow w  = intercalate sep . fromVector . V.farm21 align w
+    printRow w  = L.intercalate sep . fromVector . V.farm21 align w
     align n str = replicate (n - length str) ' ' ++ str
 
 -- | Checks if a matrix is null. @<>@ and @<<>>@ are both null
 -- matrices.
 isNull :: Matrix a -> Bool
-isNull Null = True
-isNull (Null:>Null) = True
+isNull (Vector []) = True
+isNull (Vector [Vector []]) = True
 isNull _ = False
 
 -- | Returns the X and Y dimensions of matrix and checks if it is well formed.
@@ -42,17 +42,17 @@ size :: Matrix a -> (Int,Int)
 size m = (x,y)
   where
     y = V.length m
-    x = (V.length . V.first) (wellFormed m)
+    x = (V.length . V.first) (m)
 
--- | Checks if a matrix is well-formed, meaning that all its rows are
--- of equal length. Returns the same matrix in case it is well-formed
--- or throws an exception if it is ill-formed.
-wellFormed :: Matrix a -> Matrix a
-wellFormed Null = Null
-wellFormed m@(_:>Null) = m
-wellFormed m@(x:>xs)
-  | V.reduce (&&) (V.farm11 (\r -> V.length r == V.length x) xs) = m
-  | otherwise = error "matrix ill-formed: rows are of unequal lengths"
+-- -- | Checks if a matrix is well-formed, meaning that all its rows are
+-- -- of equal length. Returns the same matrix in case it is well-formed
+-- -- or throws an exception if it is ill-formed.
+-- wellFormed :: Matrix a -> Matrix a
+-- wellFormed (Vector []) = Vector []
+-- wellFormed m@(Vector (_ : [])) = m
+-- wellFormed m@(Vector (x:xs))
+--   | V.reduce (&&) (V.farm11 (\r -> V.length r == V.length x) xs) = m
+--   | otherwise = error "matrix ill-formed: rows are of unequal lengths"
 
 groupEvery :: Int -> [a] -> [[a]]
 groupEvery _ [] = []
@@ -81,8 +81,8 @@ fromMatrix = concatMap fromVector . fromVector
 
 -- | Creates a unit (i.e. singleton) matrix, which is a matrix with
 -- only one element.
-unit :: a -> Matrix a -- ^ /size/ = @(1,1)@
-unit a = (a:>Null):>Null
+-- unit :: a -> Matrix a -- ^ /size/ = @(1,1)@
+-- unit a = (a:>Null):>Null
 
 -- | Creates an /infinite matrix/ which repeats one element
 fanout :: a -> Matrix a
@@ -169,18 +169,18 @@ dot :: (a -> a -> a) -- ^ kernel function for a row/column reduction, e.g. @(+)@
     -> Matrix a      -- ^ /size/ = @(xa,xa)@
 dot f g m = V.farm11 (dotV f g m) . transpose
 
--- | Returns the element of a matrix at a certain position.
---
--- >>> let m = matrix 3 3 [1,2,3,11,12,13,21,22,23]
--- >>> at 2 1 m
--- 13
-get :: Int       -- ^ X index starting from zero
-    -> Int       -- ^ Y index starting from zero
-    -> Matrix a
-    -> Maybe a
-get x y mat = getMaybe (V.get y mat)
-  where getMaybe Nothing = Nothing
-        getMaybe (Just a) = V.get x a
+-- -- | Returns the element of a matrix at a certain position.
+-- --
+-- -- >>> let m = matrix 3 3 [1,2,3,11,12,13,21,22,23]
+-- -- >>> at 2 1 m
+-- -- 13
+-- get :: Int       -- ^ X index starting from zero
+--     -> Int       -- ^ Y index starting from zero
+--     -> Matrix a
+--     -> Maybe a
+-- get x y mat = getMaybe (V.get y mat)
+--   where getMaybe Nothing = Nothing
+--         getMaybe (Just a) = V.get x a
 
 -- | Returns the upper-left part of a matrix until a specific
 -- position.
@@ -260,39 +260,41 @@ stencil r c = arrange . groupCols . groupRows
     arrange   = V.farm11 transpose
     dropFromEnd n v = V.take (V.length v - n) v
 
--- | Reverses the order of elements in a matrix
-reverse :: Matrix a -> Matrix a
-reverse = V.reverse . V.farm11 V.reverse
+-- -- | Reverses the order of elements in a matrix
+-- reverse :: Matrix a -> Matrix a
+-- reverse = V.reverse . V.farm11 V.reverse
 
--- | Pattern which "rotates" a matrix. The rotation is controled with
--- the /x/ and /y/ index arguments as following:
---
--- * @(> 0)@ : rotates the matrix right/down with the corresponding
--- number of positions.
--- 
--- * @(= 0)@ : does not modify the position for that axis.
--- 
--- * @(< 0)@ : rotates the matrix left/up with the corresponding
--- number of positions.
---
--- >>> let m = matrix 4 4 [1,2,3,4,11,12,13,14,21,22,23,24,31,32,33,34]
--- >>> pretty " " $ rotate (-1) 1 m
--- 32 33 34 31
---  2  3  4  1
--- 12 13 14 11
--- 22 23 24 21
-rotate :: Int -- ^ index on X axis
-       -> Int -- ^ index on Y axis
-       -> Matrix a
-       -> Matrix a
-rotate x y = V.rotate y . V.farm11 (V.rotate x)
+-- -- | Pattern which "rotates" a matrix. The rotation is controled with
+-- -- the /x/ and /y/ index arguments as following:
+-- --
+-- -- * @(> 0)@ : rotates the matrix right/down with the corresponding
+-- -- number of positions.
+-- -- 
+-- -- * @(= 0)@ : does not modify the position for that axis.
+-- -- 
+-- -- * @(< 0)@ : rotates the matrix left/up with the corresponding
+-- -- number of positions.
+-- --
+-- -- >>> let m = matrix 4 4 [1,2,3,4,11,12,13,14,21,22,23,24,31,32,33,34]
+-- -- >>> pretty " " $ rotate (-1) 1 m
+-- -- 32 33 34 31
+-- --  2  3  4  1
+-- -- 12 13 14 11
+-- -- 22 23 24 21
+-- rotate :: Int -- ^ index on X axis
+--        -> Int -- ^ index on Y axis
+--        -> Matrix a
+--        -> Matrix a
+-- rotate x y = V.rotate y . V.farm11 (V.rotate x)
 
 transpose :: Matrix a     -- ^ @X:Y@ orientation
           -> Matrix a     -- ^ @Y:X@ orientation
 -- transpose = V.reduce (V.farm21 (<++>)) . farm11 V.unit   -- stack overflow!
-transpose Null = Null
-transpose (Null:>xss) = transpose xss
-transpose rows = (V.farm11 V.first rows) :> transpose (V.farm11 V.tail rows)
+-- transpose Null = Null
+-- transpose (Null:>xss) = transpose xss
+-- transpose rows = (V.farm11 V.first rows) :> transpose (V.farm11 V.tail rows)
+transpose =  vector . map vector . L.transpose . map fromVector . fromVector
+
 
 -- | Replaces a part of matrix with another (smaller) part, starting
 -- from an arbitrary position.
