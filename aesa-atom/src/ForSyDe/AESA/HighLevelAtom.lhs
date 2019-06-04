@@ -72,7 +72,6 @@ as well a `DSP` which contain commonly used DSP blocks defined in terms of vecto
 skeletons.
 
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector        as V
-> import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Cube   as C
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.Matrix as M
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector.DSP
 
@@ -159,11 +158,10 @@ network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational proc
 >     -> Beam    (SY.Signal CpxData)
 > dbf antennaSigs = beamSigs
 >   where
->     beamSigs   = V.farm11 (V.reduce (SY.comb21 (+))) beamMatrix
+>     beamSigs   = V.reduce (V.farm21 (SY.comb21 (+))) beamMatrix
 >     beamMatrix = M.farm21 (\c -> SY.comb11 (*c)) beamConsts sigMatrix
 >     sigMatrix  = V.farm11 V.fanout antennaSigs
 >     beamConsts = mkBeamConsts dElements waveLength nA nB :: Matrix CpxData
-
 
 | Function                     | Original module                       | Package                 |
 |------------------------------|---------------------------------------|-------------------------|
@@ -656,11 +654,11 @@ should be trivial.
 
 > aesa :: Antenna (SY.Signal CpxData) -> Beam (SY.Signal (Range (Window RealData)))
 > aesa = V.farm11 pcToInt . dbf
->   where
->     pcToInt beam = let (rb,lb) = procCT $ procPC $ SY.toSDF beam
->                        lCFAR   = procCFAR $ procDFB lb
->                        rCFAR   = procCFAR $ procDFB rb
->                    in  procINT rCFAR lCFAR
+
+> pcToInt beam = let (rb,lb) = procCT $ procPC $ SY.toSDF beam
+>                    lCFAR   = procCFAR $ procDFB lb
+>                    rCFAR   = procCFAR $ procDFB rb
+>                in  procINT rCFAR lCFAR
 
 ![AESA network when fusing the related `farm`s](figs/aesa-net-atom2.pdf){#fig:aesa-net-atom2}
 

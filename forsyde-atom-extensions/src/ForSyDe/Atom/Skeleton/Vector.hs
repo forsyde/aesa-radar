@@ -14,12 +14,13 @@ module ForSyDe.Atom.Skeleton.Vector where
 -- import "forsyde-atom" ForSyDe.Atom.Skeleton as S
 import ForSyDe.Atom.Utility 
 import Data.Maybe
+import Control.Applicative
 import Data.List.Split
 import qualified Data.List as L
 import Prelude hiding (take, drop, length, zip, unzip)
 
 
-newtype Vector a = Vector { fromVector :: [a] } deriving (Show, Eq)
+newtype Vector a = Vector { fromVector :: [a] } deriving (Eq)
 
 vector = Vector
 
@@ -28,9 +29,16 @@ instance Functor Vector where
 
 instance Applicative Vector where
   pure a = Vector [a]
-  (Vector []) <*> _ = Vector []
-  _ <*> (Vector []) = Vector []
-  (Vector (f:fs)) <*> (Vector (x:xs)) = Vector (f x : (fs <*> xs))
+  (Vector fs) <*> (Vector as) = Vector $ getZipList (ZipList fs <*> ZipList as) 
+
+instance (Show a) => Show (Vector a) where
+  showsPrec p (Vector []) = showParen (p > 9) (showString "<>")
+  showsPrec p (Vector xs) = showParen (p > 9) (showChar '<' . showVector1 xs)
+    where
+      showVector1 [] = showChar '>'            
+      showVector1 (y:[]) = shows y . showChar '>'
+      showVector1 (y:ys) = shows y . showChar ',' 
+        . showVector1 ys
 
 farm11 f = fmap f
 farm21 f a b = f <$> a <*> b
@@ -65,7 +73,33 @@ stencil n v = farm11 (take n) $ dropFromEnd n $ tails v
 
 tails = unsafeLift (L.init . map vector . L.tails)
 
+concat = unsafeLift (L.concat . map fromVector)
 
+iterate n f i = vector $ L.take n $ L.iterate f i 
+
+bitrev = unsafeLift bitrevF
+  where
+    bitrevF [x] = [x]
+    bitrevF xs  = bitrevF (evensF xs) ++ bitrevF (oddsF xs)
+
+evensF [] = []
+evensF [x] = [x]
+evensF (x:_:xs) = x:evensF xs
+oddsF  [] = []
+oddsF  [_] = []
+oddsF  (_:y:xs) = y:oddsF xs
+
+evens = unsafeLift evensF
+odds = unsafeLift oddsF
+
+pipe (Vector []) i = i
+pipe v i = unsafeApply (L.foldr1 (.)) v $ i
+
+pipe1 f v i = unsafeApply (L.foldr f i) v
+
+reverse = unsafeLift L.reverse
+
+recuri ps s = farm11 (`pipe` s) (unsafeLift (L.map vector . L.tails) ps)
 
 -- length :: Vector a -> Int
 -- length Null = 0

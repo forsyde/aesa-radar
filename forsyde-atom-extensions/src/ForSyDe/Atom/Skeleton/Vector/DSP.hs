@@ -197,8 +197,8 @@ fir' plus times delay coefs =
 
 
 twiddles :: Floating a => Int -> V.Vector (Complex a)
-twiddles bN = (V.reverse . V.bitrev . V.take (bN `div` 2)) (V.farm11 bW V.indexes)
-  where bW x = (cis . negate) (-2 * pi * fromIntegral (x - 1) / fromIntegral bN)
+twiddles bN = (V.bitrev . V.take (bN `div` 2)) (V.farm11 bW $ vector [0..])
+  where bW x = (cis . negate) (-2 * pi * fromIntegral x / fromIntegral bN)
 
 
 -- For the difference between DIT- and DIF-FFT, see
@@ -206,13 +206,13 @@ twiddles bN = (V.reverse . V.bitrev . V.take (bN `div` 2)) (V.farm11 bW V.indexe
 fft :: RealFloat a
      => Int -> V.Vector (Complex a) -> V.Vector (Complex a)
 fft k vs | n == 2^k = V.bitrev $ (stage `V.pipe1` V.iterate k (*2) 2) vs
+         | otherwise = error $ "n=" ++ show n ++ "; k=" ++ show k
   where
     stage   w = V.concat . V.farm21 segment (twiddles n) . V.group w
     segment t = (<>) unduals . (<>) (V.farm22 (butterfly t)) . duals
     n         = V.length vs        -- length of input
     -------------------------------------------------
     butterfly w x0 x1 = let t = w * x1 in (x0 + t, x0 - t) -- kernel function
-
 
 fft' :: Floating a
      => (Complex a -> a -> a -> (a, a)) 

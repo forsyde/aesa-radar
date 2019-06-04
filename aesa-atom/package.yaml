@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - forsyde-atom
 - forsyde-atom-extensions
+- parallel
 
 library:
   source-dirs: src
@@ -44,6 +45,7 @@ executables:
     - bytestring
     - double-conversion
     - deepseq
+    - parallel
     
 tests:
   tests-hl:
