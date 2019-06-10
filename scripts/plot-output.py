@@ -1,55 +1,113 @@
 #!/bin/python3
 
 import matplotlib.pyplot as plt
-import seaborn as sns
+from matplotlib import colors
 import numpy as np
+import seaborn as sns
+import argparse
 
-inFile="gen/AESA_OUTPUT.csv"
-plotName="AESA"
-offs=0
+parser = argparse.ArgumentParser(description='Plots the AESA signal processing data.')
+parser.add_argument('-r', '--radar', nargs=1, type=str,  metavar='PATH',
+                    help='Plots the radar output. Expects path to AESA signal processing output')
+parser.add_argument('-a', '--antenna', nargs=1, type=str,  metavar='PATH',
+                    help='Plots the AESA antenna input. Expects path to antenna data')
 
-with open(inFile) as fp:  
-   line = fp.readline()
-   rangeBins = []
-   beams = []
-   while line:
-       line = fp.readline()
-       if (len(line)>1):
-           window=[float(s) for s in line.strip().split(' ')]
-           rangeBins.append(window)
-       else:
-           if (rangeBins):
+args = parser.parse_args()
+
+###############
+## INPUT PLOT
+###############
+
+if args.antenna:
+   frow=250
+   lrow=375
+   # with open(args.antenna[0]) as fp:  
+   #    line = fp.readline()
+   #    data = []
+   #    count = 0
+   #    while line:
+   #       count = count + 1
+   #       line = fp.readline()
+   #       window=[float(s) for s in line.strip().split(' ')]
+   #       data.append(window)
+   #       if count > lrow:
+   #          break
+   #    print(len(data))
+   data = np.genfromtxt(args.antenna[0], delimiter=" ")[:lrow]
+
+   reals=np.transpose([i[0::2] for i in data])
+   imags=np.transpose([i[1::2] for i in data])
+   pdata=[reals,imags]
+
+   fig, axs = plt.subplots(2, 1, figsize=(6,4))
+   images = []
+   for i in range(2):
+      # Generate data with a range that varies from one plot to the next.
+      images.append(axs[i].imshow(pdata[i], cmap="Blues", aspect='equal'))
+      axs[i].label_outer()
+      axs[i].set_xlim(frow,lrow)
+
+   axs[0].set_ylabel("antenna")
+   axs[1].set_ylabel("antenna")   
+   axs[0].set_xlabel("sample")
+
+   # Find the min and max of all colors for use in setting the color scale.
+   vmin = min(image.get_array().min() for image in images)
+   vmax = max(image.get_array().max() for image in images)
+   norm = colors.Normalize(vmin=vmin, vmax=vmax)
+   for im in images:
+      im.set_norm(norm)
+         
+   fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1)
+   filename=os.path.splitext(os.path.basename(args.antenna[0]))[0] + '.pdf'
+   plt.savefig(filename, bbox_inches='tight')
+   plt.show()
+
+
+if args.radar:
+   with open(args.radar[0]) as fp:  
+      line = fp.readline()
+      rangeBins = []
+      beams = []
+      while line:
+         line = fp.readline()
+         if (len(line)>1):
+            window=[float(s) for s in line.strip().split(' ')]
+            rangeBins.append(window)
+         else:
+            if (rangeBins):
                beams.append(rangeBins)
-           rangeBins=[]
-   print(len(beams))
+            rangeBins=[]
+      print(len(beams))
 
 
-maxv= max([max([max (row) for row in beam]) for beam in beams])
+   maxv= max([max([max (row) for row in beam]) for beam in beams])
    
-fig, (ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb) = plt.subplots(1,9, figsize=(40,10), gridspec_kw={'width_ratios':[1,1,1,1,1,1,1,1,0.08]})
-ax1.get_shared_y_axes().join(ax2,ax3,ax4,ax5,ax6,ax7,ax8)
-axes = [ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb]
-heatms = []
-for i in list(range(7)):
-   x = beams[i+offs]
-   y=np.array([np.array(xi) for xi in x])
-   g = sns.heatmap(y, vmin=0, vmax=maxv, square=True, ax=axes[i],cbar=False)
+   fig, (ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb) = plt.subplots(1,9, figsize=(40,10), gridspec_kw={'width_ratios':[1,1,1,1,1,1,1,1,0.08]})
+   ax1.get_shared_y_axes().join(ax2,ax3,ax4,ax5,ax6,ax7,ax8)
+   axes = [ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb]
+   heatms = []
+   for i in list(range(7)):
+      x = beams[i+offs]
+      y=np.array([np.array(xi) for xi in x])
+      g = sns.heatmap(y, vmin=0, vmax=maxv, square=True, ax=axes[i],cbar=False)
+      heatms.append(g)
+      g.set_title('beam ' + str(i))
+
+   y=np.array([np.array(xi) for xi in beams[7+offs]])
+   g = sns.heatmap(y, vmin=0, vmax=maxv, square=True, ax=ax8, cbar_ax=axcb)
    heatms.append(g)
-   g.set_title('beam ' + str(i))
+   g.set_title('beam 8')
 
-y=np.array([np.array(xi) for xi in beams[7+offs]])
-g = sns.heatmap(y, vmin=0, vmax=maxv, square=True, ax=ax8, cbar_ax=axcb)
-heatms.append(g)
-g.set_title('beam 8')
-
-for i in list(range(7)):  
-   heatms[i+1].set_ylabel('')
-   heatms[i+1].set_xlabel('')
-   heatms[i+1].set_yticks([])
+   for i in list(range(7)):  
+      heatms[i+1].set_ylabel('')
+      heatms[i+1].set_xlabel('')
+      heatms[i+1].set_yticks([])
    
-plt.yticks(rotation=0,fontsize=10);
-plt.xticks(fontsize=12);
-plt.tight_layout()
+   plt.yticks(rotation=0,fontsize=10);
+   plt.xticks(fontsize=12);
+   plt.tight_layout()
 
-plt.savefig(plotName + '.pdf')
-plt.show()
+   filename=os.path.splitext(os.path.basename(args.radar[0]))[0] + '.pdf'
+   plt.savefig(filename)
+   plt.show()

@@ -5,3 +5,5 @@ uc2-aesa.cabal
 *~
 dist
 TAGS
+*.cabal
+gen

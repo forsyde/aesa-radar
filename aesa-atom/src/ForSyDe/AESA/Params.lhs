@@ -1,11 +1,11 @@
- ### System Parameters {#sec:aliases-shallow label="Type Aliases and Constants"}
+ ### System Parameters {#sec:aesa-parameters}
 
 Here we define the size constants, for a simple test scenario provided by Saab AB. The
 size `nA` can be inferred from the size of input data and the vector operations.
 
 > module ForSyDe.AESA.Params where
 > 
-> nA   =   16 :: Int -- does not really affect the application
+> nA   =   16 :: Int
 > nB   =    8 :: Int
 > nb   = 1024 :: Int
 > nFFT =  256 :: Int
