@@ -37,24 +37,16 @@ main = do
   putStrLn $ "Read " ++ show nAntennas ++ " * " ++ show nSamples
     ++ " complex samples which means " ++ show ((nAntennas * nSamples) `div` (nA * nb * nFFT))
     ++ " indata cube(s)..."
-  -- Re-build & declare an (unsafe) observable AESA system, only for the purpose of testing
--- > aesa = V.farm11 pcToInt . dbf
--- >   where
--- >     pcToInt beam = let (rb,lb) = procCT $ procPC $ SY.toSDF beam
--- >                        lCFAR   = procCFAR $ procDFB lb
--- >                        rCFAR   = procCFAR $ procDFB rb
--- >                    in  procINT rCFAR lCFAR
-
   let iSigs           = map SY.signal aesaIn
       beams           = dbf $ vector iSigs
       oPC             = pc beams
       (oCTR,oCTL)     = ct oPC
       (oDFBR,oDFBL)   = (dfb oCTR,dfb oCTL)
       (oCFARR,oCFARL) = (cfar oDFBR,cfar oDFBL)
-      oAESA           = let aesa i = if (parExec args)
-                                     then vector (map pcToInt (fromVector i) `using` parList rdeepseq)
-                                     else farm11 pcToInt i
-                        in  aesa beams
+      oAESA           = let aesa = int oCFARR $ V.farm11 tailS oCFARL
+                        in if (parExec args)
+                           then vector (fromVector aesa `using` parList rdeepseq)
+                           else aesa
       ------------------------------------------------------
       -- declarations for unwrapped (dumpable) data
       inData       = toListVecSig SY.fromSignal $ vector iSigs

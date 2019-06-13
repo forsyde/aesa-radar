@@ -413,7 +413,7 @@ parallel skeleton within the $f_{CFAR}$ function.
 > fCFAR rbins = V.farm41 (\m -> V.farm31 (normCfa m)) md rbins lmv emv
 >   where
 >     md  = V.farm11 (logBase 2 . V.reduce min) rbins
->     emv = (V.fanoutn (nFFT + 1) dummy) <++> (V.farm11 aritMean neighbors)
+>     emv = (V.fanoutn (nFFT + 2) dummy) <++> (V.farm11 aritMean neighbors)
 >     lmv = (V.drop 2 $ V.farm11 aritMean neighbors) <++> (V.fanout dummy) 
 >     -----------------------------------------------
 >     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
@@ -421,7 +421,7 @@ parallel skeleton within the $f_{CFAR}$ function.
 >     aritMean  = V.farm11 (/n) . V.reduce addV . V.farm11 geomMean . V.group 4
 >     geomMean  = V.farm11 (logBase 2 . (/4)) . V.reduce addV
 >     -----------------------------------------------
->     dummy     = V.fanoutn nFFT (-maxFloat)
+>     dummy     = V.fanoutn nFFT $ (-maxFloat)/n
 >     neighbors = V.stencil nFFT rbins
 >     -----------------------------------------------
 >     addV      = V.farm21 (+)
