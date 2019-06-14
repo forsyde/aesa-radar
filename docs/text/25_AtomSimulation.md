@@ -10,7 +10,24 @@ generator and plotter scripts, along with an executable binary created with the
 The input data generator script replicates a situation in which 13 distinct objects,
 either near each other or far apart, as seen in @tbl:in-objects, are drowned into
 -18dB worth of noise, and then detected by the 16 AESA antenna elements (see
-@sec:aesa-parameters) and transformed into 8 beams.
+@sec:aesa-parameters). A zoomed snapshot of the generated input data can be seen in
+@fig:aesa-indata.
+
+![Zoomed caption of the 16 input channels split into real part ($I$) and imaginary part ($Q$)](figs/AESA_INDATA.pdf){#fig:aesa-indata}
+
+In @fig:aesa-odata-atom a cube consisting of 8 beam (doppler $\times$ range) matrices
+from the AESA signal processing output is shown. We can see the 13 objects detected
+with different intensities accros the 8 beams. As they are all positioned at
+approximately the same angle relative to the antenna (i.e. $\frac{\pi}{3} +
+2(\pi-\frac{2\pi}{3})/7$) we can see the maximum correlation values are reflected in
+beam 2.
+
+\nopandoc{\begin{landscape}\vfill}
+
+![One output cube with radar data](figs/AESA_OUTPUT.pdf){#fig:aesa-odata-atom}
+
+\nopandoc{\vfill\end{landscape}}
+
 
 |  # | Distance (m) | Angle ($\theta$)                            | Rel. Speed (m/s) | Rel. Power |
 |---:|-------------:|:-------------------------------------------:|-----------------:|-----------:|

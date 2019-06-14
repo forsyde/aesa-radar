@@ -19,10 +19,18 @@ Created on Tue Apr 24 12:27:06 2019
 # The second line will correspond to Range bin 2, pulse 1
 # Total number of lines is NoRangeBinInEveryPulse * NoPulsesPerFFTBatch
 
-
+import os
 import math
 import numpy as np
 import csv
+import argparse
+
+parser = argparse.ArgumentParser(description='Generates the AESA input data.')
+parser.add_argument('-o',  nargs=1, type=str,  metavar='PATH', default='gen/AESA_INPUT.csv',
+                    help='path to generated data file. Default: gen/AESA_INPUT.csv')
+parser.add_argument('-n',  nargs=1, type=int,  metavar='NUM', default=2,
+                    help='Number of (repeated) input cubes. Default: 2')
+args = parser.parse_args()
 
 AESA = dict()
 
@@ -37,8 +45,7 @@ AESA["NoPulsesPerFFTBatch"] = 256
 AESA["DataWidthIn"] = 16
 AESA["Fsampling"] = 3e6
 AESA["PulseWidth"] = 1e-6
-
-AESA["NoInCubes"] = 2
+AESA["NoInCubes"] = args.n
 
 # Definition of wave fronts angle Theta is given by figure 4
 # Enumeration of radar elements if left to right
@@ -52,8 +59,6 @@ for i in range(0,AESA["NoDataChannels"]):
     for j in range(0,AESA["NoRangeBinInEveryPulse"]):
         EmptyData[i][j] = list(0 for j in range(0,AESA["NoPulsesPerFFTBatch"]))         
 AESA["InputData"] = EmptyData
-
-
 
 
 ###########################################################
@@ -171,6 +176,10 @@ GenerateNoise(AESA, -3)
 #                                                         #
 ###########################################################
 
+odirPath=os.path.abspath(os.path.join(args.o, '..'))
+if not os.path.exists(odirPath):
+    os.makedirs(odirPath)
+
 #with open('AESA_DATA.csv', mode='w') as data_file:
 #    data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 #    for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):
@@ -199,7 +208,7 @@ GenerateNoise(AESA, -3)
 #               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].real*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
 #               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].imag*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
 
-with open('AESA_DATA_UNSCALED.csv', mode='w') as data_file:
+with open(args.o, mode='w') as data_file:
     data_writer = csv.writer(data_file, delimiter=' ', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     for CubeIterator in range(0, AESA["NoInCubes"]):
         for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):

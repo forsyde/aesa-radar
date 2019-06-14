@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import os
 from matplotlib import colors
 import numpy as np
-import seaborn as sns
 import argparse
 
 parser = argparse.ArgumentParser(description='Plots the AESA signal processing data.')
@@ -14,7 +13,7 @@ parser.add_argument('-a', '--antenna', nargs=1, type=str,  metavar='PATH',
                     help='Plots the AESA antenna input. Expects path to antenna data')
 
 args = parser.parse_args()
-
+     
 ###############
 ## INPUT PLOT
 ###############
@@ -33,7 +32,7 @@ if args.antenna:
    for i in range(2):
       # Generate data with a range that varies from one plot to the next.
       images.append(axs[i].imshow(pdata[i], cmap="Blues", aspect='equal', interpolation="nearest"))
-      axs[i].grid(None)
+      axs[i].grid(False)
       axs[i].label_outer()
       axs[i].set_xlim(frow,lrow)
 
@@ -84,16 +83,21 @@ if args.radar:
       
    vmin= min([min(rbin) for rbin in data])
    vmax= max([max(rbin) for rbin in data])
+   
+   norm = colors.Normalize(vmin=vmin, vmax=vmax)
+
    # vmin= min([min([min (row) for row in beam]) for beam in beams])
    # vmax= max([max([max (row) for row in beam]) for beam in beams])
    
-   fig, axs = plt.subplots(1, nbeams, figsize=(8*nbeams/2,10))
+   fig, axs = plt.subplots(1, nbeams, figsize=(6*nbeams/2,10))
    images = []
    for i in range(nbeams):
-      images.append(axs[i].imshow(beams[i], vmin=vmin, vmax=vmax, cmap="Blues", aspect='equal', interpolation="nearest"))
-      axs[i].grid(None)
+      images.append(axs[i].imshow(beams[i], cmap='PuBuGn', aspect='equal', interpolation="nearest"))
+      images[i].set_norm(norm)
+      axs[i].grid(False)
       axs[i].label_outer()
-
+      axs[i].set_title('beam ' + str(i))
+      
    fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
       
    # fig, (ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb) = plt.subplots(1,9, figsize=(40,10), gridspec_kw={'width_ratios':[1,1,1,1,1,1,1,1,0.08]})

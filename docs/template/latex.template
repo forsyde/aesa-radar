@@ -394,6 +394,7 @@ $endif$
 $endif$
 
 \usepackage[margin=1in]{geometry}
+\newcommand{\nopandoc}[1]{#1}
 
 \begin{document}
 $if(title)$
