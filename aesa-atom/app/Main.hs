@@ -5,7 +5,6 @@ import System.Console.GetOpt
 import System.IO
 import System.Exit
 import System.Environment
-import System.Process
 
 import Control.Exception
 import System.CPUTime
@@ -26,14 +25,16 @@ import ForSyDe.AESA.Params
 import Utils
 
 main = do
-  args <- getArgs >>= parse
-  print args
+  iargs <- getArgs >>= parse
+  inPath <- checkIfFile (inFilePath iargs)
+  outDir <- checkIfDir (outFile iargs)
   -- Begin execution
-  when (genInps args) $ generateInputs (genPath args) (inFilePath args)
-  putStrLn $ "Reading the indata at: " ++ inFilePath args ++ "..."
-  aesaIn <- readInData (inFilePath args)
-  let nAntennas = length aesaIn
+  putStrLn $ "Reading the indata at: " ++ inPath ++ "..."
+  aesaIn <- readInData inPath
+  let args      = iargs { outPath=outDir }
+      nAntennas = length aesaIn
       nSamples  = length $ head aesaIn
+  print args
   putStrLn $ "Read " ++ show nAntennas ++ " * " ++ show nSamples
     ++ " complex samples which means " ++ show ((nAntennas * nSamples) `div` (nA * nb * nFFT))
     ++ " indata cube(s)..."
@@ -79,9 +80,9 @@ main = do
            exitSuccess
   where
     ---------------------------------------------------------
-    inFilePath  args = inPath args  ++ "/AESA_INDATA.csv"
+    inFilePath       = inPath 
+    outFilePath      = outFile
     indDbgFile  args = outPath args ++ "/AESA_INDATA_DEBUG.csv"
-    outFilePath args = outPath args ++ "/AESA_OUTPUT.csv"
     dbfOutFile  args = outPath args ++ "/DBF.csv"
     pcOutFile   args = outPath args ++ "/PC.csv"
     ctOutFile   args = (outPath args ++ "/CT_R.csv",outPath args ++ "/CT_L.csv")
@@ -106,46 +107,25 @@ main = do
       'o' -> dumpData3 (outFilePath args) showFloat outAesaData        >> printDimen3 "AESAo  :" outAesaData
       _ -> return ()
     ---------------------------------------------------------
-    generateInputs scrPath filePath = do
-      putStrLn "Generating AESA radar input, please wait..."
-      (exit,out,errs) <- readProcessWithExitCode  "python3" [scrPath] filePath
-      case exit of
-        ExitSuccess -> do
-          putStrLn out
-          putStrLn $ "Generated AESA radar input files in: " ++ filePath
-        ExitFailure n -> do 
-          hPutStrLn stderr errs
-          exitWith (ExitFailure n)
 
 data Args = Args
-  { genInps :: Bool
-  , pltOuts :: Bool
-  , timeM   :: Bool
+  { timeM   :: Bool
   , parExec :: Bool
-  , genPath :: String
-  , pltPath :: String
   , inPath  :: String
+  , outFile :: String
   , outPath :: String
   , inter   :: String
   } deriving (Eq,Ord,Show)
              
 flags =
-  [Option ['g'] ["gen-data"] (NoArg GenInput)
-    "Invokes the antenna input data generator script."
-  ,Option ['l'] ["plot-graph"] (NoArg PlotOutput)
-    "Invokes the output plotter script."
-  ,Option ['p'] ["parallel"] (NoArg Parallel)
+  [Option ['p'] ["parallel"] (NoArg Parallel)
     "Distributes the simulation on multiple cores if possible."
   ,Option ['t'] ["time"]     (NoArg MeasureTime)
     "Measures and prints out execution time."
-  ,Option [] ["gen-path"]    (ReqArg GenScript "PATH")
-    "Path to input generator script. Default: scripts/generate-input.py"
-  ,Option [] ["plot-path"]   (ReqArg PlotPath "PATH")
-    "Path to output plotter script. Default: scripts/plot-output.py"
   ,Option ['i'] ["input"]    (ReqArg InPath "PATH")
-    "Path to input data files. Default: gen"
+    "Path to input data file. Default: gen/AESA_INPUT.csv"
   ,Option ['o'] ["output"]   (ReqArg DumpPath "PATH")
-    "Path to dump generated files. Default: gen"
+    "Path to main generated file. Default: gen/AESA_OUTPUT.csv"
   ,Option [] ["inter"]       (ReqArg Intermediate "STAGE")
     ("Dumps and plots data at intermediate stages. Options:\n" ++
        "d: after DBF stage\n" ++
@@ -159,12 +139,8 @@ flags =
   ]
 
 data Flag
-  = GenInput            -- -g
-  | PlotOutput          -- -l
-  | MeasureTime         -- -t
+  = MeasureTime         -- -t
   | Parallel            -- -p
-  | GenScript String    -- --gen-path
-  | PlotPath String     -- --plot-path
   | InPath String       -- -i
   | DumpPath String     -- -o
   | Intermediate String -- --inter
@@ -172,20 +148,14 @@ data Flag
   deriving (Ord,Show)
 
 instance Eq Flag where
-  GenInput         == GenInput         = True
-  PlotOutput       == PlotOutput       = True
   MeasureTime      == MeasureTime      = True
   Parallel         == Parallel         = True
-  (GenScript _)    == (GenScript _)    = True
-  (PlotPath _)     == (PlotPath _)     = True
   (InPath _)       == (InPath _)       = True
   (DumpPath _)     == (DumpPath _)     = True
   (Intermediate _) == (Intermediate _) = True
   Help             == Help = True
   _ == _ = False
 
-getFlagArg (GenScript s) = s
-getFlagArg (PlotPath s) = s
 getFlagArg (InPath s) = s
 getFlagArg (DumpPath s) = s
 getFlagArg (Intermediate s) = s
@@ -195,24 +165,20 @@ parse argv = case getOpt Permute flags argv of
                (args,_,[]) -> do
                  let select x = filter (==x) args
                      selArg x = let arg =  select (x "") in if null arg then "" else getFlagArg (head arg)
-                     genInps  = if null (select GenInput) then False else True
-                     pltOuts  = if null (select PlotOutput) then False else True
-                     timeM    = if null (select MeasureTime) then False else True
-                     par      = if null (select Parallel) then False else True
+                     timeM    = not (null (select MeasureTime)) 
+                     par      = not (null (select Parallel))
                      inter    = selArg Intermediate
-                 genPath <- checkIfFile "scripts/generate-input.py" (selArg GenScript)
-                 pltPath <- checkIfFile "scripts/plot-output.py" (selArg PlotPath)
-                 inPath  <- checkIfDir "gen" (selArg InPath)
-                 outPath <- checkIfDir "gen" (selArg DumpPath)
+                     inPath   = let p = (selArg InPath) in if null p then "gen/AESA_INPUT.csv" else p 
+                     outFile  = let p = (selArg DumpPath) in if null p then "gen/AESA_OUTPUT.csv" else p 
                  if Help `elem` args
                    then do hPutStrLn stderr (usageInfo header flags)
-                           exitWith ExitSuccess
-                   else return $ Args genInps pltOuts timeM par genPath pltPath inPath outPath inter
+                           exitSuccess
+                   else return $ Args timeM par inPath outFile outFile inter
                (_,_,errs)   -> do
                  hPutStrLn stderr (concat errs ++ usageInfo header flags)
                  exitWith (ExitFailure 1)
  
-  where header = "Usage: aesa-hl [-gh|--out=PATH|--inter=[dpcfa]|...]"
+  where header = "Usage: aesa-hl [-tpio|--inter=[dpcfa]|...]"
  
 
 lim :: Int

@@ -7,18 +7,16 @@ import           Data.Complex
 import           Data.Double.Conversion.ByteString
 import           Data.List
 import           System.Directory
+import           System.FilePath
 
-checkIfFile dflt path = do
+checkIfFile path = do
   existsPath    <- doesFileExist path
-  existsDefault <- doesFileExist dflt
   if existsPath
     then return path
-    else if existsDefault
-         then return dflt
-         else return ""
+    else error $ "Did not find file '" ++ path ++ "'! Aborting..."
 
-checkIfDir dflt path = do
-  let out = if null path then dflt else path
+checkIfDir path = do
+  let out = takeDirectory path
   createDirectoryIfMissing True out
   return out
 

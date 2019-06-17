@@ -40,6 +40,7 @@ executables:
     dependencies:
     - aesa-atom
     - directory
+    - filepath
     - process
     - bytestring-lexing
     - bytestring
