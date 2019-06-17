@@ -88,6 +88,8 @@ if args.radar:
 
    # vmin= min([min([min (row) for row in beam]) for beam in beams])
    # vmax= max([max([max (row) for row in beam]) for beam in beams])
+
+
    
    fig, axs = plt.subplots(1, nbeams, figsize=(6*nbeams/2,10))
    images = []
@@ -98,8 +100,40 @@ if args.radar:
       axs[i].label_outer()
       axs[i].set_title('beam ' + str(i))
       
-   fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
+      scope=False
+      currmax=0
+      currx=0
+      curry=0
+      for y in range(len(beams[i])):
+         for x in range(len(beams[i][y])):
+            if scope:
+               if x>currx+2 and y>curry+2 and currmax>=beams[i][y][x]:
+                  yoffset=0
+                  if y >507 and y< 515 :
+                     yoffset = +20
+                  if y > 501 and y < 505:
+                     yoffset= -20
+                  axs[i].annotate("{:.1f}".format(currmax), xy=(currx, curry), xytext=(currx-60,curry+yoffset), fontsize='10' , arrowprops=dict(facecolor='red', arrowstyle='-')
+                  )
+                  scope=False
+               if currmax<beams[i][y][x]:
+                  currmax=beams[i][y][x]
+                  currx=x
+                  curry=y
+            else:
+               if beams[i][y][x] > 8:
+                  scope=True
+                  currx=x
+                  curry=y
+                  currmax=beams[i][y][x]
       
+   fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
+
+
+
+
+               
+   
    # fig, (ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb) = plt.subplots(1,9, figsize=(40,10), gridspec_kw={'width_ratios':[1,1,1,1,1,1,1,1,0.08]})
    # ax1.get_shared_y_axes().join(ax2,ax3,ax4,ax5,ax6,ax7,ax8)
    # axes = [ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,axcb]
