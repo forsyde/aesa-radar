@@ -276,10 +276,10 @@ $N_{FFT}/2$ samples.
 > ct = V.farm12 procCT
 > 
 > procCT :: Num a => SDF.Signal a -> (SDF.Signal a, SDF.Signal a)
-> procCT sig = (rightChannel, leftChannel)
+> procCT sig = (cornerTurn rightChannel, cornerTurn leftChannel)
 >   where
->     rightChannel = cornerTurn sig
->     leftChannel  = SDF.delay initBatch rightChannel
+>     rightChannel = sig
+>     leftChannel  = SDF.delay initBatch sig
 >     initBatch    = replicate (nb * nFFT `div` 2) 0
 >     cornerTurn   = SDF.comb11 (nFFT * nb, nb * nFFT,
 >                                fromMatrix . M.transpose . matrix nb nFFT)

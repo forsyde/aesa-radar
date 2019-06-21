@@ -57,8 +57,8 @@ main = do
       outCtlData   = toListVecSig SDF.fromSignal oCTL
       outDfbrData  = toListVecSig SDF.fromSignal oDFBR  
       outDfblData  = toListVecSig SDF.fromSignal oDFBL
-      outCfarrData = toListVecMat SDF.fromSignal oCFARR
-      outCfarlData = toListVecMat SDF.fromSignal oCFARL
+      outCfarrData = toListVecMat ((:[]) . head . SDF.fromSignal) oCFARR
+      outCfarlData = toListVecMat ((:[]) . head . SDF.fromSignal) oCFARL
       outAesaData  = toListVecMat SY.fromSignal oAESA
   -- Carry on with the program execution
   if timeM args
@@ -105,7 +105,7 @@ main = do
       'a' -> dumpData3 (fst $ cfarOutFile args) showFloat outCfarrData >> printDimen3 "CFARro :" outCfarrData >>
              dumpData3 (snd $ cfarOutFile args) showFloat outCfarlData >> printDimen3 "CFARlo :" outCfarlData
       'o' -> dumpData3 (outFilePath args) showFloat outAesaData        >> printDimen3 "AESAo  :" outAesaData
-      _ -> return ()
+      ls_ -> return ()
     ---------------------------------------------------------
 
 data Args = Args

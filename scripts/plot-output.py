@@ -11,6 +11,8 @@ parser.add_argument('-r', '--radar', nargs=1, type=str,  metavar='PATH',
                     help='Plots the radar output. Expects path to AESA signal processing output')
 parser.add_argument('-a', '--antenna', nargs=1, type=str,  metavar='PATH',
                     help='Plots the AESA antenna input. Expects path to antenna data')
+parser.add_argument('-t', '--threshold', nargs='?', type=int,  metavar='VAL', default=8,
+                    help='Threshold value for detected objects. If 0 then detection values are not annotated. Default: 8')
 
 args = parser.parse_args()
      
@@ -99,33 +101,34 @@ if args.radar:
       axs[i].grid(False)
       axs[i].label_outer()
       axs[i].set_title('beam ' + str(i))
-      
-      scope=False
-      currmax=0
-      currx=0
-      curry=0
-      for y in range(len(beams[i])):
-         for x in range(len(beams[i][y])):
-            if scope:
-               if x>currx+2 and y>curry+2 and currmax>=beams[i][y][x]:
-                  yoffset=0
-                  if y >507 and y< 515 :
-                     yoffset = +20
-                  if y > 501 and y < 505:
-                     yoffset= -20
-                  axs[i].annotate("{:.1f}".format(currmax), xy=(currx, curry), xytext=(currx-60,curry+yoffset), fontsize='10' , arrowprops=dict(facecolor='red', arrowstyle='-')
-                  )
-                  scope=False
-               if currmax<beams[i][y][x]:
-                  currmax=beams[i][y][x]
-                  currx=x
-                  curry=y
-            else:
-               if beams[i][y][x] > 8:
-                  scope=True
-                  currx=x
-                  curry=y
-                  currmax=beams[i][y][x]
+
+      if args.threshold:
+         scope=False
+         currmax=0
+         currx=0
+         curry=0
+         for y in range(len(beams[i])):
+            for x in range(len(beams[i][y])):
+               if scope:
+                  if x>currx+2 and y>curry+2 and currmax>=beams[i][y][x]:
+                     yoffset=0
+                     if y >507 and y< 515 :
+                        yoffset = +20
+                     if y > 501 and y < 505:
+                        yoffset= -20
+                     axs[i].annotate("{:.1f}".format(currmax), xy=(currx, curry), xytext=(currx-60,curry+yoffset), fontsize='10' , arrowprops=dict(facecolor='red', arrowstyle='-')
+                     )
+                     scope=False
+                  if currmax<beams[i][y][x]:
+                     currmax=beams[i][y][x]
+                     currx=x
+                     curry=y
+               else:
+                  if beams[i][y][x] > args.threshold:
+                     scope=True
+                     currx=x
+                     curry=y
+                     currmax=beams[i][y][x]
       
    fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
 
