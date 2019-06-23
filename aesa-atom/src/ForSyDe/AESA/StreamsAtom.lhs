@@ -33,7 +33,7 @@ to use it:
 > {-# LANGUAGE PackageImports #-} -- allows explicit import of modules from custom
 >                                 -- libraries instead of standard ones. Will be taken
 >                                 -- out once the extensions are merged upstream.
-> module ForSyDe.AESA.HighLevelAtom where
+> module ForSyDe.AESA.StreamsAtom where
 
  ### Imported Libraries
 

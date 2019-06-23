@@ -1,4 +1,5 @@
 \documentclass[tikz,border=10pt,multi]{standalone}
+\usepackage[tikz]{forsyde}
 \usetikzlibrary{decorations.pathmorphing,calc}
 
 \newsavebox{\videoin}
@@ -33,18 +34,25 @@
     (0,5,5) -- (5,5,5)
     ;
 
-    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
-    (5,0,0) coordinate (x) -- (5,5,0) -- (5,5,5) -- (5,0,5) -- (x);
-
+    \draw (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
   \end{tikzpicture}%
+}
+
+\newsavebox{\forsydeproc}
+\savebox{\forsydeproc}{%
+  \begin{tikzpicture}
+    \standard[process,moc=sy,f={$\noexpand\mathtt{farm}(f_{PC})^T$},type=comb](a){pc};
+    \draw[s] (a) edge[<-] ++(-1.5,0) edge[->] ++(1.5,0);
+  \end{tikzpicture}
 }
 
 
 \begin{document}
 \begin{tikzpicture}
   \node (in) {\usebox{\videoin}};
-  \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\videoin}};
-  \node[anchor=west,xshift=1cm] at ($(in)!.4!(out)$) {\Huge $\Rightarrow$};
+  \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\forsydeproc}};
+  % \node[anchor=west,xshift=1cm] (out) at (in.east) {\usebox{\videoin}};
+  % \node[anchor=west,xshift=1cm] at ($(in)!.4!(out)$) {\Huge $\Rightarrow$};
 \end{tikzpicture}
 \end{document}
 

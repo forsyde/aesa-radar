@@ -1,11 +1,14 @@
 # High-Level Model of the AESA Signal Processing Chain in ForSyDe-Atom{#sec:atom}
 
-> _This section guides the reader throughout converting the provided specifications of
-> the AESA signal processing chain into a concrete, functionally complete, high-level
-> executable model in ForSyDe-Atom. Enough AESA system details are given in order to
-> understand the modeling decisions. At the end of this section we simulate this model
-> against a realistic input set of complex antenna data, and test if it is sane
-> (i.e. provides the expected results)._
+> _This section guides the reader throughout translating "word-by-word" the provided
+> specifications of the AESA signal processing chain into a concrete, functionally
+> complete, high-level executable model in ForSyDe-Atom. This first attempt focuses
+> mainly on the top-level functional behavior of the system, exerting the successive
+> transformations upon the input video cubes, as suggested by @fig:video-chain-spec.
+> We postpone the description/derivation of more appropriate time behaviors for later
+> sections. Enough AESA system details are given in order to understand the model. At
+> the end of this section we simulate this model against a realistic input set of
+> complex antenna data, and test if it is sane (i.e. provides the expected results)._
 
 |         |                               |                                                    |
 | -----   | ----------------------------- | -------------------------------------------------- |

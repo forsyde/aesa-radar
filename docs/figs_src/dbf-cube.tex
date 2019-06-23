@@ -33,8 +33,8 @@
     (0,5,5) -- (5,5,5)
     ;
     
-    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.5pt,pre length=0.2cm, post length=0.2cm}]
-    (5,0,0) coordinate (x) -- (5,5,0) -- (5,5,5) -- (5,0,5) -- (x);
+
+    \draw (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,5,0) -- (5,5,5) -- (5,0,5) -- cycle;
   \end{tikzpicture}%
 }
 
@@ -70,8 +70,7 @@
     (2,0,5) node[anchor=north west] {\scriptsize\it pulse}
     ;
     
-    \draw[dotted,decorate,decoration={snake, segment length=4mm, amplitude=1.4pt,pre length=0.1cm, post length=0.1cm}]
-    (5,0,0) coordinate (x) -- (5,4,0) -- (5,4,5) -- (5,0,5) -- (x);
+    \draw (5,0,0) node[anchor=north west] {\scriptsize $N_{FFT}$} -- (5,4,0) -- (5,4,5) -- (5,0,5) -- cycle;
   \end{tikzpicture}%
 }
 
