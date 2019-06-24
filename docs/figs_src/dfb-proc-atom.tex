@@ -4,10 +4,8 @@
 
 \begin{document}
 \begin{tikzpicture}[constructors=shallow]
-  \standard[process,moc=sy,f={$\noexpand\mathtt{M.farm}(f_{DFB})$},type=comb](a){dfb};
-  \interface[left of=a](if){sdf}{sy};
-  \draw[s=sy] (a) edge[<-] (if) edge[->] ++(2,0);
-  \draw[s=sdf] (if) edge[<-] ++(-2,0);
+  \standard[process,moc=sy,f={$\noexpand\mathtt{M.farm}(f_{DFB})^T$},type=comb](a){dfb};
+  \draw[s=sy] (a) edge[->] ++(2,0) edge[<-] ++(-2,0);
 \end{tikzpicture}
 \end{document}
 

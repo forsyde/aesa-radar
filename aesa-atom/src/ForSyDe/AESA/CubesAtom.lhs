@@ -201,12 +201,16 @@ direction shown in @fig:pc-cube, i.e. on vectors formed from the range of every 
 
 The PC process is mapping the $f_{PC}$ on each row of the pulse matrices in a cube,
 however the previous stage has arranged the cube to be aligned beam-wise. This is why
-we need to re-arrange the in the (original) `Beam (Window (Range a))` setup, and we do
-that by applying the inverse of the cube `transpose` used in @sec:dbf-atom.
+we need to re-arrange the data so that the innermost vectors are `Range`s instead, and
+we do this by simply `transpose`-ing the inner `Range` $\times$ `Beam` matrices into
+`Beam` $\times$ `Range` ones.
 
-> pc :: Signal (Window (Range  (Beam  CpxData))) 
->    -> Signal (Beam   (Window (Range CpxData)))
-> pc = SY.comb11 (M.farm11 fPC . C.transpose')
+
+
+> pc :: Signal (Window (Range (Beam  CpxData))) 
+>    -> Signal (Window (Beam  (Range CpxData)))
+> pc = SY.comb11 (V.farm11 (V.farm11 fPC . M.transpose))
+> --             ^ == (M.farm11 fPC . V.farm11 M.transpose)
 
 Here the function $f_{PC}$ applies the `fir` skeleton on these vectors (which computes
 a moving average if considering vectors). The `fir` skeleton is a utility formulated
@@ -219,13 +223,13 @@ application we also use a relatively small average window (5 taps).
 >     -> Range CpxData -- ^ output pulse-compressed bin
 > fPC = fir (mkPcCoefs 5)
 
-| Function     | Original module                     | Package                 |
-|--------------|-------------------------------------|-------------------------|
-| `comb11`     | [`ForSyDe.Atom.MoC.SY`]             | forsyde-atom            |
-| `farm11`     | `ForSyDe.Atom.Skeleton.Matrix`      | forsyde-atom-extensions |
-| `fir`        | `ForSyDe.Atom.Skeleton.Vector.DSP`  | forsyde-atom-extensions |
-| `transpose'` | `ForSyDe.Atom.Skeleton.Vector.Cube` | forsyde-atom-extensions |
-| `mkPcCoefs`  | `ForSyDe.AESA.Coefs`                | aesa-atom               |
+| Function              | Original module                       | Package                 |
+|-----------------------|---------------------------------------|-------------------------|
+| `comb11`              | [`ForSyDe.Atom.MoC.SY`]               | forsyde-atom            |
+| `farm11`              | [`ForSyDe.Atom.Skeleton.Vector`]      | forsyde-atom            |
+| `farm11`, `transpose` | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
+| `fir`                 | `ForSyDe.Atom.Skeleton.Vector.DSP`    | forsyde-atom-extensions |
+| `mkPcCoefs`           | `ForSyDe.AESA.Coefs`                  | aesa-atom               |
 
  #### Corner Turn (CT) with 50% overlapping data {#sec:ct-atom}
 
@@ -248,63 +252,90 @@ the problem seems easily solved considering only the cube structures: just "igno
 half of the first cube of the right channel, while the left channel replicates the
 input. However, there are some timing issues with this setup: from the left channel's
 perspective, the right channel is in fact "peaking into the future", which is an
-abnormal behavior. Without going to much into details, you need to understand that
-_any type of signal "cleaning", like dropping or filtering events, can cause serious
-causality issues in a generic process network, and thus it is **illegal** in ForSyDe
-system modeling_. On the other hand we could _delay_ the left channel in a
+abnormal behavior. Without going too much into details, you need to understand that
+_any type of signal "cleaning", like dropping or filtering out events, can cause
+serious causality issues in a generic process network, and thus it is **illegal** in
+ForSyDe system modeling_. On the other hand we could _delay_ the left channel in a
 determinstic manner by assuming a well-defined *initial state* (e.g. all zeroes) while
 it waits for the right channel to consume and process its first half of data. This
 defines the history of a system where all components start from *time zero* and
 eliminates any source of "clairvoyant"/ambiguous behavior.
 
+To keep things simple, we stay within the same time domain, keeping the perfect
+synchrony assumption, and instantiating the left channel building mechanism as a
+simple Mealy finite state machine. This machine splits an input cube into two halves,
+stores one half and merges the other half with the previously stored state to create
+the left channel stream of cubes.
 
+![Left channel data builder process](figs/ct-proc-atom.pdf){#fig:ct-proc-atom}
 
-During corner turning with memory overlapping we see a major
-difference as compared to the definition in [@sec:ct-shallow], namely
-that the transition from the SY signal semantics to the SDF signal
-semantics needs to be explicitly marked by the MoC interface
-[`toSDF`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html#v:toSDF2). This
-is a deliberate feature of ForSyDe-Atom, since signals themselves
-enablers of process to behave under certain MoC semantics. This is
-shown also in the type signature of signals. The SDF
-[`comb`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html#v:comb22)
-applies the cube `transpose`[^transpAC] in order to arrange the video
-data in rows of samples in the direction of pulse windows.
-
-![CT process](figs/ct-proc-atom.pdf){#fig:ct-proc-atom}
-
-[^transpAC]: see `ForSyDe.Atom.Skeleton.Vector.Cube.transpose` from
-  the `forsyde-atom-extensions` documentation.
-
-> ct :: SY.Signal (Beam (Range CpxData))
->    -> (SDF.Signal (Beam (Range (Window CpxData))),
->        SDF.Signal (Beam (Range (Window CpxData))))
-> ct sig = (pCT rightSig, pCT leftSig)
+> overlap :: Signal (Window (Beam (Range CpxData)))
+>         -> Signal (Window (Beam (Range CpxData)))
+> overlap = SY.mealy11 nextState outDecode initState
 >   where
->     pCT       = SDF.comb11 (nFFT,1, (:[]) . C.transpose . vector)
->     wsig      = SY.toSDF sig
->     rightSig  = wsig
->     leftSig   = SDF.delay initBatch wsig
->     initBatch = replicate (nFFT `div` 2) (M.fanout (cis 0))
+>     nextState _ cube = V.drop (nFFT `div` 2) cube
+>     outDecode s cube = s <++> V.take (nFFT `div` 2) cube
+>     initState        = (V.fanoutn (nFFT `div` 2) . V.fanoutn nB . V.fanoutn nb) 0
 
- #### Doppler Filter Bank (DFB){#sec:dfb-atom label="DFB in ForSyDe-Atom"}
+| Function                            | Original module                  | Package      |
+|-------------------------------------|----------------------------------|--------------|
+| `mealy11`                           | [`ForSyDe.Atom.MoC.SY`]          | forsyde-atom |
+| `drop`, `take`, `fanoutn`, `(<++>)` | [`ForSyDe.Atom.Skeleton.Vector`] | forsyde-atom |
+| `nFFT`, `nA`, `nB`                  | `ForSyDe.AESA.Params`            | aesa-atom    |
 
-The Doppler filter bank behave similarly to [@sec:dfb-shallow] with
-the sole exception that it needs to explicitly convert the SDF signal
-back to SY using the MoC interface
-[`toSY`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html#v:toSY)
-in order to operate in the synchronous domain again[^fn:1].
+**OBS!** Perhaps considering all zeroes for the initial state might not be the best
+design decision, since that is in fact "junk data" which is propagated throughout the
+system and which alters the expected behavior. A much safer (and semantically correct)
+approach would be to model the initial state using *absent events* instead of
+arbitrary data. However this demands the introduction of a new layer and some quite
+advanced modeling concepts which are out of the scope of this report[^fn:abst]. For
+the sake of simplicity we now consider that the initial state is half a cube of zeroes
+and that there are no absent events in the system. As earlier mentioned, it is
+*illegal* to assume any type of signal cleaning during system modeling, however this
+law does not apply to the *observer* (i.e. the testbench), who is free to take into
+consideration whichever parts of the signals it deems necessary. We will abuse this
+knowledge in order to show a realistic output behavior of the AESA signal processing
+system: as "observers", we will ignore the effects of the initial state propagation
+from the output signal and instead plot only the useful data.
+
+[^fn:abst]: For more information on absent semantics, check out Chapter 3 of [@leeseshia-15]
+
+ #### Doppler Filter Bank (DFB){#sec:dfb-atom}
+
+During the Doppler filter bank, every window of samples, associated with each range
+bin is transformed into a Doppler channel and the complex samples are converted to
+real numbers by calculating their envelope. The DFB transformation is applied over a
+window of $N_{FFT}$ samples, thus we need to re-arrange the data cubes again as
+suggested in @fig:dfb-samp.
+
+The `dfb` process applies the the following chain of functions on each window of
+complex samples, in three consecutive steps:
+
+ * scale the window samples with a set of coefficients to decrease the Doppler side
+   lobes from each FFT output and thereby to increase the clutter rejection.
+
+ * apply an $N_{FFT}$-point 2-radix decimation in frequency Fast Fourier Transform
+   (FFT) algorithm.
+
+ * compute the envelope of each complex sample when phase information is no longer of
+   interest. The envelope is obtained by calculating the absolute value of the complex
+   number, converting it into a real number.
+
+| Function           | Original module                    | Package                 |
+|--------------------|------------------------------------|-------------------------|
+| `farm11`,` farm21` | [`ForSyDe.Atom.Skeleton.Vector`]   | forsyde-atom            |
+| `fft`              | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
+| `mkWeightCoefs`    | `ForSyDe.AESA.Coefs`               | aesa-atom               |
+| `nS`, `nFFT`       | `ForSyDe.AESA.Params`              | aesa-atom               |
+ 
+
+![Doppler Filter Bank on video structure](figs/dfb-cube.pdf){#fig:dfb-cube}
 
 ![DFB process](figs/dfb-proc-atom.pdf){#fig:dfb-proc-atom}
-
-[^fn:1]: note that we have carried the SY domain across stages mainly
-  for didactic purposes to expose this domain transition through the
-  type signature. the `SDF.toSY` conversion could have very well been
-  performed within the CT stage.
-
-> dfb :: SDF.Signal (Beam (Range (Window CpxData)))
->         -> SY.Signal (Beam (Range (Window RealData)))
-> dfb = SY.comb11 (M.farm11 fDFB) . SDF.toSY
+ 
+> dfb :: Signal (Window (Beam  (Range  CpxData )))
+>     -> Signal (Beam   (Range (Window RealData)))
+> dfb = SY.comb11 (M.farm11 fDFB . C.transpose)
 > 
 > fDFB :: Window CpxData -> Window RealData
 > fDFB = V.farm11 envelope . fft nFFT . weight
@@ -314,7 +345,7 @@ in order to operate in the synchronous domain again[^fn:1].
 >                      q = imagPart a
 >                  in sqrt (i * i + q * q)
 
- #### Constant False Alarm Ratio (CFAR){#sec:cfar-atom label="CFAR in ForSyDe-Atom"}
+ #### Constant False Alarm Ratio (CFAR){#sec:cfar-atom}
 
 The constant false alarm ratio stage is implemented exactly the same as in [@sec:cfar-shallow], but now we use the ForSyDe atom skeletons
 [`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22),

@@ -189,8 +189,6 @@ The table above gives some pointers where to look for additional documentation o
 imported function. The formula to generate the beam constants `mkBeamConsts` is
 presented later in [@sec:atom-coefs].
 
-[^dotMatMat]: see `dotMatMat` in the `ForSyDe.Atom.Skeleton.Vector.DSP` module from package `forsyde-atom-extensions`.
-
  #### Pulse Compression (PC){#sec:pc-atom}
 
 In this stage the received echo of the modulated pulse, i.e. the information contained
@@ -354,12 +352,13 @@ complex samples, in three consecutive steps:
 
 ![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
 
-| Function           | Original module                    | Package                 |
-|--------------------|------------------------------------|-------------------------|
-| `farm11`,` farm21` | [`ForSyDe.Atom.Skeleton.Vector`]   | forsyde-atom            |
-| `fft`              | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
-| `mkWeightCoefs`    | `ForSyDe.AESA.Coefs`               | aesa-atom               |
-| `nS`, `nFFT`       | `ForSyDe.AESA.Params`              | aesa-atom               |
+| Function           | Original module                     | Package                 |
+|--------------------|-------------------------------------|-------------------------|
+| `farm11`,` farm21` | [`ForSyDe.Atom.Skeleton.Vector`]    | forsyde-atom            |
+| `fft`              | `ForSyDe.Atom.Skeleton.Vector.DSP`  | forsyde-atom-extensions |
+| `transpose`        | `ForSyDe.Atom.Skeleton.Vector.Cube` | forsyde-atom-extensions |
+| `mkWeightCoefs`    | `ForSyDe.AESA.Coefs`                | aesa-atom               |
+| `nS`, `nFFT`       | `ForSyDe.AESA.Params`               | aesa-atom               |
 
 *Modeling tips:* each function composing $f_{DFB}$ is itself inherently parallel, as
 it is described in terms of parallel skeletons. We could have "lifted" these skeletons
