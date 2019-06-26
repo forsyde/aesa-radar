@@ -40,6 +40,9 @@ instance (Show a) => Show (Vector a) where
       showVector1 (y:ys) = shows y . showChar ',' 
         . showVector1 ys
 
+instance Foldable Vector where
+  foldr f x (Vector a) = foldr f x a
+
 farm11 f = fmap f
 farm21 f a b = f <$> a <*> b
 farm31 f a b c = f <$> a <*> b <*> c

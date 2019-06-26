@@ -1,0 +1,57 @@
+\documentclass{standalone}
+\usepackage[tikz,math]{forsyde}
+\usepackage{ifthen}
+
+\definecolor{blackboxcolor}{gray}{.95}
+
+\begin{document}
+\begin{tikzpicture}[scale=1,yscale=1.1]
+    \node[anchor=east] (s1) at (-1.7,0) {};
+    \basic[primitive,f={$\times c_1$},](p1)<$(-2,0)+(1.2,-1)$>{$\MocCmb$};
+    \foreach \i/\x in {2/0, 3/2, 4/6}{
+      \newcommand{\cx}{\ifthenelse{\i=4}{N}{\i}}
+      \pgfmathtruncatemacro{\prev}{\i-1}
+      \basic[primitive,f={$0$}](s\i)<\x,0>{$\MocDel$};
+      \basic[primitive,f={$\times c_{\noexpand\cx}$},](a\i)<$(\x,0)+(1,-1)$>{$\MocCmb$};
+      \basic[primitive,f={$+$},](p\i)<$(\x,0)+(2,-2)$>{$\MocCmb$};
+      \draw[s=sy] (s\i) edge[-|-,->] (a\i.west);
+      \draw[s=sy,->] (s\prev) edge[->] (s\i);
+      \draw[s=sy,->] (a\i) edge[-|-,->] (p\i.150);
+      \draw[s=sy] (p\prev.315) edge[|-,->] (p\i.225);
+    }
+    \draw[s=sy] (s1) edge[-|-,->] (p1.west);
+    \coordinate(dum1) at ($(p1)-(1,0)$);
+    \coordinate(dum2) at ($(p2)-(4,0)$);
+      
+    \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=6pt,type=recur](rec)<(s1)(s4)>{};
+    \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=10pt,type=farm](frm)<(dum1)(p1)(a4)>{};
+    \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=4pt,type=reduce](red)<(dum2)(p2)(p4)>{};
+    
+    % \interface[left of=s1] (if1) {sdf}{sy};
+    \standard[process, moc=sy,ni=2,type=interleave,left of=s1] (mrg) {};
+    % \resetportinfo{mrg}\wpinfo{1}\wpinfo{1}\epinfo{2}
+
+    \cluster[composite,inner sep=10pt] (firnet) <(rec)(frm)(red)> {firNet};
+    % \cluster[farmstyle] (int) <(firnet)(mrg)> {INT};
+    
+    % \draw[s=sy] (s1.west) edge (if1) edge ++(.24,0);
+    \draw[s=sy] (mrg) edge (s1.east);
+
+    \node[fill=blackboxcolor,inner xsep=10pt] at ($(s3)!.5!(s4)$) {$\cdots$};
+    \node[fill=blackboxcolor,inner xsep=10pt] at ($(a3)!.5!(a4)$) {$\cdots$};
+    \node[fill=blackboxcolor,inner xsep=10pt,inner ysep=6pt] at ($(p3)!.5!(p4)$) {$\cdots$};
+
+  \draw[s=sy,<-] (mrg.w1) --++(-1,0);% node[black,anchor=south]{$\langle b^{dfb,r}_{1}...b^{dfb,r}_{N_B}\rangle$};
+  \draw[s=sy,<-] (mrg.w2) --++(-1,0);% node[black,anchor=north]{$\langle b^{dfb,l}_{1}...b^{dfb,l}_{N_B}\rangle$};
+  \draw[s=sy,->] (p4) --++(1.5,0);% node[black,anchor=south]{$\langle b^{aesa}_{1}...b^{aesa}_{N_B}\rangle$};
+
+  \end{tikzpicture}
+\end{document}
+
+
+
+%%% Local Variables:
+%%% TeX-command-default: "Make"
+%%% mode: latex
+%%% TeX-master: "../paper"
+%%% End:

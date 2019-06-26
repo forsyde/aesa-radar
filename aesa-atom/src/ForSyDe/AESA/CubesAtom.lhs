@@ -1,4 +1,4 @@
- ## A High-Level Model{#sec:atom-operation}
+ ## A High-Level Model{#sec:cube-atom-operation}
 
 This section presents a high-level behavioral model of the AESA signal processing
 chain presented in [@sec:video-chain-spec]. This model follows intuitive and didactic
@@ -65,7 +65,7 @@ AESA algorithms, presented in detail in @sec:coefs-atom.
 
 > import ForSyDe.AESA.Coefs
 
- ### Type Aliases and Constants{#sec:aliases-shallow label="Type Aliases and Constants"}
+ ### Type Aliases and Constants{#sec:cube-aliases-shallow label="Type Aliases and Constants"}
 
 The system parameters are integer constants defining the size of the application. For
 a simple test scenario provided by Saab AB, we have bundled these parameters in the
@@ -105,27 +105,27 @@ stay consistent with the application specification.
 In this section we follow each stage described in [@sec:video-chain-spec], and model
 them as a processes operating on cubes (three-dimensional vectors) of antenna samples.
 
- #### Digital Beamforming (DFB){#sec:dbf-atom}
+ #### Digital Beamforming (DFB){#sec:cube-dbf-atom}
 
 The DBF receives complex in data, from $N_A$ antenna elements and forms $N_B$
 simultaneous receiver beams, or "listening directions", by summing individually
 phase-shifted in data signals from all elements. Considering the indata video cube,
-the transformation applied by DBF, could be depicted as in [@fig:dbf-cube].
+the transformation applied by DBF, could be depicted as in [@fig:cube-dbf-cube].
 
-![DBF on video structure](figs/dbf-cube.pdf){#fig:dbf-cube}
+![DBF on video structure](figs/dbf-cube.pdf){#fig:cube-dbf-cube}
 
 Considering the application specification in @sec:video-chain-spec on the input data,
 namely _"for each antenna the data arrives _pulse by pulse_, and each pulse arrives
 _range bin by range bin_"_, we can assume that the video is received as `Antenna
 (Window (Range a))` cubes, meaning that the inner vectors are the range bins. However,
-@fig:dbf-cube shows that the beamforming function is applied in the antenna direction,
+@fig:cube-dbf-cube shows that the beamforming function is applied in the antenna direction,
 so we need to transpose the cube in such a way that `Antenna` becomes the inner
 vector, i.e. `Window (Range (Antenna a))`. We thus describe the DBF stage as a
 combinational SY process `comb` acting upon signals of `Cube`s, namely mapping the
 beamforming function $f_{DBF}$ on each column of each _pulse matrix_ (see
-[@fig:dbf-cube]).
+[@fig:cube-dbf-cube]).
 
-![DBF stage process](figs/dbf-proc-atom.pdf){#fig:dbf-proc-shallow}
+![DBF stage process](figs/dbf-proc-atom.pdf){#fig:cube-dbf-proc-shallow}
 
 > dbf :: Signal (Antenna (Window (Range CpxData)))
 >     -> Signal (Window  (Range  (Beam  CpxData)))
@@ -189,23 +189,21 @@ $$ \begin{gathered}
    \end{gathered}
 $$ {#eq:dbf-mat}
 
- #### Pulse Compression (PC){#sec:pc-atom}
+ #### Pulse Compression (PC){#sec:cube-pc-atom}
 
 In this stage the received echo of the modulated pulse, i.e. the information contained
 by the range bins, is passed through a matched filter for decoding their
 modulation. This essentially applies a sliding window, or a moving average on the
 range bin samples. Considering the video cube, the PC transformation is applied in the
-direction shown in @fig:pc-cube, i.e. on vectors formed from the range of every pulse.
+direction shown in @fig:cube-pc-cube, i.e. on vectors formed from the range of every pulse.
 
-![PC: direction of application on video structure (left); process (right)](figs/pc-cube.pdf){#fig:pc-cube}
+![PC: direction of application on video structure (left); process (right)](figs/pc-cube.pdf){#fig:cube-pc-cube}
 
 The PC process is mapping the $f_{PC}$ on each row of the pulse matrices in a cube,
 however the previous stage has arranged the cube to be aligned beam-wise. This is why
 we need to re-arrange the data so that the innermost vectors are `Range`s instead, and
 we do this by simply `transpose`-ing the inner `Range` $\times$ `Beam` matrices into
 `Beam` $\times$ `Range` ones.
-
-
 
 > pc :: Signal (Window (Range (Beam  CpxData))) 
 >    -> Signal (Window (Beam  (Range CpxData)))
@@ -231,7 +229,7 @@ application we also use a relatively small average window (5 taps).
 | `fir`                 | `ForSyDe.Atom.Skeleton.Vector.DSP`    | forsyde-atom-extensions |
 | `mkPcCoefs`           | `ForSyDe.AESA.Coefs`                  | aesa-atom               |
 
- #### Corner Turn (CT) with 50% overlapping data {#sec:ct-atom}
+ #### Corner Turn (CT) with 50% overlapping data {#sec:cube-ct-atom}
 
 During the CT a rearrangement of data must be performed between functions that process
 data in “different” directions, e.g. range and pulse, in order to be able to calculate
@@ -241,11 +239,11 @@ derived or inferred, since it demands well-planned design decisions to make full
 of the underlying architecture. At the level of abstraction on which we work right now
 though, it is merely a matrix `transpose` operation, and it can very well be posponed
 until the beginning of the next stage. However, a much more interesting operation is
-depicted in [@fig:ct-cube]: in order to maximize the efficiency of the AESA processing
+depicted in [@fig:cube-ct-cube]: in order to maximize the efficiency of the AESA processing
 the datapath is split into two concurrent processing channels with 50% overlapped
 data.
 
-![Concurrent processing on 50% overlapped data](figs/ct-cube.pdf){#fig:ct-cube} 
+![Concurrent processing on 50% overlapped data](figs/ct-cube.pdf){#fig:cube-ct-cube} 
 
 Implmeneting such a behavior requires a bit of "ForSyDe thinking". At a first glance,
 the problem seems easily solved considering only the cube structures: just "ignore"
@@ -267,7 +265,7 @@ simple Mealy finite state machine. This machine splits an input cube into two ha
 stores one half and merges the other half with the previously stored state to create
 the left channel stream of cubes.
 
-![Left channel data builder process](figs/ct-proc-atom.pdf){#fig:ct-proc-atom}
+![Left channel data builder process](figs/ct-proc-atom.pdf){#fig:cube-ct-proc-atom}
 
 > overlap :: Signal (Window (Beam (Range CpxData)))
 >         -> Signal (Window (Beam (Range CpxData)))
@@ -300,13 +298,13 @@ from the output signal and instead plot only the useful data.
 
 [^fn:abst]: For more information on absent semantics, check out Chapter 3 of [@leeseshia-15]
 
- #### Doppler Filter Bank (DFB){#sec:dfb-atom}
+ #### Doppler Filter Bank (DFB){#sec:cube-dfb-atom}
 
 During the Doppler filter bank, every window of samples, associated with each range
 bin is transformed into a Doppler channel and the complex samples are converted to
 real numbers by calculating their envelope. The DFB transformation is applied over a
 window of $N_{FFT}$ samples, thus we need to re-arrange the data cubes again as
-suggested in @fig:dfb-samp.
+suggested in @fig:cube-dfb-samp.
 
 The `dfb` process applies the the following chain of functions on each window of
 complex samples, in three consecutive steps:
@@ -328,90 +326,264 @@ complex samples, in three consecutive steps:
 | `mkWeightCoefs`    | `ForSyDe.AESA.Coefs`               | aesa-atom               |
 | `nS`, `nFFT`       | `ForSyDe.AESA.Params`              | aesa-atom               |
  
+![Doppler Filter Bank on video structure](figs/dfb-cube.pdf){#fig:cube-dfb-cube}
 
-![Doppler Filter Bank on video structure](figs/dfb-cube.pdf){#fig:dfb-cube}
-
-![DFB process](figs/dfb-proc-atom.pdf){#fig:dfb-proc-atom}
+![DFB process](figs/dfb-proc-atom.pdf){#fig:cube-dfb-proc-atom}
  
 > dfb :: Signal (Window (Beam  (Range  CpxData )))
 >     -> Signal (Beam   (Range (Window RealData)))
 > dfb = SY.comb11 (M.farm11 fDFB . C.transpose)
 > 
 > fDFB :: Window CpxData -> Window RealData
-> fDFB = V.farm11 envelope . fft nFFT . weight
+> fDFB = V.farm11 envelope . fft nS . weight
 >   where
->     weight     = V.farm21 (*) mkWeightCoefs
->     envelope a = let i = realPart a
->                      q = imagPart a
+>     weight     = V.farm21 (*) (mkWeightCoefs nFFT)
+>     envelope a = let (i, q) = (realPart a, imagPart a)
 >                  in sqrt (i * i + q * q)
 
- #### Constant False Alarm Ratio (CFAR){#sec:cfar-atom}
+ #### Constant False Alarm Ratio (CFAR){#sec:cube-cfar-atom}
 
-The constant false alarm ratio stage is implemented exactly the same as in [@sec:cfar-shallow], but now we use the ForSyDe atom skeletons
-[`farm`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:farm22),
-[`reduce`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:reduce2),
-[`fanout`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:fanout),
-[`group`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:group),
-[`take`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:take)
-[`drop`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html#v:drop)
-and `stencil`[^stenA].
+The CFAR normalizes the data within the video cubes in order to maintain a constant
+false alarm rate with respect to a detection threshold. This is done in order to keep
+the number of false targets at an acceptable level by adapting the normalization to
+the clutter situation in the area (around a cell under test) of interest. The
+described process can be depicted as in @fig:cube-cfar-cube which suggests the
+[stencil](https://en.wikipedia.org/wiki/Stencil_code) data accessing pattern within
+the video cubes.
 
-![CFAR process](figs/cfar-proc-atom.pdf){#fig:cfar-proc-atom}
+![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cube-cfar-cube}
 
-[^stenA]: see `ForSyDe.Atom.Skeleton.Vector.stencil` from the
-  `forsyde-atom-extensions` documentation.
-
-> cfar :: SY.Signal (Beam ( Range (Window RealData)))
->      -> SY.Signal (Beam (CRange (Window RealData)))
+> cfar :: Signal (Beam (Range (Window RealData)))
+>      -> Signal (Beam (Range (Window RealData)))
 > cfar = SY.comb11 (V.farm11 fCFAR)
-> 
-> fCFAR :: Range (Window RealData) -> CRange (Window RealData)
-> fCFAR r_of_d = V.farm41 (\m -> V.farm31 (normCfa m)) md bin lmv emv
+
+![CFAR process](figs/cfar-proc-atom.pdf){#fig:cube-cfar-proc-atom}
+
+The `cfar` process applies the $f_{CFAR}$ function on every $N_b\times N_{FFT}$ matrix
+corresponding to each beam. The $f_{CFAR}$ function normalizes each Doppler window,
+after which the sensitivity will be adapted to the clutter situation in current area,
+as seen in @fig:cube-cfar-signal. The blue line indicates the mean value of maximum of the
+left and right reference bins, which means that for each Doppler sample, a swipe of
+neighbouring bins is necessary, as suggested by [@fig:cube-cfar-cube]. This is a typical
+pattern in signal processing called
+[stencil](https://en.wikipedia.org/wiki/Stencil_code), which will constitute the main
+parallel skeleton within the $f_{CFAR}$ function.
+
+![The signal level within one pulse window: a) before CFAR; b) after CFAR](figs/cfar-signal.pdf){#fig:cube-cfar-signal width=400px}
+
+> fCFAR :: Range (Window RealData) -> Range (Window RealData)
+> fCFAR rbins = V.farm41 (\m -> V.farm31 (normCfa m)) md rbins lmv emv
 >   where
->     bin = V.drop (nFFT + 1) r_of_d
->     md  = V.farm11 (logBase 2 . V.reduce min) bin
->     emv = V.farm11 (aritMean . V.take nFFT) neighbors
->     lmv = V.farm11 (aritMean . V.drop (nFFT + 3)) neighbors
+>     md  = V.farm11 (logBase 2 . V.reduce min) rbins
+>     emv = (V.fanoutn (nFFT + 1) dummy) <++> (V.farm11 aritMean neighbors)
+>     lmv = (V.drop 2 $ V.farm11 aritMean neighbors) <++> (V.fanout dummy) 
 >     -----------------------------------------------
 >     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
 >     aritMean :: Vector (Vector RealData) -> Vector RealData
 >     aritMean  = V.farm11 (/n) . V.reduce addV . V.farm11 geomMean . V.group 4
 >     geomMean  = V.farm11 (logBase 2 . (/4)) . V.reduce addV
->     neighbors = V.stencil (2 * nFFT + 3) r_of_d
+>     -----------------------------------------------
+>     dummy     = V.fanoutn nFFT $ (-maxFloat)/n
+>     neighbors = V.stencil nFFT rbins
+>     -----------------------------------------------
 >     addV      = V.farm21 (+)
 >     n         = fromIntegral nFFT
 
 
- #### Integration (INT){#sec:int-atom label="INT in ForSyDe-Atom"}
+| Function                                  | Original module                  | Package      |
+|-------------------------------------------|----------------------------------|--------------|
+| `farm`[`4`/`3`/`1`]`1`, `reduce`, `<++>`, | [`ForSyDe.Atom.Skeleton.Vector`] | forsyde-atom |
+| `drop`, `fanout`, `fanoutn`, `stencil `   |                                  |              |
+| `comb11`                                  | [`ForSyDe.Atom.MoC.SY`]          | forsyde-atom |
+| `maxFloat`                                | ForSyDe.AESA.Coefs               | aesa-atom    |
+| `nb`, `nFFT`                              | `ForSyDe.AESA.Params`            | aesa-atom    |
 
-Finally, the integration is performed like in [@sec:int-shallow], by
-using the `fir'` pattern to create a FIR process network.
+The $f_{CFAR}$ function itself can be described with the system of [@eq:cfar], where
 
-> int :: SY.Signal (Beam (CRange (Window RealData)))
->     -> SY.Signal (Beam (CRange (Window RealData)))
->     -> SY.Signal (Beam (CRange (Window RealData)))
-> int cr cl = firNet $ addSC cr cl
+ * $MD$ is the minimum value over all Doppler channels in a batch for a specific data
+   channel and range bin.
+
+ * $EMV$ and $LMV$ calculate the early and respectively late mean values from the
+   neighboring range bins as a combination of geometric and arithmetic mean values.
+
+ * $eb$ and $lb$ are the earliest bin, respectively latest bin for which the CFAR can
+   be calculated as $EMV$ and $LMV$ require at least $N_{FFT}$ bins + 1 guard bin
+   before and respectively after the current bin. This phenomenon is also called the
+   "stencil halo", which means that CFAR, as defined in [@eq:cfar] is applied only on
+   $N_b'=N_b-2N_{FFT}-2$ bins.
+   
+ * bins earlier than $eb$, respectively later than $lb$, are ingnored by the CFAR
+   formula and therefore their respective EMV and LMV are replaced with the lowest
+   representable value.
+   
+ * 5 is added to the exponent of the CFAR equation to set the gain to 32 (i.e. with
+   only noi se in the incoming video the output values will be 32).
+
+$$\begin{aligned}&\left\{\begin{aligned}
+  &CFAR(a_{ij})= 2^{(5 + \log_2 a_{ij}) - \max (EMV(a_{ij}),LMV(a_{ij}),MD(a_{ij}))}\\
+  &EMV(a_{ij}) = \frac{1}{N}\sum_{k=0}^{N-1}\left(\log_2\left(\frac{1}{4}\sum_{l=0}^{3}a_{(i-2-4k-l)j}\right)\right)\\
+  &LMV(a_{ij}) = \frac{1}{N}\sum_{k=0}^{N-1}\left(\log_2\left(\frac{1}{4}\sum_{l=0}^{3}a_{(i+2+4k+l)j}\right)\right)\\
+  &MD(a_{ij})  = \log_{2}\left(\min_{k=1}^N(a_{ik})\right)
+  \end{aligned}\right.\\
+  &\qquad \forall i\in[eb,lb], j\in[1,N] \text{ where }\left\{
+  \begin{aligned}
+  &N = N_{FFT}\\
+  &eb = N_{FFT} + 1\\
+  &lb = N_b - N_{FFT} - 1\\
+  \end{aligned}\right.
+  \end{aligned}
+$${#eq:cfar}
+
+The first thing we calculate is the $MD$ for each Doppler window (row). For each row
+of `rbins` (i.e. range bins of Doppler windows) we look for the minimum value
+(`reduceV min`) and apply the binary logarithm on it.
+
+Another action performed over the matrix `rbins` is to form two stencil "cubes" for
+EMV and LMV respectively, by gathering batches of $N_{FFT}$ Doppler windows like in
+[@eq:cfar-stencil], computing them like in [@eq:cfar-emv].
+
+$$
+  \stackrel{\mbox{rbins}}{
+  \begin{bmatrix}
+  a_{11} & a_{12} & \cdots & a_{1N_{FFT}} \\
+  a_{21} & a_{22} & \cdots & a_{2N_{FFT}} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{N_b1} & a_{N_b2} & \cdots & a_{N_bN_{FFT}}
+  \end{bmatrix}}
+  \stackrel{\mathtt{stencil}}{\rightarrow}
+  \stackrel{\mbox{neighbors}}{
+  \begin{bmatrix}
+  \begin{bmatrix}
+  a_{11} & a_{12} & \cdots & a_{1N_{FFT}} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{N_{FFT}1} & a_{N_{FFT}2} & \cdots & a_{N_{FFT}N_{FFT}} \\
+  \end{bmatrix}\\
+  \begin{bmatrix}
+  a_{21} & a_{22} & \cdots & a_{2N_{FFT}} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{(N_{FFT}+1)1} & a_{(N_{FFT}+1)2} & \cdots & a_{(N_{FFT}+1)N_{FFT}} \\
+  \end{bmatrix}\\
+  \vdots \\
+  \begin{bmatrix}
+  a_{(N_b-N_{FFT})1} & a_{(N_b-N_{FFT})2} & \cdots & a_{(N_b-N_{FFT})N_{FFT}}\\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{N_b1} & a_{N_b2} & \cdots & a_{N_bN_{FFT}}
+  \end{bmatrix}
+  \end{bmatrix}}
+$${#eq:cfar-stencil}
+
+Each one of these neighbors matrices will constitute the input data for calculating
+the $EMV$ and $LMV$ for each Doppler window. $EMV$ and $LMV$ are calculated by
+applying the mean function `arithMean` over them, as shown (only for the window
+associated with the $eb$ bin) in [@eq:cfar-emv]. The resulting `emv` and `lmv`
+matrices are padded with rows of the minimum representable value `-maxFloat`, so that
+they align properly with `rbins` in order to combine into the 2D farm/stencil defined
+at @eq:cfar. Finally, `fCFAR` yields a matrix of normalized Doppler windows. The resulting matrices are not transformed back into sample streams by the parent process, but rather they are passed as single tokens downstream to the INT stage, where they will be processed as such.
+
+$$\begin{aligned}
+  &\begin{bmatrix}
+  a_{11} & \cdots & a_{1N_{FFT}} \\
+  \vdots  & \ddots & \vdots \\
+  a_{N_{FFT}1}  & \cdots & a_{N_{FFT}N_{FFT}}
+  \end{bmatrix}
+  \stackrel{\mathtt{group}}{\rightarrow}
+  \begin{bmatrix}
+  \begin{bmatrix}
+  a_{11} & \cdots & a_{1N_{FFT}} \\
+  \vdots & \ddots & \vdots \\
+  a_{41} & \cdots & a_{4N_{FFT}}
+  \end{bmatrix}\\
+  \vdots \\
+  \begin{bmatrix}
+  a_{(N_{FFT}-4)1}  & \cdots & a_{(N_{FFT}-4)N_{FFT}}\\
+  \vdots & \ddots & \vdots \\
+  a_{N_{FFT}1}  & \cdots & a_{N_{FFT}N_{FFT}}
+  \end{bmatrix}
+  \end{bmatrix}\\
+  &\stackrel{\mathtt{farm(geomMean)}}{\rightarrow}
+  \begin{bmatrix}
+  \log_2\frac{1}{4}\sum_{i=1}^{4}a_{i1} & \cdots & \log_2\frac{1}{4}\sum_{i=1}^{4}a_{iN_{FFT}} \\
+  \vdots & \ddots & \vdots \\
+  \log_2\frac{1}{4}\sum_{i=N_{FFT}-4}^{N_{FFT}}a_{i1} & \cdots & \log_2\frac{1}{4}\sum_{i=N_{FFT}-4}^{N_{FFT}}a_{iN_{FFT}}
+  \end{bmatrix}\\
+  &\stackrel{\mathtt{(/N_{FFT})\circ reduce(+)}}{\rightarrow}
+  \begin{bmatrix}
+  EMV(a_{eb,1}) & \cdots & EMV(a_{eb,N_{FFT}}) 
+  \end{bmatrix}
+  \end{aligned}
+$${#eq:cfar-emv}
+
+ #### Integrator (INT){#sec:cube-int-atom}
+
+During the last stage of the video processing chain each data sample of the video cube
+is integrated against its 8 previous values using an 8-tap FIR filter, as suggested by
+the drawing in @fig:cube-int-cube-atom.
+
+
+> int :: Signal (Beam (Range (Window RealData)))
+>     -> Signal (Beam (Range (Window RealData)))
+>     -> Signal (Beam (Range (Window RealData)))
+> int right left = firNet mkIntCoefs $ SY.interleave right left
+
+Before integrating though, the data from both the left and the right channel need to
+be merged and interleaved. This is done by the process `interleave` below, which is a
+convenient utility exported by the SY library, hiding a domain interface. When
+considering only the data structures, the `interleave` process can be regarded as an
+up-sampler with the rate 2/1. When taking into consideration the size of the entire
+data set (i.e. token rates $\times$ structure sizes $\times$ data size), we can easily
+see that the overall required system bandwidth (ratio) remains the same between the PC
+and INT stages, i.e. $\frac{2\times N_B \times N_{b} \times N_{FFT}\times
+\mathit{size}(\mathtt{RealData})}{N_B \times N_{b} \times N_{FFT}\times
+\mathit{size}(\mathtt{CpxData})}=1/1$. 
+
+| Function                    | Original module                   | Package                 |
+|-----------------------------|-----------------------------------|-------------------------|
+| `farm21`,`farm11`,`fanout`  | ForSyDe.Atom.Skeleton.Vector.Cube | forsyde-atom-extensions |
+| `fir'`                      | ForSyDe.Atom.Skeleton.Vector.DSP  | forsyde-atom-extensions |
+| `comb21`,`comb11`, `delay`, `interleave` | [`ForSyDe.Atom.MoC.SY`] | forsyde-atom         |
+| `mkFirCoefs`                | ForSyDe.AESA.Coefs                | aesa-atom               |
+
+![Integration on cubes of complex samples](figs/int-cube.pdf){#fig:cube-int-cube-atom}
+
+![INT network](figs/int-proc-atom.pdf){#fig:cube-int-atom}
+
+The 8-tap FIR filter used for integration is also a moving average, but as compared to
+the `fir` function used in @sec:cube-pc-atom, the window slides in time domain,
+i.e. over streaming samples rather than over vector elements. To instantiate a FIR
+system we use the `fir'` skeleton provided by the ForSyDe-Atom DSP utility libraries,
+which constructs the the well-recognizable FIR pattern in @fig:cube-int-net-atom,
+i.e. a recur-farm-reduce composition. In order to do so, `fir'` needs to know _what_
+to fill this template with, thus we need to provide as arguments its "basic"
+operations, which in our case are processes operating on signals of matrices.  In
+fact, `fir` itself is a _specialization_ of the `fir'` skeleton, which defines its
+basic operations as corresponding functions on vectors. This feature derives from a
+powerful algebra of skeletons which grants them both modularity, and the possibility
+to transform them into semantically-equivalent forms, as we shall soon explore in
+@sec:refinement.
+
+> firNet :: Num a => Vector a -> SY.Signal (Cube a) -> SY.Signal (Cube a)
+> firNet coefs = fir' addSC mulSC dlySC coefs
 >   where
->     firNet  = fir' addSC mulSC dlySC mkFirCoefs
 >     addSC   = SY.comb21 (C.farm21 (+))
 >     mulSC c = SY.comb11 (C.farm11 (*c))
->     dlySC   = SY.delay (C.fanout 0)
-
+>     dlySC   = SY.delay  (C.fanout 0)
+   
  ### System Process Network
 
-The AESA process network is formed by "plugging in" together all
-components instantiated in the previous sections, and thus obtaining
-the system description in [@fig:aesa-proc-atom]. 
+The AESA process network is formed by "plugging in" together all components
+instantiated in the previous sections, and thus obtaining the system description in
+[@fig:cube-aesa-atom]. We do not transpose the output data, because the Doppler
+windows are the ones we are interested in plotting as the innermost structures.
 
-![The AESA process network instance](figs/aesa-proc-atom.pdf){#fig:aesa-proc-atom}
+![The AESA process network instance](figs/aesa-proc-atom.pdf){#fig:cube-aesa-atom}
 
-> aesa :: SY.Signal (Range (Antenna CpxData))
->      -> SY.Signal (Beam (CRange (Window RealData)))
-> aesa video = int lDfb rDfb
+> aesa :: Signal (Antenna (Window (Range  CpxData )))
+>      -> Signal (Beam    (Range  (Window RealData)))
+> aesa video = int rCfar lCfar
 >   where
->     lDfb      = cfar $ dfb lCt
->     rDfb      = cfar $ dfb rCt
->     (lCt,rCt) = ct $ pc $ dbf video
+>     rCfar = cfar $ dfb oPc
+>     lCfar = cfar $ dfb $ overlap oPc
+>     oPc   = pc $ dbf video
 
 
 

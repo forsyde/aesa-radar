@@ -4,49 +4,11 @@
 
 \begin{document}
 \begin{tikzpicture}[scale=1.5]
-  \standard[process,f={$\noexpand\mathtt{stencil}(l)$},moc=sdf,type=comb](n){neighbors};
-  \resetportinfo{n}\wpinfo{$N_b\times N_{FFT}$}\epinfo{$N_{b'}$}
-  \trans[transition=s1v1,type={distribute $\langle 1...\rangle$},right of=n] (dist) {distribute};
-  \standard[process,f=$\noexpand\mathit{center}$,moc=sdf,type=comb,right of=dist,xshift=1.7cm](mid){pres};
-  \resetportinfo{mid}\wpinfo{$1$}\epinfo{$1$}
-  \standard[process,f=$\noexpand\mathit{early}$,moc=sdf,type=comb,above of=mid](early){early};
-  \resetportinfo{early}\wpinfo{$1$}\epinfo{$1$}
-  \standard[process,f=$\noexpand\mathit{late}$,moc=sdf,type=comb,below of=mid](late){late};
-  \resetportinfo{late}\wpinfo{$1$}\epinfo{$1$}
-  \cluster[farmstyle,type=farm,inner xsep=30pt](get)<(early)(late)>{get};
-  \node[xshift=-1.2cm](dummy) at (n.w1){};
-  \cluster[composite,inner sep=15pt](assgn)<(dummy)(get)>{assign};
-  
-  \standard[process,f=$\noexpand\mathit{minVal}$,moc=sdf,type=comb,right of=mid,xshift=3.5cm](mv){min};
-  \resetportinfo{mv}\wpinfo{$1$}\epinfo{$1$}
-  \standard[process,f=$\noexpand\mathit{arithMean}$,moc=sdf,type=comb,above of=mv](em){mean};
-  \resetportinfo{em}\wpinfo{$1$}\epinfo{$1$}
-  \standard[process,f=$\noexpand\mathit{arithMean}$,moc=sdf,type=comb,below of=mv](lm){mean};
-  \resetportinfo{lm}\wpinfo{$1$}\epinfo{$1$}
-  \standard[process,f=$\noexpand\mathit{norm}$,ni=4,moc=sdf,type=comb,right of=mv,xshift=2cm,inner ysep=15pt](norm){norm};
-  \resetportinfo{norm}\wpinfo{$1$}\wpinfo{$1$}\wpinfo{$1$}\wpinfo{$1$}\epinfo{$N_{FFT}$}
-  \cluster[farmstyle,type=farm,inner sep=25pt](calc)<(em)(norm)(lm)>{calc};
-  \trans[transition=s1v1, rotate shape=180, type={merge $\langle N_{FFT}...\rangle$}, right of=calc] (gather) {gather};
-  \cluster[composite,inner sep=15pt](pcfar)<(gather)(calc)>{pCFAR};
-  \cluster[farmstyle,type=farm](cfar)<(assgn)(pcfar)>{CFAR};
-
-  \node[anchor=north east] at (cfar.north east) {$\forall b\in[1,N_B]$};
-  \node[anchor=north east] at (calc.north east) {$\forall w\in[1,N_{b'}]$};
-  \node[anchor=north east] at (get.north east) {$\forall w\in[1,N_{b'}]$};
-
-  \draw[trans={s=sdf,<-}{cfar-west}{v=sdf,srcport}] (n.w1) --++(-2,0) node[anchor=east] {$\langle b^{dfb}_{1}...b^{dfb}_{N_B}\rangle$};
-  \draw[s=sdf,->] (n.e1) --(dist.w1);
-  \draw[trans={v=sdf}{get-west}{s=sdf,srcport}] (dist.e1) --++(.7,0) coordinate (o); 
-  \draw[s=sdf] (o) edge[|-,->] (early) edge[|-,->] (late) edge[->] (mid);
-  \path[] (early) edge[intersect=get-east, as=g-e] ++(2,0) (mid) edge[intersect=get-east, as=g-m] ++(2,0) (late) edge[intersect=get-east, as=g-l] ++(2,0);
-  \draw[s=sdf] (early) -- (g-e)  (mid) -- (g-m)  (late) -- (g-l);
-  \draw[] (g-e) edge[trans={v=sdf,srcport,-|-}{calc-west}{s=sdf,srcport,->}] (em.w1);
-  \draw[] (g-m) edge[trans={v=sdf,srcport,-|-}{calc-west}{s=sdf,srcport,->}] (mv.w1);
-  \draw[] (g-l) edge[trans={v=sdf,srcport,-|-}{calc-west}{s=sdf,srcport,->}] (lm.w1);
-  \draw[-|-,->,s=sdf] (em.e1) edge (norm.w1) (mv.e1) edge (norm.w3) (lm.e1) edge (norm.w4);
-  \draw[s=sdf,->] (mv.w1)++(-.4,0) --++(0,.5) --++(1.8,0) |- (norm.w2);
-  \draw[trans={s=sdf}{calc-east}{v=sdf,srcport,->}] (norm.e1) -- (gather.w1);
-  \draw[trans={s=sdf}{cfar-east}{v=sdf,srcport,->}] (gather.e1) --++(1.5,0) node[anchor=west] {$\langle b^{cfar}_{1}...b^{cfar}_{N_B}\rangle$};
+  \standard[process,f={$f_{CFAR}$},moc=sdf,type=comb](cfar){};
+  \resetportinfo{cfar}\wpinfo{$N_b\times N_{FFT}$}\epinfo{$N_b\times N_{FFT}$}
+  \cluster[farmstyle,type=farm,inner xsep=50pt](all)<(cfar)>{CFAR};
+  \draw[trans={s=sdf,<-}{all-west}{v=sdf,srcport}] (cfar) --++(-2.5,0) node[black,anchor=east]{$\langle b^{dfb}_{1}...b^{dfb}_{N_B}\rangle$};
+  \draw[trans={s=sdf}{all-east}{v=sdf,srcport,->}] (cfar) --++(2.5,0) node[black,anchor=west]{$\langle b^{cfar}_{1}...b^{cfar}_{N_B}\rangle$};
 \end{tikzpicture}
 \end{document}
 

@@ -1,14 +1,11 @@
 \documentclass{standalone}
-\usepackage[tikz,math]{forsyde}
-\usepackage{ifthen}
+
+\usepackage[tikz]{forsyde}
 
 \begin{document}
-\begin{tikzpicture}[scale=1.5]
-  \standard[process,f={$f_{CFAR}$},moc=sdf,type=comb](cfar){};
-  \resetportinfo{cfar}\wpinfo{$N_b\times N_{FFT}$}\epinfo{$N_b\times N_{FFT}$}
-  \cluster[farmstyle,type=farm,inner xsep=50pt](all)<(cfar)>{CFAR};
-  \draw[trans={s=sdf,<-}{all-west}{v=sdf,srcport}] (cfar) --++(-2.5,0) node[black,anchor=east]{$\langle b^{dfb}_{1}...b^{dfb}_{N_B}\rangle$};
-  \draw[trans={s=sdf}{all-east}{v=sdf,srcport,->}] (cfar) --++(2.5,0) node[black,anchor=west]{$\langle b^{cfar}_{1}...b^{cfar}_{N_B}\rangle$};
+\begin{tikzpicture}[]
+  \standard[process,moc=sy,f={$\noexpand\mathtt{farm}(f_{CFAR})$},type=comb](a){cfar};
+  \draw[s] (a) edge[<-] ++(-2,0) edge[->] ++(2,0);
 \end{tikzpicture}
 \end{document}
 

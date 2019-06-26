@@ -23,30 +23,43 @@ dependencies:
 - base >= 4.7 && < 5
 - forsyde-atom
 - forsyde-atom-extensions
+# for the executables
+- directory
+- filepath
+- process
+- bytestring-lexing
+- bytestring
+- double-conversion
+- deepseq
 - parallel
+
 
 library:
   source-dirs: src
 
 executables:
-  aesa-hl:
-    main:                Main.hs
+  aesa-cube:
+    main:                Cube.hs
     source-dirs:         app
     ghc-options:
+    - -main-is           Cube
     - -threaded
     - -rtsopts
     - -eventlog 
     - -with-rtsopts=-N
     dependencies:
     - aesa-atom
-    - directory
-    - filepath
-    - process
-    - bytestring-lexing
-    - bytestring
-    - double-conversion
-    - deepseq
-    - parallel
+  aesa-stream:
+    main:                Stream.hs
+    source-dirs:         app
+    ghc-options:
+    - -main-is           Stream
+    - -threaded
+    - -rtsopts
+    - -eventlog 
+    - -with-rtsopts=-N
+    dependencies:
+    - aesa-atom
     
 tests:
   tests-hl:

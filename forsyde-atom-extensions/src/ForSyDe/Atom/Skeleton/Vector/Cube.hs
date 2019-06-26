@@ -28,28 +28,28 @@ pretty :: Show a
        -> IO ()
 pretty sep mat = mapM_ (\m -> putStrLn "--------" >> M.pretty sep m) mat >> putStrLn "--------"
 
--- | Checks if a cube is null. @<>@, @<<>>@ and @<<<>>>@ are all null
--- cubes.
-isNull :: Cube a -> Bool
-isNull Null = True
-isNull (Null:>Null) = True
-isNull (Null:>Null:>Null) = True
-isNull _ = False
+-- -- | Checks if a cube is null. @<>@, @<<>>@ and @<<<>>>@ are all null
+-- -- cubes.
+-- isNull :: Cube a -> Bool
+-- isNull Null = True
+-- isNull (Null:>Null) = True
+-- isNull (Null:>Null:>Null) = True
+-- isNull _ = False
 
--- | Returns the X and Y dimensions of cube and checks if it is well formed.
-size :: Cube a -> (Int,Int,Int)
-size m = (x,y,z)
-  where
-    z = V.length (wellFormed m)
-    y = (V.length . V.first) m
-    x = (V.length . V.first . V.first) m
+-- -- | Returns the X and Y dimensions of cube and checks if it is well formed.
+-- size :: Cube a -> (Int,Int,Int)
+-- size m = (x,y,z)
+--   where
+--     z = V.length (wellFormed m)
+--     y = (V.length . V.first) m
+--     x = (V.length . V.first . V.first) m
 
--- | Checks if a cube is well-formed, meaning that all its rows are
--- of equal length. Returns the same cube in case it is well-formed
--- or throws an exception if it is ill-formed.
-wellFormed :: Cube a -> Cube a
-wellFormed Null = Null
-wellFormed (x:>xs) = M.wellFormed x :> wellFormed xs
+-- -- | Checks if a cube is well-formed, meaning that all its rows are
+-- -- of equal length. Returns the same cube in case it is well-formed
+-- -- or throws an exception if it is ill-formed.
+-- wellFormed :: Cube a -> Cube a
+-- wellFormed Null = Null
+-- wellFormed (x:>xs) = M.wellFormed x :> wellFormed xs
 
 -- | Converts a list into a 'Cube'. See example from 'pretty'.
 cube :: Int      -- ^ number of columns (X dimension) @= x@
@@ -70,10 +70,10 @@ fromCube :: Cube a -- ^ /size/ = @(x,y)@
          -> [a]      -- ^ /length/ = @x * y@
 fromCube = concatMap fromVector . fromMatrix
 
--- | Creates a unit (i.e. singleton) cube, which is a cube with
--- only one element.
-unit :: a -> Cube a -- ^ /size/ = @(1,1)@
-unit a = ((a:>Null):>Null):>Null
+-- -- | Creates a unit (i.e. singleton) cube, which is a cube with
+-- -- only one element.
+-- unit :: a -> Cube a -- ^ /size/ = @(1,1)@
+-- unit a = ((a:>Null):>Null):>Null
 
 -- | Creates an /infinite cube/ which repeats one element
 fanout :: a -> Cube a
@@ -139,19 +139,19 @@ farm31 f = V.farm31 (V.farm31 (V.farm31 f))
 reduce :: (a -> a -> a) -> Cube a -> a
 reduce f = V.reduce f . V.farm11 (M.reduce f)
 
--- | Returns the element of a matrix at a certain position.
---
--- >>> let m = matrix 3 3 [1,2,3,11,12,13,21,22,23]
--- >>> at 2 1 m
--- 13
-get :: Int       -- ^ X index starting from zero
-    -> Int       -- ^ Y index starting from zero
-    -> Int       -- ^ Z index starting from zero
-    -> Cube a
-    -> Maybe a
-get x y z = getMaybe . V.get z
-  where getMaybe Nothing = Nothing
-        getMaybe (Just a) = M.get x y a
+-- -- | Returns the element of a matrix at a certain position.
+-- --
+-- -- >>> let m = matrix 3 3 [1,2,3,11,12,13,21,22,23]
+-- -- >>> at 2 1 m
+-- -- 13
+-- get :: Int       -- ^ X index starting from zero
+--     -> Int       -- ^ Y index starting from zero
+--     -> Int       -- ^ Z index starting from zero
+--     -> Cube a
+--     -> Maybe a
+-- get x y z = getMaybe . V.get z
+--   where getMaybe Nothing = Nothing
+--         getMaybe (Just a) = M.get x y a
 
 -- | Returns the upper-left part of a matrix until a specific
 -- position.
