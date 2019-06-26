@@ -113,7 +113,7 @@
 \def\fps@figure{htbp}
 \makeatother
 
-\usepackage{rotating}
+\usepackage{pdflscape}
 \usepackage{todonotes}
 \hypersetup{colorlinks = true,
         linkcolor = red,
@@ -157,6 +157,7 @@ Ingemar Söderquist \\{\small\tt ingemar.soderquist@saabgroup.com}
 \date{}
 
 \usepackage[margin=1in]{geometry}
+\newcommand{\nopandoc}[1]{#1}
 
 \begin{document}
 \savegeometry{Mem}
@@ -517,11 +518,16 @@ e.g.~with \texttt{stack\ ghci\ MyTest.hs}.
 ForSyDe-Atom}\label{sec:atom}}
 
 \begin{quote}
-\emph{This section guides the reader throughout converting the provided
-specifications of the AESA signal processing chain into a concrete,
-functionally complete, high-level executable model in ForSyDe-Atom.
-Enough AESA system details are given in order to understand the modeling
-decisions. At the end of this section we simulate this model against a
+\emph{This section guides the reader throughout translating
+``word-by-word'' the provided specifications of the AESA signal
+processing chain into a concrete, functionally complete, high-level
+executable model in ForSyDe-Atom. This first attempt focuses mainly on
+the top-level functional behavior of the system, exerting the successive
+transformations upon the input video cubes, as suggested by
+Figure~\ref{fig:video-chain-spec}. We postpone the
+description/derivation of more appropriate time behaviors for later
+sections. Enough AESA system details are given in order to understand
+the model. At the end of this section we simulate this model against a
 realistic input set of complex antenna data, and test if it is sane
 (i.e.~provides the expected results).}
 \end{quote}
@@ -621,6 +627,1287 @@ signals in parallel; whereas the second one is instantiating a single SY
 process operating on o signal where each event is carrying a vector of
 values.
 
+\hypertarget{sec:cube-atom-operation}{%
+\subsection{A High-Level Model}\label{sec:cube-atom-operation}}
+
+This section presents a high-level behavioral model of the AESA signal
+processing chain presented in section~\ref{sec:video-chain-spec}. This
+model follows intuitive and didactic way to tackle the challenge of
+translating the \emph{textual} specifications into an \emph{executable}
+ForSyDe specification and is not, in any circumstance, the only way to
+model the application. As of section~\ref{sec:crash-atom} we represent
+each stage in the AESA chain as a \emph{process} acting upon (complete)
+\emph{cubes} of data, i.e.~as processes of skeleton functions. At this
+phase in the system design we do not care \emph{how} the cubes are being
+formed or how the data is being carried around, bur rather on
+\emph{what} transformations are applied on the data cubes during each
+subsequent stage of the AESA pipeline. The purpose of the model is to
+provide a executable \emph{reference} for the AESA system functionality,
+that can later be derived to more efficient descriptions.
+
+The code for this section is written in the following module, see
+section~\ref{sec:usage} on how to use it:
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=18,]
+\OtherTok{\{-# LANGUAGE PackageImports #-\}} \CommentTok{-- allows explicit import of modules from custom}
+                                \CommentTok{-- libraries instead of standard ones. Will be taken}
+                                \CommentTok{-- out once the extensions are merged upstream.}
+\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.CubesAtom} \KeywordTok{where}
+\end{Highlighting}
+\end{Shaded}
+
+As the AESA application uses complex numbers, we use Haskell's
+\href{http://hackage.haskell.org/package/base/docs/Data-Complex.html}{\texttt{Complex}}
+type.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=26,]
+\KeywordTok{import} \DataTypeTok{Data.Complex}
+\end{Highlighting}
+\end{Shaded}
+
+The only timed behavior exerted by the model in this section is the
+causal, i.e.~ordered, passing of cubes from one stage to another. In
+order to enable a simple, abstract, and thus analyzable ``pipeline''
+behavior this passing can be described according to the \emph{perfect
+synchrony hypothesis}, which assumes the processing of each event (cube)
+takes an infinetly small amount of time and it is ready before the next
+sinchronization point. This in turn implies that all events in a system
+are synchronized, enabling the description of fully deterministic
+behaviors over infinite streams of events. These precise execution
+semantics are captured by the \emph{synchronous reactive (SY) model of
+computation (MoC)} (Lee and Seshia
+(\protect\hyperlink{ref-leeseshia-15}{2016}),Benveniste et al.
+(\protect\hyperlink{ref-Benveniste03}{2003})), hence we import the
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html}{\texttt{SY}}
+library from the
+\emph{\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html}{MoC}
+layer} of ForSyDe-Atom, see (Ungureanu and Sander
+\protect\hyperlink{ref-ungureanu17}{2017}), using an appropriate alias.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=42,]
+\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.MoC.SY}  \KeywordTok{as} \DataTypeTok{SY}
+\end{Highlighting}
+\end{Shaded}
+
+For describing parallel operations on data we use algorithmic skeletons
+(Fischer, Gorlatch, and Bischof
+(\protect\hyperlink{ref-Fischer-2003}{2003}),Skillicorn
+(\protect\hyperlink{ref-skillicorn05}{2005})), formulated on
+ForSyDe-Atom's in-house
+\href{http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html}{\texttt{Vector}}
+data type, which is a shallow, lazy-evaluated implementation of
+unbounded arrays, ideal for early design validation. Although dependent,
+bounded, and even boxed (i.e.~memory-mapped) alternatives exist, such as
+\href{http://hackage.haskell.org/package/parameterized-data/docs/Data-Param-FSVec.html}{\texttt{FSVec}}
+or REPA \href{http://hackage.haskell.org/package/repa}{\texttt{Array}}s,
+for the scope of this project the functional validation and (by-hand)
+requirement analysis on the properties of skeletons will suffice. We
+also import the \texttt{Matrix} and \texttt{Cube} utility libraries
+which contain type synonyms for nested \texttt{Vector}s along with their
+derived skeletons, as well a \texttt{DSP} which contain commonly used
+DSP blocks defined in terms of vector skeletons.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=58,]
+\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.Skeleton.Vector}        \KeywordTok{as} \DataTypeTok{V}
+\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.Skeleton.Vector.Matrix} \KeywordTok{as} \DataTypeTok{M}
+\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.Skeleton.Vector.Cube}   \KeywordTok{as} \DataTypeTok{C}
+\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.Skeleton.Vector.DSP}
+\end{Highlighting}
+\end{Shaded}
+
+Finally, we import the local project module defining different
+coefficients for the AESA algorithms, presented in detail in
+section~\ref{sec:coefs-atom}.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=66,]
+\KeywordTok{import} \DataTypeTok{ForSyDe.AESA.Coefs}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{sec:cube-aliases-shallow}{%
+\subsubsection{Type Aliases and
+Constants}\label{sec:cube-aliases-shallow}}
+
+The system parameters are integer constants defining the size of the
+application. For a simple test scenario provided by Saab AB, we have
+bundled these parameters in the following module, and we shall use their
+variable names throughout the whole report:
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=74,]
+\KeywordTok{import} \DataTypeTok{ForSyDe.AESA.Params}
+\end{Highlighting}
+\end{Shaded}
+
+For ease of documentation we will be using type synonyms (aliases) for
+all types and structures throughout this design:
+
+\begin{itemize}
+\item
+  \texttt{Antenna} denotes a vector container for the antenna elements.
+  Its length is equal to the number of antennas in the radar \(N_A\).
+\item
+  After Digital Beamforming (DBF), the antenna elements are transformed
+  into \(N_B\) beams, thus we associate the \texttt{Beam} alias for the
+  vector container wrapping those beams.
+\item
+  \texttt{Range} is a vector container for range bins. All antennas have
+  the same number of range bins \(N_b\), rendering each
+  \(\text{Antenna} \times \text{Range}\) a perfect matrix of samples for
+  every pulse.
+\item
+  \texttt{Window} stands for a Doppler window of \(N_{FFT}\) pulses.
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=92,]
+\KeywordTok{type} \DataTypeTok{Antenna}     \FunctionTok{=} \DataTypeTok{Vector} \CommentTok{-- length: nA}
+\KeywordTok{type} \DataTypeTok{Beam}        \FunctionTok{=} \DataTypeTok{Vector} \CommentTok{-- length: nB}
+\KeywordTok{type} \DataTypeTok{Range}       \FunctionTok{=} \DataTypeTok{Vector} \CommentTok{-- length: nb}
+\KeywordTok{type} \DataTypeTok{Window}      \FunctionTok{=} \DataTypeTok{Vector} \CommentTok{-- length: nFFT}
+\end{Highlighting}
+\end{Shaded}
+
+Finally we provide two aliases for the basic Haskell data types used in
+the system, to stay consistent with the application specification.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=100,]
+\KeywordTok{type} \DataTypeTok{CpxData}  \FunctionTok{=} \DataTypeTok{Complex} \DataTypeTok{Float}
+\KeywordTok{type} \DataTypeTok{RealData} \FunctionTok{=} \DataTypeTok{Float}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{video-processing-pipeline-stages}{%
+\subsubsection{Video Processing Pipeline
+Stages}\label{video-processing-pipeline-stages}}
+
+In this section we follow each stage described in
+section~\ref{sec:video-chain-spec}, and model them as a processes
+operating on cubes (three-dimensional vectors) of antenna samples.
+
+\hypertarget{sec:cube-dbf-atom}{%
+\paragraph{Digital Beamforming (DFB)}\label{sec:cube-dbf-atom}}
+
+The DBF receives complex in data, from \(N_A\) antenna elements and
+forms \(N_B\) simultaneous receiver beams, or ``listening directions'',
+by summing individually phase-shifted in data signals from all elements.
+Considering the indata video cube, the transformation applied by DBF,
+could be depicted as in Figure~\ref{fig:cube-dbf-cube}.
+
+\begin{figure}
+\hypertarget{fig:cube-dbf-cube}{%
+\centering
+\includegraphics{figs/dbf-cube.pdf}
+\caption{DBF on video structure}\label{fig:cube-dbf-cube}
+}
+\end{figure}
+
+Considering the application specification in
+section~\ref{sec:video-chain-spec} on the input data, namely \emph{``for
+each antenna the data arrives \emph{pulse by pulse}, and each pulse
+arrives \emph{range bin by range bin}''}, we can assume that the video
+is received as \texttt{Antenna\ (Window\ (Range\ a))} cubes, meaning
+that the inner vectors are the range bins. However,
+Figure~\ref{fig:cube-dbf-cube} shows that the beamforming function is
+applied in the antenna direction, so we need to transpose the cube in
+such a way that \texttt{Antenna} becomes the inner vector,
+i.e.~\texttt{Window\ (Range\ (Antenna\ a))}. We thus describe the DBF
+stage as a combinational SY process \texttt{comb} acting upon signals of
+\texttt{Cube}s, namely mapping the beamforming function \(f_{DBF}\) on
+each column of each \emph{pulse matrix} (see
+Figure~\ref{fig:cube-dbf-cube}).
+
+\begin{figure}
+\hypertarget{fig:cube-dbf-proc-shallow}{%
+\centering
+\includegraphics{figs/dbf-proc-atom.pdf}
+\caption{DBF stage process}\label{fig:cube-dbf-proc-shallow}
+}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=130,]
+\OtherTok{dbf ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Antenna}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Range} \DataTypeTok{CpxData}\NormalTok{)))}
+    \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{  (}\DataTypeTok{Range}\NormalTok{  (}\DataTypeTok{Beam}  \DataTypeTok{CpxData}\NormalTok{)))}
+\NormalTok{dbf }\FunctionTok{=}\NormalTok{ SY.comb11 (M.farm11 fDBF }\FunctionTok{.}\NormalTok{ C.transpose)}
+\end{Highlighting}
+\end{Shaded}
+
+The beamforming function is specified like in eq.~\ref{eq:dbf}, where
+\(e_k ,\ \forall k \in [1,N_A]\) denotes the samples from antenna
+elements, and respectively \(b_i,\ \forall i \in [1,N_B]\) are samples
+for each beam. This is in fact a of matrix-vector multiplication, thus
+we implement eq.~\ref{eq:dbf} at the highest level of abstraction simply
+as matrix/vector operations like in eq.~\ref{eq:dbf-mat}.
+
+\begin{equation} b_i(n) = \sum_{k=1}^{N_A} e_k(n) \cdot \alpha_{ki}\qquad\forall i \in [1,N_B] \label{eq:dbf}\end{equation}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=142,]
+\OtherTok{fDBF ::} \DataTypeTok{Antenna} \DataTypeTok{CpxData} \CommentTok{-- ^ input antenna elements}
+     \OtherTok{->} \DataTypeTok{Beam}    \DataTypeTok{CpxData} \CommentTok{-- ^ output beams}
+\NormalTok{fDBF antennaEl }\FunctionTok{=}\NormalTok{ beam}
+  \KeywordTok{where}
+\NormalTok{    beam       }\FunctionTok{=}\NormalTok{ V.reduce (V.farm21 (}\FunctionTok{+}\NormalTok{)) beamMatrix}
+\NormalTok{    beamMatrix }\FunctionTok{=}\NormalTok{ M.farm21 (\textbackslash{}c }\OtherTok{->}\NormalTok{ (}\FunctionTok{*}\NormalTok{c)) beamConsts elMatrix}
+\NormalTok{    elMatrix   }\FunctionTok{=}\NormalTok{ V.farm11 V.fanout antennaEl}
+\NormalTok{    beamConsts }\FunctionTok{=}\NormalTok{ mkBeamConsts dElements waveLength nA}\OtherTok{ nB ::} \DataTypeTok{Matrix} \DataTypeTok{CpxData}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Function & Original module & Package\tabularnewline
+\midrule
+\endhead
+\texttt{farm11}, \texttt{reduce}, \texttt{length} &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}
+& forsyde-atom\tabularnewline
+\texttt{farm11}, \texttt{farm21} &
+\texttt{ForSyDe.Atom.Skeleton.Vector.Matrix} &
+forsyde-atom-extensions\tabularnewline
+\texttt{transpose} & \texttt{ForSyDe.Atom.Skeleton.Vector.Cube} &
+forsyde-atom-extensions\tabularnewline
+\texttt{comb11} &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html}{\texttt{ForSyDe.Atom.MoC.SY}}
+& forsyde-atom\tabularnewline
+\texttt{mkBeamConsts} & \texttt{ForSyDe.AESA.Coefs} &
+aesa-atom\tabularnewline
+\texttt{dElements}, \texttt{waveLenth}, \texttt{nA}, \texttt{nB} &
+\texttt{ForSyDe.AESA.Params} & aesa-atom\tabularnewline
+\bottomrule
+\end{longtable}
+
+\begin{equation} \begin{gathered}
+   \stackrel{\mbox{elMatrix}}{
+   \begin{bmatrix}
+    e_{1} & e_{1} & \dots  \\
+    e_{2} & e_{2} & \dots  \\
+    \vdots& \vdots& \ddots \\
+    e_{N_A} & e_{N_A} & \dots
+   \end{bmatrix}}
+   \times
+   \stackrel{\mbox{beamConsts}}{
+   \begin{bmatrix}
+    \alpha_{11} & \alpha_{12} & \dots  & \alpha_{1N_B} \\
+    \alpha_{21} & \alpha_{22} & \dots  & \alpha_{2N_B} \\
+    \vdots      & \vdots      & \ddots & \vdots\\
+    \alpha_{N_A1} & \alpha_{N_A2} & \dots  & \alpha_{N_AN_B} 
+   \end{bmatrix}}
+   \Rightarrow\\\Rightarrow
+   \stackrel{\mbox{beamMatrix}}{
+   \left.\begin{bmatrix}
+    e_1\alpha_{11} & e_1\alpha_{12} & \dots  & e_1\alpha_{1N_B} \\
+    e_2\alpha_{21} & e_2\alpha_{22} & \dots  & e_2\alpha_{2N_B} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    e_{N_A}\alpha_{N_A1} & e_{N_A}\alpha_{N_A2} & \dots  & e_{N_A}\alpha_{N_AN_B} 
+   \end{bmatrix}\right\}}
+   \sum_\mathit{rows}=
+   \stackrel{\mbox{beam}}{
+   \begin{bmatrix}
+    b_1 & b_2 & \dots  & b_n 
+   \end{bmatrix}}
+   \end{gathered}
+\label{eq:dbf-mat}\end{equation}
+
+\hypertarget{sec:cube-pc-atom}{%
+\paragraph{Pulse Compression (PC)}\label{sec:cube-pc-atom}}
+
+In this stage the received echo of the modulated pulse, i.e.~the
+information contained by the range bins, is passed through a matched
+filter for decoding their modulation. This essentially applies a sliding
+window, or a moving average on the range bin samples. Considering the
+video cube, the PC transformation is applied in the direction shown in
+Figure~\ref{fig:cube-pc-cube}, i.e.~on vectors formed from the range of
+every pulse.
+
+\begin{figure}
+\hypertarget{fig:cube-pc-cube}{%
+\centering
+\includegraphics{figs/pc-cube.pdf}
+\caption{PC: direction of application on video structure (left); process
+(right)}\label{fig:cube-pc-cube}
+}
+\end{figure}
+
+The PC process is mapping the \(f_{PC}\) on each row of the pulse
+matrices in a cube, however the previous stage has arranged the cube to
+be aligned beam-wise. This is why we need to re-arrange the data so that
+the innermost vectors are \texttt{Range}s instead, and we do this by
+simply \texttt{transpose}-ing the inner \texttt{Range} \(\times\)
+\texttt{Beam} matrices into \texttt{Beam} \(\times\) \texttt{Range}
+ones.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=208,]
+\OtherTok{pc ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Beam}  \DataTypeTok{CpxData}\NormalTok{))) }
+   \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{  (}\DataTypeTok{Range} \DataTypeTok{CpxData}\NormalTok{)))}
+\NormalTok{pc }\FunctionTok{=}\NormalTok{ SY.comb11 (V.farm11 (V.farm11 fPC }\FunctionTok{.}\NormalTok{ M.transpose))}
+\CommentTok{--             ^ == (M.farm11 fPC . V.farm11 M.transpose)}
+\end{Highlighting}
+\end{Shaded}
+
+Here the function \(f_{PC}\) applies the \texttt{fir} skeleton on these
+vectors (which computes a moving average if considering vectors). The
+\texttt{fir} skeleton is a utility formulated in terms of primitive
+skeletons (i.e.~\texttt{farm} and \texttt{reduce}) on numbers,
+i.e.~lifting arithmetic functions. We will study this skeleton later in
+this report and for now we take it ``for granted'', as conveniently
+provided by the \texttt{DSP} utility library. For this application we
+also use a relatively small average window (5 taps).
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=220,]
+\OtherTok{fPC ::} \DataTypeTok{Range} \DataTypeTok{CpxData} \CommentTok{-- ^ input range bin     }
+    \OtherTok{->} \DataTypeTok{Range} \DataTypeTok{CpxData} \CommentTok{-- ^ output pulse-compressed bin}
+\NormalTok{fPC }\FunctionTok{=}\NormalTok{ fir (mkPcCoefs }\DecValTok{5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+\begin{minipage}[b]{0.24\columnwidth}\raggedright
+Function\strut
+\end{minipage} & \begin{minipage}[b]{0.41\columnwidth}\raggedright
+Original module\strut
+\end{minipage} & \begin{minipage}[b]{0.26\columnwidth}\raggedright
+Package\strut
+\end{minipage}\tabularnewline
+\midrule
+\endhead
+\begin{minipage}[t]{0.24\columnwidth}\raggedright
+\texttt{comb11}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html}{\texttt{ForSyDe.Atom.MoC.SY}}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.24\columnwidth}\raggedright
+\texttt{farm11}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.24\columnwidth}\raggedright
+\texttt{farm11}, \texttt{transpose}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\texttt{ForSyDe.Atom.Skeleton.Vector.Matrix}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom-extensions\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.24\columnwidth}\raggedright
+\texttt{fir}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\texttt{ForSyDe.Atom.Skeleton.Vector.DSP}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom-extensions\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.24\columnwidth}\raggedright
+\texttt{mkPcCoefs}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\texttt{ForSyDe.AESA.Coefs}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+aesa-atom\strut
+\end{minipage}\tabularnewline
+\bottomrule
+\end{longtable}
+
+\hypertarget{sec:cube-ct-atom}{%
+\paragraph{Corner Turn (CT) with 50\% overlapping
+data}\label{sec:cube-ct-atom}}
+
+During the CT a rearrangement of data must be performed between
+functions that process data in ``different'' directions, e.g.~range and
+pulse, in order to be able to calculate the Doppler channels further in
+the processing pipeline. The process of corner turning becomes highly
+relevant when detailed time behavior of the application is being derived
+or inferred, since it demands well-planned design decisions to make full
+use of the underlying architecture. At the level of abstraction on which
+we work right now though, it is merely a matrix \texttt{transpose}
+operation, and it can very well be posponed until the beginning of the
+next stage. However, a much more interesting operation is depicted in
+Figure~\ref{fig:cube-ct-cube}: in order to maximize the efficiency of
+the AESA processing the datapath is split into two concurrent processing
+channels with 50\% overlapped data.
+
+\begin{figure}
+\hypertarget{fig:cube-ct-cube}{%
+\centering
+\includegraphics{figs/ct-cube.pdf}
+\caption{Concurrent processing on 50\% overlapped
+data}\label{fig:cube-ct-cube}
+}
+\end{figure}
+
+Implmeneting such a behavior requires a bit of ``ForSyDe thinking''. At
+a first glance, the problem seems easily solved considering only the
+cube structures: just ``ignore'' half of the first cube of the right
+channel, while the left channel replicates the input. However, there are
+some timing issues with this setup: from the left channel's perspective,
+the right channel is in fact ``peaking into the future'', which is an
+abnormal behavior. Without going too much into details, you need to
+understand that \emph{any type of signal ``cleaning'', like dropping or
+filtering out events, can cause serious causality issues in a generic
+process network, and thus it is \textbf{illegal} in ForSyDe system
+modeling}. On the other hand we could \emph{delay} the left channel in a
+determinstic manner by assuming a well-defined \emph{initial state}
+(e.g.~all zeroes) while it waits for the right channel to consume and
+process its first half of data. This defines the history of a system
+where all components start from \emph{time zero} and eliminates any
+source of ``clairvoyant''/ambiguous behavior.
+
+To keep things simple, we stay within the same time domain, keeping the
+perfect synchrony assumption, and instantiating the left channel
+building mechanism as a simple Mealy finite state machine. This machine
+splits an input cube into two halves, stores one half and merges the
+other half with the previously stored state to create the left channel
+stream of cubes.
+
+\begin{figure}
+\hypertarget{fig:cube-ct-proc-atom}{%
+\centering
+\includegraphics{figs/ct-proc-atom.pdf}
+\caption{Left channel data builder process}\label{fig:cube-ct-proc-atom}
+}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=270,]
+\OtherTok{overlap ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range} \DataTypeTok{CpxData}\NormalTok{)))}
+        \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range} \DataTypeTok{CpxData}\NormalTok{)))}
+\NormalTok{overlap }\FunctionTok{=}\NormalTok{ SY.mealy11 nextState outDecode initState}
+  \KeywordTok{where}
+\NormalTok{    nextState _ cube }\FunctionTok{=}\NormalTok{ V.drop (nFFT }\OtherTok{`div`} \DecValTok{2}\NormalTok{) cube}
+\NormalTok{    outDecode s cube }\FunctionTok{=}\NormalTok{ s }\FunctionTok{<++>}\NormalTok{ V.take (nFFT }\OtherTok{`div`} \DecValTok{2}\NormalTok{) cube}
+\NormalTok{    initState        }\FunctionTok{=}\NormalTok{ (V.fanoutn (nFFT }\OtherTok{`div`} \DecValTok{2}\NormalTok{) }\FunctionTok{.}\NormalTok{ V.fanoutn nB }\FunctionTok{.}\NormalTok{ V.fanoutn nb) }\DecValTok{0}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Function & Original module & Package\tabularnewline
+\midrule
+\endhead
+\texttt{mealy11} &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html}{\texttt{ForSyDe.Atom.MoC.SY}}
+& forsyde-atom\tabularnewline
+\texttt{drop}, \texttt{take}, \texttt{fanoutn},
+\texttt{(\textless{}++\textgreater{})} &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}
+& forsyde-atom\tabularnewline
+\texttt{nFFT}, \texttt{nA}, \texttt{nB} & \texttt{ForSyDe.AESA.Params} &
+aesa-atom\tabularnewline
+\bottomrule
+\end{longtable}
+
+\textbf{OBS!} Perhaps considering all zeroes for the initial state might
+not be the best design decision, since that is in fact ``junk data''
+which is propagated throughout the system and which alters the expected
+behavior. A much safer (and semantically correct) approach would be to
+model the initial state using \emph{absent events} instead of arbitrary
+data. However this demands the introduction of a new layer and some
+quite advanced modeling concepts which are out of the scope of this
+report\footnote{For more information on absent semantics, check out
+  Chapter 3 of (Lee and Seshia
+  \protect\hyperlink{ref-leeseshia-15}{2016})}. For the sake of
+simplicity we now consider that the initial state is half a cube of
+zeroes and that there are no absent events in the system. As earlier
+mentioned, it is \emph{illegal} to assume any type of signal cleaning
+during system modeling, however this law does not apply to the
+\emph{observer} (i.e.~the testbench), who is free to take into
+consideration whichever parts of the signals it deems necessary. We will
+abuse this knowledge in order to show a realistic output behavior of the
+AESA signal processing system: as ``observers'', we will ignore the
+effects of the initial state propagation from the output signal and
+instead plot only the useful data.
+
+\hypertarget{sec:cube-dfb-atom}{%
+\paragraph{Doppler Filter Bank (DFB)}\label{sec:cube-dfb-atom}}
+
+During the Doppler filter bank, every window of samples, associated with
+each range bin is transformed into a Doppler channel and the complex
+samples are converted to real numbers by calculating their envelope. The
+DFB transformation is applied over a window of \(N_{FFT}\) samples, thus
+we need to re-arrange the data cubes again as suggested in
+Figure~\ref{fig:cube-dfb-samp}.
+
+The \texttt{dfb} process applies the the following chain of functions on
+each window of complex samples, in three consecutive steps:
+
+\begin{itemize}
+\item
+  scale the window samples with a set of coefficients to decrease the
+  Doppler side lobes from each FFT output and thereby to increase the
+  clutter rejection.
+\item
+  apply an \(N_{FFT}\)-point 2-radix decimation in frequency Fast
+  Fourier Transform (FFT) algorithm.
+\item
+  compute the envelope of each complex sample when phase information is
+  no longer of interest. The envelope is obtained by calculating the
+  absolute value of the complex number, converting it into a real
+  number.
+\end{itemize}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Function & Original module & Package\tabularnewline
+\midrule
+\endhead
+\texttt{farm11},\texttt{farm21} &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}
+& forsyde-atom\tabularnewline
+\texttt{fft} & \texttt{ForSyDe.Atom.Skeleton.Vector.DSP} &
+forsyde-atom-extensions\tabularnewline
+\texttt{mkWeightCoefs} & \texttt{ForSyDe.AESA.Coefs} &
+aesa-atom\tabularnewline
+\texttt{nS}, \texttt{nFFT} & \texttt{ForSyDe.AESA.Params} &
+aesa-atom\tabularnewline
+\bottomrule
+\end{longtable}
+
+\begin{figure}
+\hypertarget{fig:cube-dfb-cube}{%
+\centering
+\includegraphics{figs/dfb-cube.pdf}
+\caption{Doppler Filter Bank on video
+structure}\label{fig:cube-dfb-cube}
+}
+\end{figure}
+
+\begin{figure}
+\hypertarget{fig:cube-dfb-proc-atom}{%
+\centering
+\includegraphics{figs/dfb-proc-atom.pdf}
+\caption{DFB process}\label{fig:cube-dfb-proc-atom}
+}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=333,]
+\OtherTok{dfb ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{  (}\DataTypeTok{Range}  \DataTypeTok{CpxData}\NormalTok{ )))}
+    \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{   (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+\NormalTok{dfb }\FunctionTok{=}\NormalTok{ SY.comb11 (M.farm11 fDFB }\FunctionTok{.}\NormalTok{ C.transpose)}
+
+\OtherTok{fDFB ::} \DataTypeTok{Window} \DataTypeTok{CpxData} \OtherTok{->} \DataTypeTok{Window} \DataTypeTok{RealData}
+\NormalTok{fDFB }\FunctionTok{=}\NormalTok{ V.farm11 envelope }\FunctionTok{.}\NormalTok{ fft nS }\FunctionTok{.}\NormalTok{ weight}
+  \KeywordTok{where}
+\NormalTok{    weight     }\FunctionTok{=}\NormalTok{ V.farm21 (}\FunctionTok{*}\NormalTok{) (mkWeightCoefs nFFT)}
+\NormalTok{    envelope a }\FunctionTok{=} \KeywordTok{let}\NormalTok{ (i, q) }\FunctionTok{=}\NormalTok{ (realPart a, imagPart a)}
+                 \KeywordTok{in} \FunctionTok{sqrt}\NormalTok{ (i }\FunctionTok{*}\NormalTok{ i }\FunctionTok{+}\NormalTok{ q }\FunctionTok{*}\NormalTok{ q)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{sec:cube-cfar-atom}{%
+\paragraph{Constant False Alarm Ratio (CFAR)}\label{sec:cube-cfar-atom}}
+
+The CFAR normalizes the data within the video cubes in order to maintain
+a constant false alarm rate with respect to a detection threshold. This
+is done in order to keep the number of false targets at an acceptable
+level by adapting the normalization to the clutter situation in the area
+(around a cell under test) of interest. The described process can be
+depicted as in Figure~\ref{fig:cube-cfar-cube} which suggests the
+\href{https://en.wikipedia.org/wiki/Stencil_code}{stencil} data
+accessing pattern within the video cubes.
+
+\begin{figure}
+\hypertarget{fig:cube-cfar-cube}{%
+\centering
+\includegraphics{figs/cfar-cube.pdf}
+\caption{Constant False Alarm Ratio on cubes of complex
+samples}\label{fig:cube-cfar-cube}
+}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=356,]
+\OtherTok{cfar ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+     \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+\NormalTok{cfar }\FunctionTok{=}\NormalTok{ SY.comb11 (V.farm11 fCFAR)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+\hypertarget{fig:cube-cfar-proc-atom}{%
+\centering
+\includegraphics{figs/cfar-proc-atom.pdf}
+\caption{CFAR process}\label{fig:cube-cfar-proc-atom}
+}
+\end{figure}
+
+The \texttt{cfar} process applies the \(f_{CFAR}\) function on every
+\(N_b\times N_{FFT}\) matrix corresponding to each beam. The
+\(f_{CFAR}\) function normalizes each Doppler window, after which the
+sensitivity will be adapted to the clutter situation in current area, as
+seen in Figure~\ref{fig:cube-cfar-signal}. The blue line indicates the
+mean value of maximum of the left and right reference bins, which means
+that for each Doppler sample, a swipe of neighbouring bins is necessary,
+as suggested by Figure~\ref{fig:cube-cfar-cube}. This is a typical
+pattern in signal processing called
+\href{https://en.wikipedia.org/wiki/Stencil_code}{stencil}, which will
+constitute the main parallel skeleton within the \(f_{CFAR}\) function.
+
+\begin{figure}
+\hypertarget{fig:cube-cfar-signal}{%
+\centering
+\includegraphics[width=4.16667in,height=\textheight]{figs/cfar-signal.pdf}
+\caption{The signal level within one pulse window: a) before CFAR; b)
+after CFAR}\label{fig:cube-cfar-signal}
+}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=374,]
+\OtherTok{fCFAR ::} \DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{) }\OtherTok{->} \DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)}
+\NormalTok{fCFAR rbins }\FunctionTok{=}\NormalTok{ V.farm41 (\textbackslash{}m }\OtherTok{->}\NormalTok{ V.farm31 (normCfa m)) md rbins lmv emv}
+  \KeywordTok{where}
+\NormalTok{    md  }\FunctionTok{=}\NormalTok{ V.farm11 (}\FunctionTok{logBase} \DecValTok{2} \FunctionTok{.}\NormalTok{ V.reduce }\FunctionTok{min}\NormalTok{) rbins}
+\NormalTok{    emv }\FunctionTok{=}\NormalTok{ (V.fanoutn (nFFT }\FunctionTok{+} \DecValTok{1}\NormalTok{) dummy) }\FunctionTok{<++>}\NormalTok{ (V.farm11 aritMean neighbors)}
+\NormalTok{    lmv }\FunctionTok{=}\NormalTok{ (V.drop }\DecValTok{2} \FunctionTok{$}\NormalTok{ V.farm11 aritMean neighbors) }\FunctionTok{<++>}\NormalTok{ (V.fanout dummy) }
+    \CommentTok{-----------------------------------------------}
+\NormalTok{    normCfa m a l e }\FunctionTok{=} \DecValTok{2} \FunctionTok{**}\NormalTok{ (}\DecValTok{5} \FunctionTok{+} \FunctionTok{logBase} \DecValTok{2}\NormalTok{ a }\FunctionTok{-} \FunctionTok{maximum}\NormalTok{ [l,e,m])}
+\OtherTok{    aritMean ::} \DataTypeTok{Vector}\NormalTok{ (}\DataTypeTok{Vector} \DataTypeTok{RealData}\NormalTok{) }\OtherTok{->} \DataTypeTok{Vector} \DataTypeTok{RealData}
+\NormalTok{    aritMean  }\FunctionTok{=}\NormalTok{ V.farm11 (}\FunctionTok{/}\NormalTok{n) }\FunctionTok{.}\NormalTok{ V.reduce addV }\FunctionTok{.}\NormalTok{ V.farm11 geomMean }\FunctionTok{.}\NormalTok{ V.group }\DecValTok{4}
+\NormalTok{    geomMean  }\FunctionTok{=}\NormalTok{ V.farm11 (}\FunctionTok{logBase} \DecValTok{2} \FunctionTok{.}\NormalTok{ (}\FunctionTok{/}\DecValTok{4}\NormalTok{)) }\FunctionTok{.}\NormalTok{ V.reduce addV}
+    \CommentTok{-----------------------------------------------}
+\NormalTok{    dummy     }\FunctionTok{=}\NormalTok{ V.fanoutn nFFT }\FunctionTok{$}\NormalTok{ (}\FunctionTok{-}\NormalTok{maxFloat)}\FunctionTok{/}\NormalTok{n}
+\NormalTok{    neighbors }\FunctionTok{=}\NormalTok{ V.stencil nFFT rbins}
+    \CommentTok{-----------------------------------------------}
+\NormalTok{    addV      }\FunctionTok{=}\NormalTok{ V.farm21 (}\FunctionTok{+}\NormalTok{)}
+\NormalTok{    n         }\FunctionTok{=} \FunctionTok{fromIntegral}\NormalTok{ nFFT}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Function & Original module & Package\tabularnewline
+\midrule
+\endhead
+\texttt{farm}{[}\texttt{4}/\texttt{3}/\texttt{1}{]}\texttt{1},
+\texttt{reduce}, \texttt{\textless{}++\textgreater{}}, &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}
+& forsyde-atom\tabularnewline
+\texttt{drop}, \texttt{fanout}, \texttt{fanoutn}, \texttt{stencil} &
+&\tabularnewline
+\texttt{comb11} &
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html}{\texttt{ForSyDe.Atom.MoC.SY}}
+& forsyde-atom\tabularnewline
+\texttt{maxFloat} & ForSyDe.AESA.Coefs & aesa-atom\tabularnewline
+\texttt{nb}, \texttt{nFFT} & \texttt{ForSyDe.AESA.Params} &
+aesa-atom\tabularnewline
+\bottomrule
+\end{longtable}
+
+The \(f_{CFAR}\) function itself can be described with the system of
+eq.~\ref{eq:cfar}, where
+
+\begin{itemize}
+\item
+  \(MD\) is the minimum value over all Doppler channels in a batch for a
+  specific data channel and range bin.
+\item
+  \(EMV\) and \(LMV\) calculate the early and respectively late mean
+  values from the neighboring range bins as a combination of geometric
+  and arithmetic mean values.
+\item
+  \(eb\) and \(lb\) are the earliest bin, respectively latest bin for
+  which the CFAR can be calculated as \(EMV\) and \(LMV\) require at
+  least \(N_{FFT}\) bins + 1 guard bin before and respectively after the
+  current bin. This phenomenon is also called the ``stencil halo'',
+  which means that CFAR, as defined in eq.~\ref{eq:cfar} is applied only
+  on \(N_b'=N_b-2N_{FFT}-2\) bins.
+\item
+  bins earlier than \(eb\), respectively later than \(lb\), are ingnored
+  by the CFAR formula and therefore their respective EMV and LMV are
+  replaced with the lowest representable value.
+\item
+  5 is added to the exponent of the CFAR equation to set the gain to 32
+  (i.e.~with only noi se in the incoming video the output values will be
+  32).
+\end{itemize}
+
+\begin{equation}\begin{aligned}&\left\{\begin{aligned}
+  &CFAR(a_{ij})= 2^{(5 + \log_2 a_{ij}) - \max (EMV(a_{ij}),LMV(a_{ij}),MD(a_{ij}))}\\
+  &EMV(a_{ij}) = \frac{1}{N}\sum_{k=0}^{N-1}\left(\log_2\left(\frac{1}{4}\sum_{l=0}^{3}a_{(i-2-4k-l)j}\right)\right)\\
+  &LMV(a_{ij}) = \frac{1}{N}\sum_{k=0}^{N-1}\left(\log_2\left(\frac{1}{4}\sum_{l=0}^{3}a_{(i+2+4k+l)j}\right)\right)\\
+  &MD(a_{ij})  = \log_{2}\left(\min_{k=1}^N(a_{ik})\right)
+  \end{aligned}\right.\\
+  &\qquad \forall i\in[eb,lb], j\in[1,N] \text{ where }\left\{
+  \begin{aligned}
+  &N = N_{FFT}\\
+  &eb = N_{FFT} + 1\\
+  &lb = N_b - N_{FFT} - 1\\
+  \end{aligned}\right.
+  \end{aligned}
+\label{eq:cfar}\end{equation}
+
+The first thing we calculate is the \(MD\) for each Doppler window
+(row). For each row of \texttt{rbins} (i.e.~range bins of Doppler
+windows) we look for the minimum value (\texttt{reduceV\ min}) and apply
+the binary logarithm on it.
+
+Another action performed over the matrix \texttt{rbins} is to form two
+stencil ``cubes'' for EMV and LMV respectively, by gathering batches of
+\(N_{FFT}\) Doppler windows like in eq.~\ref{eq:cfar-stencil}, computing
+them like in eq.~\ref{eq:cfar-emv}.
+
+\begin{equation}
+  \stackrel{\mbox{rbins}}{
+  \begin{bmatrix}
+  a_{11} & a_{12} & \cdots & a_{1N_{FFT}} \\
+  a_{21} & a_{22} & \cdots & a_{2N_{FFT}} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{N_b1} & a_{N_b2} & \cdots & a_{N_bN_{FFT}}
+  \end{bmatrix}}
+  \stackrel{\mathtt{stencil}}{\rightarrow}
+  \stackrel{\mbox{neighbors}}{
+  \begin{bmatrix}
+  \begin{bmatrix}
+  a_{11} & a_{12} & \cdots & a_{1N_{FFT}} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{N_{FFT}1} & a_{N_{FFT}2} & \cdots & a_{N_{FFT}N_{FFT}} \\
+  \end{bmatrix}\\
+  \begin{bmatrix}
+  a_{21} & a_{22} & \cdots & a_{2N_{FFT}} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{(N_{FFT}+1)1} & a_{(N_{FFT}+1)2} & \cdots & a_{(N_{FFT}+1)N_{FFT}} \\
+  \end{bmatrix}\\
+  \vdots \\
+  \begin{bmatrix}
+  a_{(N_b-N_{FFT})1} & a_{(N_b-N_{FFT})2} & \cdots & a_{(N_b-N_{FFT})N_{FFT}}\\
+  \vdots & \vdots & \ddots & \vdots \\
+  a_{N_b1} & a_{N_b2} & \cdots & a_{N_bN_{FFT}}
+  \end{bmatrix}
+  \end{bmatrix}}
+\label{eq:cfar-stencil}\end{equation}
+
+Each one of these neighbors matrices will constitute the input data for
+calculating the \(EMV\) and \(LMV\) for each Doppler window. \(EMV\) and
+\(LMV\) are calculated by applying the mean function \texttt{arithMean}
+over them, as shown (only for the window associated with the \(eb\) bin)
+in eq.~\ref{eq:cfar-emv}. The resulting \texttt{emv} and \texttt{lmv}
+matrices are padded with rows of the minimum representable value
+\texttt{-maxFloat}, so that they align properly with \texttt{rbins} in
+order to combine into the 2D farm/stencil defined at eq.~\ref{eq:cfar}.
+Finally, \texttt{fCFAR} yields a matrix of normalized Doppler windows.
+The resulting matrices are not transformed back into sample streams by
+the parent process, but rather they are passed as single tokens
+downstream to the INT stage, where they will be processed as such.
+
+\begin{equation}\begin{aligned}
+  &\begin{bmatrix}
+  a_{11} & \cdots & a_{1N_{FFT}} \\
+  \vdots  & \ddots & \vdots \\
+  a_{N_{FFT}1}  & \cdots & a_{N_{FFT}N_{FFT}}
+  \end{bmatrix}
+  \stackrel{\mathtt{group}}{\rightarrow}
+  \begin{bmatrix}
+  \begin{bmatrix}
+  a_{11} & \cdots & a_{1N_{FFT}} \\
+  \vdots & \ddots & \vdots \\
+  a_{41} & \cdots & a_{4N_{FFT}}
+  \end{bmatrix}\\
+  \vdots \\
+  \begin{bmatrix}
+  a_{(N_{FFT}-4)1}  & \cdots & a_{(N_{FFT}-4)N_{FFT}}\\
+  \vdots & \ddots & \vdots \\
+  a_{N_{FFT}1}  & \cdots & a_{N_{FFT}N_{FFT}}
+  \end{bmatrix}
+  \end{bmatrix}\\
+  &\stackrel{\mathtt{farm(geomMean)}}{\rightarrow}
+  \begin{bmatrix}
+  \log_2\frac{1}{4}\sum_{i=1}^{4}a_{i1} & \cdots & \log_2\frac{1}{4}\sum_{i=1}^{4}a_{iN_{FFT}} \\
+  \vdots & \ddots & \vdots \\
+  \log_2\frac{1}{4}\sum_{i=N_{FFT}-4}^{N_{FFT}}a_{i1} & \cdots & \log_2\frac{1}{4}\sum_{i=N_{FFT}-4}^{N_{FFT}}a_{iN_{FFT}}
+  \end{bmatrix}\\
+  &\stackrel{\mathtt{(/N_{FFT})\circ reduce(+)}}{\rightarrow}
+  \begin{bmatrix}
+  EMV(a_{eb,1}) & \cdots & EMV(a_{eb,N_{FFT}}) 
+  \end{bmatrix}
+  \end{aligned}
+\label{eq:cfar-emv}\end{equation}
+
+\hypertarget{sec:cube-int-atom}{%
+\paragraph{Integrator (INT)}\label{sec:cube-int-atom}}
+
+During the last stage of the video processing chain each data sample of
+the video cube is integrated against its 8 previous values using an
+8-tap FIR filter, as suggested by the drawing in
+Figure~\ref{fig:cube-int-cube-atom}.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=523,]
+\OtherTok{int ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+    \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+    \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+\NormalTok{int right left }\FunctionTok{=}\NormalTok{ firNet mkIntCoefs }\FunctionTok{$}\NormalTok{ SY.interleave right left}
+\end{Highlighting}
+\end{Shaded}
+
+Before integrating though, the data from both the left and the right
+channel need to be merged and interleaved. This is done by the process
+\texttt{interleave} below, which is a convenient utility exported by the
+SY library, hiding a domain interface. When considering only the data
+structures, the \texttt{interleave} process can be regarded as an
+up-sampler with the rate 2/1. When taking into consideration the size of
+the entire data set (i.e.~token rates \(\times\) structure sizes
+\(\times\) data size), we can easily see that the overall required
+system bandwidth (ratio) remains the same between the PC and INT stages,
+i.e.~\(\frac{2\times N_B \times N_{b} \times N_{FFT}\times \mathit{size}(\mathtt{RealData})}{N_B \times N_{b} \times N_{FFT}\times \mathit{size}(\mathtt{CpxData})}=1/1\).
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+\begin{minipage}[b]{0.30\columnwidth}\raggedright
+Function\strut
+\end{minipage} & \begin{minipage}[b]{0.36\columnwidth}\raggedright
+Original module\strut
+\end{minipage} & \begin{minipage}[b]{0.26\columnwidth}\raggedright
+Package\strut
+\end{minipage}\tabularnewline
+\midrule
+\endhead
+\begin{minipage}[t]{0.30\columnwidth}\raggedright
+\texttt{farm21},\texttt{farm11},\texttt{fanout}\strut
+\end{minipage} & \begin{minipage}[t]{0.36\columnwidth}\raggedright
+ForSyDe.Atom.Skeleton.Vector.Cube\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom-extensions\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.30\columnwidth}\raggedright
+\texttt{fir\textquotesingle{}}\strut
+\end{minipage} & \begin{minipage}[t]{0.36\columnwidth}\raggedright
+ForSyDe.Atom.Skeleton.Vector.DSP\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom-extensions\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.30\columnwidth}\raggedright
+\texttt{comb21},\texttt{comb11}, \texttt{delay},
+\texttt{interleave}\strut
+\end{minipage} & \begin{minipage}[t]{0.36\columnwidth}\raggedright
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html}{\texttt{ForSyDe.Atom.MoC.SY}}\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+forsyde-atom\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.30\columnwidth}\raggedright
+\texttt{mkFirCoefs}\strut
+\end{minipage} & \begin{minipage}[t]{0.36\columnwidth}\raggedright
+ForSyDe.AESA.Coefs\strut
+\end{minipage} & \begin{minipage}[t]{0.26\columnwidth}\raggedright
+aesa-atom\strut
+\end{minipage}\tabularnewline
+\bottomrule
+\end{longtable}
+
+\begin{figure}
+\hypertarget{fig:cube-int-cube-atom}{%
+\centering
+\includegraphics{figs/int-cube.pdf}
+\caption{Integration on cubes of complex
+samples}\label{fig:cube-int-cube-atom}
+}
+\end{figure}
+
+\begin{figure}
+\hypertarget{fig:cube-int-atom}{%
+\centering
+\includegraphics{figs/int-proc-atom.pdf}
+\caption{INT network}\label{fig:cube-int-atom}
+}
+\end{figure}
+
+The 8-tap FIR filter used for integration is also a moving average, but
+as compared to the \texttt{fir} function used in
+section~\ref{sec:cube-pc-atom}, the window slides in time domain,
+i.e.~over streaming samples rather than over vector elements. To
+instantiate a FIR system we use the \texttt{fir\textquotesingle{}}
+skeleton provided by the ForSyDe-Atom DSP utility libraries, which
+constructs the the well-recognizable FIR pattern in
+Figure~\ref{fig:cube-int-net-atom}, i.e.~a recur-farm-reduce
+composition. In order to do so, \texttt{fir\textquotesingle{}} needs to
+know \emph{what} to fill this template with, thus we need to provide as
+arguments its ``basic'' operations, which in our case are processes
+operating on signals of matrices. In fact, \texttt{fir} itself is a
+\emph{specialization} of the \texttt{fir\textquotesingle{}} skeleton,
+which defines its basic operations as corresponding functions on
+vectors. This feature derives from a powerful algebra of skeletons which
+grants them both modularity, and the possibility to transform them into
+semantically-equivalent forms, as we shall soon explore in
+section~\ref{sec:refinement}.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=564,]
+\OtherTok{firNet ::} \DataTypeTok{Num}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Vector}\NormalTok{ a }\OtherTok{->} \DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Cube}\NormalTok{ a) }\OtherTok{->} \DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Cube}\NormalTok{ a)}
+\NormalTok{firNet coefs }\FunctionTok{=}\NormalTok{ fir' addSC mulSC dlySC coefs}
+  \KeywordTok{where}
+\NormalTok{    addSC   }\FunctionTok{=}\NormalTok{ SY.comb21 (C.farm21 (}\FunctionTok{+}\NormalTok{))}
+\NormalTok{    mulSC c }\FunctionTok{=}\NormalTok{ SY.comb11 (C.farm11 (}\FunctionTok{*}\NormalTok{c))}
+\NormalTok{    dlySC   }\FunctionTok{=}\NormalTok{ SY.delay  (C.fanout }\DecValTok{0}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{system-process-network}{%
+\subsubsection{System Process Network}\label{system-process-network}}
+
+The AESA process network is formed by ``plugging in'' together all
+components instantiated in the previous sections, and thus obtaining the
+system description in Figure~\ref{fig:cube-aesa-atom}. We do not
+transpose the output data, because the Doppler windows are the ones we
+are interested in plotting as the innermost structures.
+
+\begin{figure}
+\hypertarget{fig:cube-aesa-atom}{%
+\centering
+\includegraphics{figs/aesa-proc-atom.pdf}
+\caption{The AESA process network instance}\label{fig:cube-aesa-atom}
+}
+\end{figure}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=580,]
+\OtherTok{aesa ::} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Antenna}\NormalTok{ (}\DataTypeTok{Window}\NormalTok{ (}\DataTypeTok{Range}  \DataTypeTok{CpxData}\NormalTok{ )))}
+     \OtherTok{->} \DataTypeTok{Signal}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{    (}\DataTypeTok{Range}\NormalTok{  (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
+\NormalTok{aesa video }\FunctionTok{=}\NormalTok{ int rCfar lCfar}
+  \KeywordTok{where}
+\NormalTok{    rCfar }\FunctionTok{=}\NormalTok{ cfar }\FunctionTok{$}\NormalTok{ dfb oPc}
+\NormalTok{    lCfar }\FunctionTok{=}\NormalTok{ cfar }\FunctionTok{$}\NormalTok{ dfb }\FunctionTok{$}\NormalTok{ overlap oPc}
+\NormalTok{    oPc   }\FunctionTok{=}\NormalTok{ pc }\FunctionTok{$}\NormalTok{ dbf video}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{sec:aesa-parameters}{%
+\subsubsection{System Parameters}\label{sec:aesa-parameters}}
+
+Here we define the size constants, for a simple test scenario provided
+by Saab AB. The size \texttt{nA} can be inferred from the size of input
+data and the vector operations.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=6,]
+\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.Params} \KeywordTok{where}
+
+\NormalTok{nA   }\FunctionTok{=}   \DecValTok{16}\OtherTok{ ::} \DataTypeTok{Int}
+\NormalTok{nB   }\FunctionTok{=}    \DecValTok{8}\OtherTok{ ::} \DataTypeTok{Int}
+\NormalTok{nb   }\FunctionTok{=} \DecValTok{1024}\OtherTok{ ::} \DataTypeTok{Int}
+\NormalTok{nFFT }\FunctionTok{=}  \DecValTok{256}\OtherTok{ ::} \DataTypeTok{Int}
+\NormalTok{nS   }\FunctionTok{=}    \DecValTok{8}\OtherTok{ ::} \DataTypeTok{Int} \CommentTok{-- 2^nS = nFFT; used for convenience}
+
+\NormalTok{freqRadar  }\FunctionTok{=} \FloatTok{10e9}\OtherTok{ ::} \DataTypeTok{Float} \CommentTok{-- 10 Ghz X-band}
+\NormalTok{waveLength }\FunctionTok{=} \FloatTok{3e8} \FunctionTok{/}\NormalTok{ freqRadar}
+\NormalTok{dElements  }\FunctionTok{=}\NormalTok{ waveLength}\FunctionTok{/}\DecValTok{2}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{sec:coefs-atom}{%
+\subsubsection{Coefficient Generators}\label{sec:coefs-atom}}
+
+Here we define the vectors of coefficients used throughout the AESA
+design. We keep this module as independent as possible from the main
+design and export the coefficients both as ForSyDe-Atom vectors but also
+as Haskell native lists, so that other packages can make use of them,
+without importing the whole ForSyDe-Atom chain.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=8,]
+\OtherTok{\{-# LANGUAGE PackageImports #-\}}
+\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.Coefs} \KeywordTok{where}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=11,]
+\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.Skeleton.Vector} \KeywordTok{as} \DataTypeTok{V}
+\KeywordTok{import} \DataTypeTok{ForSyDe.Atom.Skeleton.Vector.Matrix} \KeywordTok{as} \DataTypeTok{M}
+\KeywordTok{import} \DataTypeTok{ForSyDe.Atom.Skeleton.Vector.DSP}
+\KeywordTok{import} \DataTypeTok{Data.Complex}
+\end{Highlighting}
+\end{Shaded}
+
+The \texttt{mkBeamConst} generator creates a matrix of \(\alpha_{ij}\)
+beam constants used in the digital beamforming stage
+section~\ref{sec:dbf-atom}. These beam constants perform both phase
+shift and tapering according to eq.~\ref{eq:beam-coef}, where \(c_k\)
+performs tapering and \(\varphi_{kl}\) perform phase shifting. For
+tapering we use a set of Taylor coefficients generated with our in-house
+utility \texttt{taylor}. The phase shift shall be calculated according
+to eq.~\ref{eq:beam-phase}, where \(d\) is the distance between the
+antenna elements. \(\theta_l\) is the angle between the wave front of
+the current beam and normal of the antenna elements and \(\lambda\) is
+the wavelength of the pulse.
+
+\begin{equation} \alpha_{kl}=c_k e^{j\varphi_{kl}},\ \forall k\in[0,N_A-1], l \in [0,N_B-1]\label{eq:beam-coef}\end{equation}
+
+\begin{equation} \varphi_{kl}=\frac{(k-9.5)\cdot 2\pi\cdot d \sin\theta}{\lambda}\label{eq:beam-phase}\end{equation}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=29,]
+\OtherTok{mkBeamConsts ::} \DataTypeTok{RealFloat}\NormalTok{ a}
+             \OtherTok{=>}\NormalTok{ a                  }\CommentTok{-- ^ distance between radar elements}
+             \OtherTok{->}\NormalTok{ a                  }\CommentTok{-- ^ radar signal wavelength}
+             \OtherTok{->} \DataTypeTok{Int}                \CommentTok{-- ^ Number of antenna elements}
+             \OtherTok{->} \DataTypeTok{Int}                \CommentTok{-- ^ Number of resulting beams}
+             \OtherTok{->} \DataTypeTok{Matrix}\NormalTok{ (}\DataTypeTok{Complex}\NormalTok{ a)}
+\NormalTok{mkBeamConsts d lambda nA nB }\FunctionTok{=}\NormalTok{ M.farm21 mulScale taperingCf phaseShiftCf}
+  \KeywordTok{where}
+    \CommentTok{-- all coefficients are normalized, i.e. scaled with 1/nA' }
+\NormalTok{    mulScale x y   }\FunctionTok{=}\NormalTok{ x }\FunctionTok{*}\NormalTok{ y }\FunctionTok{/}\NormalTok{ nA'}
+    \CommentTok{-- tapering coefficients, c_k in Eq. (4)}
+\NormalTok{    taperingCf     }\FunctionTok{=}\NormalTok{ V.farm11 (V.fanoutn nB) taylorCf}
+    \CommentTok{-- phase shift coefficients, e^(j*phi_kl) in Eqs.(4) and (5)}
+\NormalTok{    phaseShiftCf   }\FunctionTok{=}\NormalTok{ V.farm11 (\textbackslash{}k }\OtherTok{->}\NormalTok{ V.farm11 (mkCf k) thetas) antennaIxs}
+\NormalTok{    mkCf k theta_l }\FunctionTok{=}\NormalTok{ cis }\FunctionTok{$}\NormalTok{ (k }\FunctionTok{-} \FloatTok{9.5}\NormalTok{) }\FunctionTok{*} \DecValTok{2} \FunctionTok{*} \FunctionTok{pi} \FunctionTok{*}\NormalTok{ d }\FunctionTok{*} \FunctionTok{sin}\NormalTok{ theta_l }\FunctionTok{/}\NormalTok{ lambda}
+    \CommentTok{--------------}
+    \CommentTok{-- Taylor series: nA real numbers; 4 nearly constant adjacent side lobes;}
+    \CommentTok{-- peak sidelobe level of -30dB}
+\NormalTok{    taylorCf }\FunctionTok{=}\NormalTok{ taylor nA }\DecValTok{4}\NormalTok{ (}\FunctionTok{-}\DecValTok{30}\NormalTok{)}
+    \CommentTok{-- theta_l spanning nB angles from 0 to pi}
+\NormalTok{    thetas   }\FunctionTok{=}\NormalTok{ V.farm11 (\textbackslash{}t }\OtherTok{->} \FunctionTok{pi/}\DecValTok{3} \FunctionTok{+}\NormalTok{ t }\FunctionTok{*}\NormalTok{ (}\FunctionTok{pi} \FunctionTok{-} \DecValTok{2}\FunctionTok{*pi/}\DecValTok{3}\NormalTok{)}\FunctionTok{/}\NormalTok{(nB'}\FunctionTok{-}\DecValTok{1}\NormalTok{)) beamIxs}
+    \CommentTok{--------------}
+\NormalTok{    nA'       }\FunctionTok{=} \FunctionTok{fromIntegral}\NormalTok{ nA}
+\NormalTok{    nB'       }\FunctionTok{=} \FunctionTok{fromIntegral}\NormalTok{ nB}
+\NormalTok{    antennaIxs }\FunctionTok{=}\NormalTok{ vector }\FunctionTok{$} \FunctionTok{map} \FunctionTok{realToFrac}\NormalTok{ [}\DecValTok{0}\FunctionTok{..}\NormalTok{nA}\FunctionTok{-}\DecValTok{1}\NormalTok{]}
+\NormalTok{    beamIxs    }\FunctionTok{=}\NormalTok{ vector }\FunctionTok{$} \FunctionTok{map} \FunctionTok{realToFrac}\NormalTok{ [}\DecValTok{0}\FunctionTok{..}\NormalTok{nB}\FunctionTok{-}\DecValTok{1}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=56,]
+\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
+\OtherTok{mkBeamConsts' ::} \DataTypeTok{RealFloat}\NormalTok{ a }\OtherTok{=>}\NormalTok{ a }\OtherTok{->}\NormalTok{ a}\OtherTok{->} \DataTypeTok{Int} \OtherTok{->} \DataTypeTok{Int} \OtherTok{->}\NormalTok{ [[}\DataTypeTok{Complex}\NormalTok{ a]]}
+\NormalTok{mkBeamConsts' d l nA nB }\FunctionTok{=} \FunctionTok{map}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ mkBeamConsts d l nA nB}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+\begin{minipage}[b]{0.23\columnwidth}\raggedright
+Function\strut
+\end{minipage} & \begin{minipage}[b]{0.41\columnwidth}\raggedright
+Original module\strut
+\end{minipage} & \begin{minipage}[b]{0.28\columnwidth}\raggedright
+Package\strut
+\end{minipage}\tabularnewline
+\midrule
+\endhead
+\begin{minipage}[t]{0.23\columnwidth}\raggedright
+\texttt{farm11},\texttt{farm21}, \texttt{fanout},
+(\texttt{from}-)\texttt{vector}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}\strut
+\end{minipage} & \begin{minipage}[t]{0.28\columnwidth}\raggedright
+forsyde-atom\strut
+\end{minipage}\tabularnewline
+\begin{minipage}[t]{0.23\columnwidth}\raggedright
+\texttt{taylor}\strut
+\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
+\texttt{ForSyDe.Atom.Skeleton.Vector.DSP}\strut
+\end{minipage} & \begin{minipage}[t]{0.28\columnwidth}\raggedright
+forsyde-atom-extensions\strut
+\end{minipage}\tabularnewline
+\bottomrule
+\end{longtable}
+
+The \texttt{mkPcCoefs} generator for the FIR filter in
+section~\ref{sec:pc-atom} is simply a \(n\)-tap Hanning window. It can
+be changed according to the user requirements. All coefficients are
+scaled with \(1/n\) so that the output does not overflow a possible
+fixed point representation.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=72,]
+\OtherTok{mkPcCoefs ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->} \DataTypeTok{Vector}\NormalTok{ a}
+\NormalTok{mkPcCoefs n }\FunctionTok{=}\NormalTok{ V.farm11 (\textbackslash{}a }\OtherTok{->} \FunctionTok{realToFrac}\NormalTok{ a }\FunctionTok{/} \FunctionTok{realToFrac}\NormalTok{ n) }\FunctionTok{$}\NormalTok{ hanning n}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+Function & Original module & Package\tabularnewline
+\midrule
+\endhead
+\texttt{hanning} & \texttt{ForSyDe.Atom.Skeleton.Vector.DSP} &
+forsyde-atom-extensions\tabularnewline
+\bottomrule
+\end{longtable}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=79,]
+
+\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
+\OtherTok{mkPcCoefs' ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->}\NormalTok{ [a]}
+\NormalTok{mkPcCoefs' n }\FunctionTok{=}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ mkPcCoefs n}
+\end{Highlighting}
+\end{Shaded}
+
+We use also a Hanning window to generate the complex weight coefficients
+for decreasing the Doppler side lobes during DFB in
+section~\ref{sec:dfb-atom}. This can be changed according to the user
+requirements.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=88,]
+\OtherTok{mkWeightCoefs ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->} \DataTypeTok{Vector}\NormalTok{ a}
+\NormalTok{mkWeightCoefs nFFT }\FunctionTok{=}\NormalTok{ V.farm11 }\FunctionTok{realToFrac} \FunctionTok{$}\NormalTok{ hanning nFFT}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=91,]
+\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
+\OtherTok{mkWeightCoefs' ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->}\NormalTok{ [a]}
+\NormalTok{mkWeightCoefs' nFFT }\FunctionTok{=}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ mkWeightCoefs nFFT}
+\end{Highlighting}
+\end{Shaded}
+
+For the integrator FIR in section~\ref{sec:int-atom} we use a normalized
+square window.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=97,]
+\OtherTok{mkIntCoefs ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Vector}\NormalTok{ a}
+\NormalTok{mkIntCoefs }\FunctionTok{=}\NormalTok{ vector mkIntCoefs'}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=100,]
+\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
+\OtherTok{mkIntCoefs' ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>}\NormalTok{ [a]}
+\NormalTok{mkIntCoefs' }\FunctionTok{=}\NormalTok{ [}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{] }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,firstnumber=104,]
+\CommentTok{-- The maximum floating point number representable in Haskell. }
+\OtherTok{maxFloat ::} \DataTypeTok{Float}
+\NormalTok{maxFloat }\FunctionTok{=}\NormalTok{ x}
+ \KeywordTok{where}\NormalTok{ n }\FunctionTok{=} \FunctionTok{floatDigits}\NormalTok{ x}
+\NormalTok{       b }\FunctionTok{=} \FunctionTok{floatRadix}\NormalTok{ x}
+\NormalTok{       (_, u) }\FunctionTok{=} \FunctionTok{floatRange}\NormalTok{ x}
+\NormalTok{       x }\FunctionTok{=} \FunctionTok{encodeFloat}\NormalTok{ (b}\FunctionTok{^}\NormalTok{n }\FunctionTok{-} \DecValTok{1}\NormalTok{) (u }\FunctionTok{-}\NormalTok{ n)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{sec:atom-sim}{%
+\subsection{Model Simulation Against Test Data}\label{sec:atom-sim}}
+
+As a first trial to validate that our AESA high-level model is ``sane'',
+i.e.~is modeling the expected behavior, we test it against realistic
+input data from an array of antennas detecting some \emph{known}
+objects. For this we have provided a set of data generator and plotter
+scripts, along with an executable binary created with the
+\texttt{CubesAtom} module presented in section~\ref{sec:atom-network}.
+Please read the project's \texttt{README} file on how to compile and run
+the necessary software tools.
+
+The input data generator script replicates a situation in which 13
+distinct objects, either near each other or far apart, as seen in
+tbl.~\ref{tbl:in-objects}, are drowned into -18dB worth of noise, and
+then detected by the 16 AESA antenna elements (see
+section~\ref{sec:aesa-parameters}). A zoomed snapshot of the generated
+input data can be seen in Figure~\ref{fig:aesa-indata}.
+
+In Figure~\ref{fig:aesa-odata-atom} a cube consisting of 8 beam (doppler
+\(\times\) range) matrices from the AESA signal processing output is
+shown. We can see the 13 objects detected with different intensities
+accros the 8 beams. As they are all positioned at approximately the same
+angle relative to the antenna
+(i.e.~\(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\)) we can see the
+maximum correlation values are reflected in beam 2.
+
+\nopandoc{\begin{landscape}}
+
+\begin{figure}
+\hypertarget{fig:aesa-indata}{%
+\centering
+\includegraphics{figs/AESA_INPUT_C.pdf}
+\caption{One input video cube with antenna data. Samples' absolute
+values are plotted.}\label{fig:aesa-indata}
+}
+\end{figure}
+
+\begin{figure}
+\hypertarget{fig:aesa-odata-atom}{%
+\centering
+\includegraphics{figs/AESA_OUT_C.pdf}
+\caption{One output cube with radar data.}\label{fig:aesa-odata-atom}
+}
+\end{figure}
+
+\nopandoc{\end{landscape}}
+
+\hypertarget{tbl:in-objects}{}
+\begin{longtable}[]{@{}rrcrr@{}}
+\caption{\label{tbl:in-objects}Objects reflected in the generated AESA
+indata}\tabularnewline
+\toprule
+\# & Distance (m) & Angle (\(\theta\)) & Rel. Speed (m/s) & Rel.
+Power\tabularnewline
+\midrule
+\endfirsthead
+\toprule
+\# & Distance (m) & Angle (\(\theta\)) & Rel. Speed (m/s) & Rel.
+Power\tabularnewline
+\midrule
+\endhead
+1 & 12e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & 0.94 &
+-6\tabularnewline
+2 & 13e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & 5 \(\cdot\)
+0.94 & -6\tabularnewline
+3 & 14e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & 10 \(\cdot\)
+0.94 & -6\tabularnewline
+4 & 15e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -0.94 &
+-2\tabularnewline
+5 & 16e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -2 \(\cdot\)
+0.94 & -2\tabularnewline
+6 & 17e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -3 \(\cdot\)
+0.94 & -2\tabularnewline
+7 & 18e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -20 \(\cdot\)
+0.94 & -4\tabularnewline
+8 & 19e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -23 \(\cdot\)
+0.94 & -4\tabularnewline
+9 & 20e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -26 \(\cdot\)
+0.94 & -4\tabularnewline
+10 & 21e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -29 \(\cdot\)
+0.94 & -4\tabularnewline
+11 & 25e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -15 \(\cdot\)
+0.94 & -2\tabularnewline
+12 & 25.4e3 & \(\frac{\pi}{3} + 2.1(\pi-\frac{2\pi}{3})/7\) & -15
+\(\cdot\) 0.94 & -4\tabularnewline
+13 & 25.2e3 & \(\frac{\pi}{3} + 2.2(\pi-\frac{2\pi}{3})/7\) & -15
+\(\cdot\) 0.94 & -3\tabularnewline
+\bottomrule
+\end{longtable}
+
+\clearpage
+
+\hypertarget{sec:shallow}{%
+\section{Model Implementations in ForSyDe-Shallow}\label{sec:shallow}}
+
+\href{https://forsyde.github.io/forsyde-shallow/}{ForSyDe-Shallow} is
+the flagship and the oldest modeling language of the ForSyDe methodology
+(Sander and Jantsch \protect\hyperlink{ref-sander-2004}{2004}). It is a
+domain specific language (DSL) shallow-embedded into the functional
+programming language Haskell and uses the host's type system, lazy
+evaluation mechanisms and the concept of higher-order functions to
+describe the formal modeling framework defined by ForSyDe.
+
+As a first exercise we present a rather naïve model the AESA application
+in ForSyDe-Shallow which mainly ``translates'' specification model as
+given and presented in Figure~\ref{fig:video-chain-spec} into
+ForSyDe-Haskell. We gradually build the designer's mindset and introduce
+modeling concepts while we parse the source code of the ForSyDe model.
+The model file is found at
+\texttt{\textless{}root\textgreater{}/src/ForSyDe/Shallow/AESA.lhs} and
+can be imported as a generic library (e.g.~in the interpreter session).
+
 \hypertarget{sec:atom-network}{%
 \subsection{The High-Level Model}\label{sec:atom-network}}
 
@@ -667,7 +1954,7 @@ section~\ref{sec:usage} on how to use it:
 \OtherTok{\{-# LANGUAGE PackageImports #-\}} \CommentTok{-- allows explicit import of modules from custom}
                                 \CommentTok{-- libraries instead of standard ones. Will be taken}
                                 \CommentTok{-- out once the extensions are merged upstream.}
-\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.HighLevelAtom} \KeywordTok{where}
+\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.StreamsAtom} \KeywordTok{where}
 \end{Highlighting}
 \end{Shaded}
 
@@ -904,12 +2191,10 @@ aesa-atom\tabularnewline
 
 The previous code listing, depicted in Figure~\ref{fig:dbf-net-atom}, is
 actually showing the ``internals'' of a matrix-vector dot
-product\footnote{see \texttt{dotMatMat} in the
-  \texttt{ForSyDe.Atom.Skeleton.Vector.DSP} module from package
-  \texttt{forsyde-atom-extensions}.}. However, the elementary
-operations, instead of regular arithmetic operations \(\times\) and
-\(+\), are \emph{processes} applying these operations on SY streams. As
-such, the \texttt{fanout} skeleton distributes one signal to a whole row
+product{[}\^{}dotMatMat{]}. However, the elementary operations, instead
+of regular arithmetic operations \(\times\) and \(+\), are
+\emph{processes} applying these operations on SY streams. As such, the
+\texttt{fanout} skeleton distributes one signal to a whole row
 (i.e.~vector) of processes, the matrix \texttt{farm} applies pair-wise a
 matrix of partially applied processes on this matrix of signals, and
 \texttt{reduce} creates a reduction network of binary processes
@@ -963,7 +2248,7 @@ constraint, e.g.~throughput) which preserve these behavioral properties.
 \end{figure}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=215,]
+\begin{Highlighting}[numbers=left,,firstnumber=213,]
 \OtherTok{pc ::} \DataTypeTok{Beam}\NormalTok{ ( }\DataTypeTok{SY.Signal} \DataTypeTok{CpxData}\NormalTok{)}
    \OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{CpxData}\NormalTok{)}
 \NormalTok{pc }\FunctionTok{=}\NormalTok{ V.farm11 (procPC }\FunctionTok{.}\NormalTok{ SY.toSDF)}
@@ -1003,7 +2288,7 @@ tag systems please consult (Lee and Sangiovanni-Vincentelli
 \protect\hyperlink{ref-lee98}{1998}).
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=235,]
+\begin{Highlighting}[numbers=left,,firstnumber=233,]
 \OtherTok{procPC ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{SDF.Signal}\NormalTok{ a }\OtherTok{->} \DataTypeTok{SDF.Signal}\NormalTok{ a }
 \NormalTok{procPC }\FunctionTok{=}\NormalTok{ SDF.comb11 (nb, nb, V.fromVector }\FunctionTok{.}\NormalTok{ fir (mkPcCoefs }\DecValTok{5}\NormalTok{) }\FunctionTok{.}\NormalTok{ V.vector)}
 \end{Highlighting}
@@ -1066,17 +2351,17 @@ the PC stage, will be observed at the left channel only after
 \(N_{FFT}/2\) samples.
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=273,]
+\begin{Highlighting}[numbers=left,,firstnumber=271,]
 \OtherTok{ct ::} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{CpxData}\NormalTok{)}
    \OtherTok{->}\NormalTok{ (}\DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{CpxData}\NormalTok{),}
        \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{CpxData}\NormalTok{))}
 \NormalTok{ct }\FunctionTok{=}\NormalTok{ V.farm12 procCT}
 
 \OtherTok{procCT ::} \DataTypeTok{Num}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{SDF.Signal}\NormalTok{ a }\OtherTok{->}\NormalTok{ (}\DataTypeTok{SDF.Signal}\NormalTok{ a, }\DataTypeTok{SDF.Signal}\NormalTok{ a)}
-\NormalTok{procCT sig }\FunctionTok{=}\NormalTok{ (rightChannel, leftChannel)}
+\NormalTok{procCT sig }\FunctionTok{=}\NormalTok{ (cornerTurn rightChannel, cornerTurn leftChannel)}
   \KeywordTok{where}
-\NormalTok{    rightChannel }\FunctionTok{=}\NormalTok{ cornerTurn sig}
-\NormalTok{    leftChannel  }\FunctionTok{=}\NormalTok{ SDF.delay initBatch rightChannel}
+\NormalTok{    rightChannel }\FunctionTok{=}\NormalTok{ sig}
+\NormalTok{    leftChannel  }\FunctionTok{=}\NormalTok{ SDF.delay initBatch sig}
 \NormalTok{    initBatch    }\FunctionTok{=} \FunctionTok{replicate}\NormalTok{ (nb }\FunctionTok{*}\NormalTok{ nFFT }\OtherTok{`div`} \DecValTok{2}\NormalTok{) }\DecValTok{0}
 \NormalTok{    cornerTurn   }\FunctionTok{=}\NormalTok{ SDF.comb11 (nFFT }\FunctionTok{*}\NormalTok{ nb, nb }\FunctionTok{*}\NormalTok{ nFFT,}
 \NormalTok{                               fromMatrix }\FunctionTok{.}\NormalTok{ M.transpose }\FunctionTok{.}\NormalTok{ matrix nb nFFT)}
@@ -1195,7 +2480,7 @@ each window of complex samples, in three consecutive steps:
 \end{itemize}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=344,]
+\begin{Highlighting}[numbers=left,,firstnumber=342,]
 \OtherTok{dfb ::} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{CpxData}\NormalTok{)}
     \OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{RealData}\NormalTok{)}
 \NormalTok{dfb }\FunctionTok{=}\NormalTok{ V.farm11 procDFB}
@@ -1226,6 +2511,8 @@ Function & Original module & Package\tabularnewline
 \href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}
 & forsyde-atom\tabularnewline
 \texttt{fft} & \texttt{ForSyDe.Atom.Skeleton.Vector.DSP} &
+forsyde-atom-extensions\tabularnewline
+\texttt{transpose} & \texttt{ForSyDe.Atom.Skeleton.Vector.Cube} &
 forsyde-atom-extensions\tabularnewline
 \texttt{mkWeightCoefs} & \texttt{ForSyDe.AESA.Coefs} &
 aesa-atom\tabularnewline
@@ -1274,7 +2561,7 @@ samples}\label{fig:cfar-cube}
 \end{figure}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=390,]
+\begin{Highlighting}[numbers=left,,firstnumber=389,]
 \OtherTok{cfar ::} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal} \DataTypeTok{RealData}\NormalTok{)}
      \OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
 \NormalTok{cfar }\FunctionTok{=}\NormalTok{ V.farm11 procCFAR}
@@ -1283,7 +2570,7 @@ samples}\label{fig:cfar-cube}
 
 \begin{quote}
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=394,]
+\begin{Highlighting}[numbers=left,,firstnumber=393,]
 \NormalTok{procCFAR }\FunctionTok{=}\NormalTok{ SDF.comb11 (nb }\FunctionTok{*}\NormalTok{ nFFT, }\DecValTok{1}\NormalTok{, (}\FunctionTok{:}\NormalTok{[]) }\FunctionTok{.}\NormalTok{ fCFAR }\FunctionTok{.}\NormalTok{ M.matrix nFFT nb)}
 \end{Highlighting}
 \end{Shaded}
@@ -1320,12 +2607,12 @@ after CFAR}\label{fig:cfar-signal}
 \end{figure}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=412,]
+\begin{Highlighting}[numbers=left,,firstnumber=411,]
 \OtherTok{fCFAR ::} \DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{) }\OtherTok{->} \DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)}
 \NormalTok{fCFAR rbins }\FunctionTok{=}\NormalTok{ V.farm41 (\textbackslash{}m }\OtherTok{->}\NormalTok{ V.farm31 (normCfa m)) md rbins lmv emv}
   \KeywordTok{where}
 \NormalTok{    md  }\FunctionTok{=}\NormalTok{ V.farm11 (}\FunctionTok{logBase} \DecValTok{2} \FunctionTok{.}\NormalTok{ V.reduce }\FunctionTok{min}\NormalTok{) rbins}
-\NormalTok{    emv }\FunctionTok{=}\NormalTok{ (V.fanoutn (nFFT }\FunctionTok{+} \DecValTok{2}\NormalTok{) dummy) }\FunctionTok{<++>}\NormalTok{ (V.farm11 aritMean neighbors)}
+\NormalTok{    emv }\FunctionTok{=}\NormalTok{ (V.fanoutn (nFFT }\FunctionTok{+} \DecValTok{1}\NormalTok{) dummy) }\FunctionTok{<++>}\NormalTok{ (V.farm11 aritMean neighbors)}
 \NormalTok{    lmv }\FunctionTok{=}\NormalTok{ (V.drop }\DecValTok{2} \FunctionTok{$}\NormalTok{ V.farm11 aritMean neighbors) }\FunctionTok{<++>}\NormalTok{ (V.fanout dummy) }
     \CommentTok{-----------------------------------------------}
 \NormalTok{    normCfa m a l e }\FunctionTok{=} \DecValTok{2} \FunctionTok{**}\NormalTok{ (}\DecValTok{5} \FunctionTok{+} \FunctionTok{logBase} \DecValTok{2}\NormalTok{ a }\FunctionTok{-} \FunctionTok{maximum}\NormalTok{ [l,e,m])}
@@ -1522,7 +2809,7 @@ to the downstream process, e.g.~a control/monitoring system, or a
 testbench sink.
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=573,]
+\begin{Highlighting}[numbers=left,,firstnumber=572,]
 \OtherTok{int ::} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
     \OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SDF.Signal}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
     \OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SY.Signal}\NormalTok{  (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
@@ -1553,7 +2840,7 @@ interface.
 \end{figure}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=592,]
+\begin{Highlighting}[numbers=left,,firstnumber=591,]
 \OtherTok{procINT ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{SDF.Signal}\NormalTok{ (}\DataTypeTok{Matrix}\NormalTok{ a) }\OtherTok{->} \DataTypeTok{SDF.Signal}\NormalTok{ (}\DataTypeTok{Matrix}\NormalTok{ a) }\OtherTok{->} \DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Matrix}\NormalTok{ a)}
 \NormalTok{procINT cr }\FunctionTok{=}\NormalTok{ firNet mkIntCoefs }\FunctionTok{.}\NormalTok{ SDF.toSY }\FunctionTok{.}\NormalTok{ merge cr}
   \KeywordTok{where}
@@ -1580,7 +2867,7 @@ semantically-equivalent forms, as we shall soon explore in
 section~\ref{sec:refinement}.
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=610,]
+\begin{Highlighting}[numbers=left,,firstnumber=609,]
 \OtherTok{firNet ::} \DataTypeTok{Num}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Vector}\NormalTok{ a }\OtherTok{->} \DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Matrix}\NormalTok{ a) }\OtherTok{->} \DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Matrix}\NormalTok{ a)}
 \NormalTok{firNet coefs }\FunctionTok{=}\NormalTok{ fir' addSM mulSM dlySM coefs}
   \KeywordTok{where}
@@ -1639,8 +2926,8 @@ aesa-atom\strut
 \bottomrule
 \end{longtable}
 
-\hypertarget{system-process-network}{%
-\subsubsection{System Process Network}\label{system-process-network}}
+\hypertarget{system-process-network-1}{%
+\subsubsection{System Process Network}\label{system-process-network-1}}
 
 Finally, when putting all the blocks together in an equation, we obtain
 the system \texttt{aesa\textquotesingle{}} in
@@ -1655,7 +2942,7 @@ Figure~\ref{fig:aesa-net-atom}.
 \end{figure}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=634,]
+\begin{Highlighting}[numbers=left,,firstnumber=633,]
 \OtherTok{aesa' ::} \DataTypeTok{Antenna}\NormalTok{ (}\DataTypeTok{SY.Signal} \DataTypeTok{CpxData}\NormalTok{) }\OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
 \NormalTok{aesa' video }\FunctionTok{=}\NormalTok{ int rCfar lCfar}
   \KeywordTok{where}
@@ -1683,14 +2970,14 @@ semantically-equivalent an automated or tool-assisted transformation
 process should be trivial.
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=655,]
+\begin{Highlighting}[numbers=left,,firstnumber=654,]
 \OtherTok{aesa ::} \DataTypeTok{Antenna}\NormalTok{ (}\DataTypeTok{SY.Signal} \DataTypeTok{CpxData}\NormalTok{) }\OtherTok{->} \DataTypeTok{Beam}\NormalTok{ (}\DataTypeTok{SY.Signal}\NormalTok{ (}\DataTypeTok{Range}\NormalTok{ (}\DataTypeTok{Window} \DataTypeTok{RealData}\NormalTok{)))}
 \NormalTok{aesa }\FunctionTok{=}\NormalTok{ V.farm11 pcToInt }\FunctionTok{.}\NormalTok{ dbf}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=658,]
+\begin{Highlighting}[numbers=left,,firstnumber=657,]
 \NormalTok{pcToInt beam }\FunctionTok{=} \KeywordTok{let}\NormalTok{ (rb,lb) }\FunctionTok{=}\NormalTok{ procCT }\FunctionTok{$}\NormalTok{ procPC }\FunctionTok{$}\NormalTok{ SY.toSDF beam}
 \NormalTok{                   lCFAR   }\FunctionTok{=}\NormalTok{ procCFAR }\FunctionTok{$}\NormalTok{ procDFB lb}
 \NormalTok{                   rCFAR   }\FunctionTok{=}\NormalTok{ procCFAR }\FunctionTok{$}\NormalTok{ procDFB rb}
@@ -1714,319 +3001,6 @@ parameters}\label{sec:consts-coefs-atom}}
 This section briefly presents the constants and coefficients which have
 been used until now, and which shall be further used throughout this
 report.
-
-\hypertarget{sec:aesa-parameters}{%
-\subsubsection{System Parameters}\label{sec:aesa-parameters}}
-
-Here we define the size constants, for a simple test scenario provided
-by Saab AB. The size \texttt{nA} can be inferred from the size of input
-data and the vector operations.
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=6,]
-\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.Params} \KeywordTok{where}
-
-\NormalTok{nA   }\FunctionTok{=}   \DecValTok{16}\OtherTok{ ::} \DataTypeTok{Int}
-\NormalTok{nB   }\FunctionTok{=}    \DecValTok{8}\OtherTok{ ::} \DataTypeTok{Int}
-\NormalTok{nb   }\FunctionTok{=} \DecValTok{1024}\OtherTok{ ::} \DataTypeTok{Int}
-\NormalTok{nFFT }\FunctionTok{=}  \DecValTok{256}\OtherTok{ ::} \DataTypeTok{Int}
-\NormalTok{nS   }\FunctionTok{=}    \DecValTok{8}\OtherTok{ ::} \DataTypeTok{Int} \CommentTok{-- 2^nS = nFFT; used for convenience}
-
-\NormalTok{freqRadar  }\FunctionTok{=} \FloatTok{10e9}\OtherTok{ ::} \DataTypeTok{Float} \CommentTok{-- 10 Ghz X-band}
-\NormalTok{waveLength }\FunctionTok{=} \FloatTok{3e8} \FunctionTok{/}\NormalTok{ freqRadar}
-\NormalTok{dElements  }\FunctionTok{=}\NormalTok{ waveLength}\FunctionTok{/}\DecValTok{2}
-\end{Highlighting}
-\end{Shaded}
-
-\hypertarget{sec:coefs-atom}{%
-\subsubsection{Coefficient Generators}\label{sec:coefs-atom}}
-
-Here we define the vectors of coefficients used throughout the AESA
-design. We keep this module as independent as possible from the main
-design and export the coefficients both as ForSyDe-Atom vectors but also
-as Haskell native lists, so that other packages can make use of them,
-without importing the whole ForSyDe-Atom chain.
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=8,]
-\OtherTok{\{-# LANGUAGE PackageImports #-\}}
-\KeywordTok{module} \DataTypeTok{ForSyDe.AESA.Coefs} \KeywordTok{where}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=11,]
-\KeywordTok{import}\NormalTok{ "forsyde-atom-extensions" }\DataTypeTok{ForSyDe.Atom.Skeleton.Vector} \KeywordTok{as} \DataTypeTok{V}
-\KeywordTok{import} \DataTypeTok{ForSyDe.Atom.Skeleton.Vector.Matrix} \KeywordTok{as} \DataTypeTok{M}
-\KeywordTok{import} \DataTypeTok{ForSyDe.Atom.Skeleton.Vector.DSP}
-\KeywordTok{import} \DataTypeTok{Data.Complex}
-\end{Highlighting}
-\end{Shaded}
-
-The \texttt{mkBeamConst} generator creates a matrix of \(\alpha_{ij}\)
-beam constants used in the digital beamforming stage
-section~\ref{sec:dbf-atom}. These beam constants perform both phase
-shift and tapering according to eq.~\ref{eq:beam-coef}, where \(c_k\)
-performs tapering and \(\varphi_{kl}\) perform phase shifting. For
-tapering we use a set of Taylor coefficients generated with our in-house
-utility \texttt{taylor}. The phase shift shall be calculated according
-to eq.~\ref{eq:beam-phase}, where \(d\) is the distance between the
-antenna elements. \(\theta_l\) is the angle between the wave front of
-the current beam and normal of the antenna elements and \(\lambda\) is
-the wavelength of the pulse.
-
-\begin{equation} \alpha_{kl}=c_k e^{j\varphi_{kl}},\ \forall k\in[0,N_A-1], l \in [0,N_B-1]\label{eq:beam-coef}\end{equation}
-
-\begin{equation} \varphi_{kl}=\frac{(k-9.5)\cdot 2\pi\cdot d \sin\theta}{\lambda}\label{eq:beam-phase}\end{equation}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=29,]
-\OtherTok{mkBeamConsts ::} \DataTypeTok{RealFloat}\NormalTok{ a}
-             \OtherTok{=>}\NormalTok{ a                  }\CommentTok{-- ^ distance between radar elements}
-             \OtherTok{->}\NormalTok{ a                  }\CommentTok{-- ^ radar signal wavelength}
-             \OtherTok{->} \DataTypeTok{Int}                \CommentTok{-- ^ Number of antenna elements}
-             \OtherTok{->} \DataTypeTok{Int}                \CommentTok{-- ^ Number of resulting beams}
-             \OtherTok{->} \DataTypeTok{Matrix}\NormalTok{ (}\DataTypeTok{Complex}\NormalTok{ a)}
-\NormalTok{mkBeamConsts d lambda nA nB }\FunctionTok{=}\NormalTok{ M.farm21 mulScale taperingCf phaseShiftCf}
-  \KeywordTok{where}
-    \CommentTok{-- all coefficients are normalized, i.e. scaled with 1/nA' }
-\NormalTok{    mulScale x y   }\FunctionTok{=}\NormalTok{ x }\FunctionTok{*}\NormalTok{ y }\FunctionTok{/}\NormalTok{ nA'}
-    \CommentTok{-- tapering coefficients, c_k in Eq. (4)}
-\NormalTok{    taperingCf     }\FunctionTok{=}\NormalTok{ V.farm11 (V.fanoutn nB) taylorCf}
-    \CommentTok{-- phase shift coefficients, e^(j*phi_kl) in Eqs.(4) and (5)}
-\NormalTok{    phaseShiftCf   }\FunctionTok{=}\NormalTok{ V.farm11 (\textbackslash{}k }\OtherTok{->}\NormalTok{ V.farm11 (mkCf k) thetas) antennaIxs}
-\NormalTok{    mkCf k theta_l }\FunctionTok{=}\NormalTok{ cis }\FunctionTok{$}\NormalTok{ (k }\FunctionTok{-} \FloatTok{9.5}\NormalTok{) }\FunctionTok{*} \DecValTok{2} \FunctionTok{*} \FunctionTok{pi} \FunctionTok{*}\NormalTok{ d }\FunctionTok{*} \FunctionTok{sin}\NormalTok{ theta_l }\FunctionTok{/}\NormalTok{ lambda}
-    \CommentTok{--------------}
-    \CommentTok{-- Taylor series: nA real numbers; 4 nearly constant adjacent side lobes;}
-    \CommentTok{-- peak sidelobe level of -30dB}
-\NormalTok{    taylorCf }\FunctionTok{=}\NormalTok{ taylor nA }\DecValTok{4}\NormalTok{ (}\FunctionTok{-}\DecValTok{30}\NormalTok{)}
-    \CommentTok{-- theta_l spanning nB angles from 0 to pi}
-\NormalTok{    thetas   }\FunctionTok{=}\NormalTok{ V.farm11 (\textbackslash{}t }\OtherTok{->} \FunctionTok{pi/}\DecValTok{3} \FunctionTok{+}\NormalTok{ t }\FunctionTok{*}\NormalTok{ (}\FunctionTok{pi} \FunctionTok{-} \DecValTok{2}\FunctionTok{*pi/}\DecValTok{3}\NormalTok{)}\FunctionTok{/}\NormalTok{(nB'}\FunctionTok{-}\DecValTok{1}\NormalTok{)) beamIxs}
-    \CommentTok{--------------}
-\NormalTok{    nA'       }\FunctionTok{=} \FunctionTok{fromIntegral}\NormalTok{ nA}
-\NormalTok{    nB'       }\FunctionTok{=} \FunctionTok{fromIntegral}\NormalTok{ nB}
-\NormalTok{    antennaIxs }\FunctionTok{=}\NormalTok{ vector }\FunctionTok{$} \FunctionTok{map} \FunctionTok{realToFrac}\NormalTok{ [}\DecValTok{0}\FunctionTok{..}\NormalTok{nA}\FunctionTok{-}\DecValTok{1}\NormalTok{]}
-\NormalTok{    beamIxs    }\FunctionTok{=}\NormalTok{ vector }\FunctionTok{$} \FunctionTok{map} \FunctionTok{realToFrac}\NormalTok{ [}\DecValTok{0}\FunctionTok{..}\NormalTok{nB}\FunctionTok{-}\DecValTok{1}\NormalTok{]}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=56,]
-\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
-\OtherTok{mkBeamConsts' ::} \DataTypeTok{RealFloat}\NormalTok{ a }\OtherTok{=>}\NormalTok{ a }\OtherTok{->}\NormalTok{ a}\OtherTok{->} \DataTypeTok{Int} \OtherTok{->} \DataTypeTok{Int} \OtherTok{->}\NormalTok{ [[}\DataTypeTok{Complex}\NormalTok{ a]]}
-\NormalTok{mkBeamConsts' d l nA nB }\FunctionTok{=} \FunctionTok{map}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ mkBeamConsts d l nA nB}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{longtable}[]{@{}lll@{}}
-\toprule
-\begin{minipage}[b]{0.23\columnwidth}\raggedright
-Function\strut
-\end{minipage} & \begin{minipage}[b]{0.41\columnwidth}\raggedright
-Original module\strut
-\end{minipage} & \begin{minipage}[b]{0.28\columnwidth}\raggedright
-Package\strut
-\end{minipage}\tabularnewline
-\midrule
-\endhead
-\begin{minipage}[t]{0.23\columnwidth}\raggedright
-\texttt{farm11},\texttt{farm21}, \texttt{fanout},
-(\texttt{from}-)\texttt{vector}\strut
-\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
-\href{https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html}{\texttt{ForSyDe.Atom.Skeleton.Vector}}\strut
-\end{minipage} & \begin{minipage}[t]{0.28\columnwidth}\raggedright
-forsyde-atom\strut
-\end{minipage}\tabularnewline
-\begin{minipage}[t]{0.23\columnwidth}\raggedright
-\texttt{taylor}\strut
-\end{minipage} & \begin{minipage}[t]{0.41\columnwidth}\raggedright
-\texttt{ForSyDe.Atom.Skeleton.Vector.DSP}\strut
-\end{minipage} & \begin{minipage}[t]{0.28\columnwidth}\raggedright
-forsyde-atom-extensions\strut
-\end{minipage}\tabularnewline
-\bottomrule
-\end{longtable}
-
-The \texttt{mkPcCoefs} generator for the FIR filter in
-section~\ref{sec:pc-atom} is simply a \(n\)-tap Hanning window. It can
-be changed according to the user requirements. All coefficients are
-scaled with \(1/n\) so that the output does not overflow a possible
-fixed point representation.
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=72,]
-\OtherTok{mkPcCoefs ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->} \DataTypeTok{Vector}\NormalTok{ a}
-\NormalTok{mkPcCoefs n }\FunctionTok{=}\NormalTok{ V.farm11 (\textbackslash{}a }\OtherTok{->} \FunctionTok{realToFrac}\NormalTok{ a }\FunctionTok{/} \FunctionTok{realToFrac}\NormalTok{ n) }\FunctionTok{$}\NormalTok{ hanning n}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=75,]
-\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
-\OtherTok{mkPcCoefs' ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->}\NormalTok{ [a]}
-\NormalTok{mkPcCoefs' n }\FunctionTok{=}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ mkPcCoefs n}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{longtable}[]{@{}lll@{}}
-\toprule
-Function & Original module & Package\tabularnewline
-\midrule
-\endhead
-\texttt{hanning} & \texttt{ForSyDe.Atom.Skeleton.Vector.DSP} &
-forsyde-atom-extensions\tabularnewline
-\bottomrule
-\end{longtable}
-
-We use also a Hanning window to generate the complex weight coefficients
-for decreasing the Doppler side lobes during DFB in
-section~\ref{sec:dfb-atom}. This can be changed according to the user
-requirements.
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=87,]
-\OtherTok{mkWeightCoefs ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->} \DataTypeTok{Vector}\NormalTok{ a}
-\NormalTok{mkWeightCoefs nFFT }\FunctionTok{=}\NormalTok{ V.farm11 }\FunctionTok{realToFrac} \FunctionTok{$}\NormalTok{ hanning nFFT}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=90,]
-\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
-\OtherTok{mkWeightCoefs' ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Int} \OtherTok{->}\NormalTok{ [a]}
-\NormalTok{mkWeightCoefs' nFFT }\FunctionTok{=}\NormalTok{ fromVector }\FunctionTok{$}\NormalTok{ mkWeightCoefs nFFT}
-\end{Highlighting}
-\end{Shaded}
-
-For the integrator FIR in section~\ref{sec:int-atom} we use a normalized
-square window.
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=96,]
-\OtherTok{mkIntCoefs ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>} \DataTypeTok{Vector}\NormalTok{ a}
-\NormalTok{mkIntCoefs }\FunctionTok{=}\NormalTok{ vector mkIntCoefs'}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=99,]
-\CommentTok{-- Can be used without importing the ForSyDe.Atom libraries.}
-\OtherTok{mkIntCoefs' ::} \DataTypeTok{Fractional}\NormalTok{ a }\OtherTok{=>}\NormalTok{ [a]}
-\NormalTok{mkIntCoefs' }\FunctionTok{=}\NormalTok{ [}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{,}\DecValTok{1}\FunctionTok{/}\DecValTok{8}\NormalTok{] }
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[numbers=left,,firstnumber=103,]
-\CommentTok{-- The maximum floating point number representable in Haskell. }
-\OtherTok{maxFloat ::} \DataTypeTok{Float}
-\NormalTok{maxFloat }\FunctionTok{=}\NormalTok{ x}
- \KeywordTok{where}\NormalTok{ n }\FunctionTok{=} \FunctionTok{floatDigits}\NormalTok{ x}
-\NormalTok{       b }\FunctionTok{=} \FunctionTok{floatRadix}\NormalTok{ x}
-\NormalTok{       (_, u) }\FunctionTok{=} \FunctionTok{floatRange}\NormalTok{ x}
-\NormalTok{       x }\FunctionTok{=} \FunctionTok{encodeFloat}\NormalTok{ (b}\FunctionTok{^}\NormalTok{n }\FunctionTok{-} \DecValTok{1}\NormalTok{) (u }\FunctionTok{-}\NormalTok{ n)}
-\end{Highlighting}
-\end{Shaded}
-
-\hypertarget{sec:atom-sim}{%
-\subsection{Model Simulation Against Test Data}\label{sec:atom-sim}}
-
-As a first trial to validate that our AESA high-level model is ``sane'',
-i.e.~is modeling the expected behavior, we test it against realistic
-input data from an array of antennas detecting some \emph{known}
-objects. For this we have provided a set of data generator and plotter
-scripts, along with an executable binary created with the
-\texttt{HighLevelAtom} module presented in
-section~\ref{sec:atom-network}. Please read the project's
-\texttt{README} file on how to compile and run the software tools.
-
-The input data generator script replicates a situation in which 13
-distinct objects, either near each other or far apart, as seen in
-tbl.~\ref{tbl:in-objects}, are drowned into -18dB worth of noise, and
-then detected by the 16 AESA antenna elements (see
-section~\ref{sec:aesa-parameters}). A zoomed snapsho
-
-\hypertarget{tbl:in-objects}{}
-\begin{longtable}[]{@{}rrcrr@{}}
-\caption{\label{tbl:in-objects}Objects reflected in the generated AESA
-indata}\tabularnewline
-\toprule
-\# & Distance (m) & Angle (\(\theta\)) & Rel. Speed (m/s) & Rel.
-Power\tabularnewline
-\midrule
-\endfirsthead
-\toprule
-\# & Distance (m) & Angle (\(\theta\)) & Rel. Speed (m/s) & Rel.
-Power\tabularnewline
-\midrule
-\endhead
-1 & 12e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & 0.94 &
--6\tabularnewline
-2 & 13e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & 5 \(\cdot\)
-0.94 & -6\tabularnewline
-3 & 14e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & 10 \(\cdot\)
-0.94 & -6\tabularnewline
-4 & 15e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -0.94 &
--2\tabularnewline
-5 & 16e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -2 \(\cdot\)
-0.94 & -2\tabularnewline
-6 & 17e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -3 \(\cdot\)
-0.94 & -2\tabularnewline
-7 & 18e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -20 \(\cdot\)
-0.94 & -4\tabularnewline
-8 & 19e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -23 \(\cdot\)
-0.94 & -4\tabularnewline
-9 & 20e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -26 \(\cdot\)
-0.94 & -4\tabularnewline
-10 & 21e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -29 \(\cdot\)
-0.94 & -4\tabularnewline
-11 & 25e3 & \(\frac{\pi}{3} + 2(\pi-\frac{2\pi}{3})/7\) & -15 \(\cdot\)
-0.94 & -2\tabularnewline
-12 & 25.4e3 & \(\frac{\pi}{3} + 2.1(\pi-\frac{2\pi}{3})/7\) & -15
-\(\cdot\) 0.94 & -4\tabularnewline
-13 & 25.2e3 & \(\frac{\pi}{3} + 2.2(\pi-\frac{2\pi}{3})/7\) & -15
-\(\cdot\) 0.94 & -3\tabularnewline
-\bottomrule
-\end{longtable}
-
-\begin{figure}
-\hypertarget{fig:aesa-indata}{%
-\centering
-\includegraphics{figs/AESA_INDATA.pdf}
-\caption{Zoomed caption of the 16 input channels split into real part
-(\(I\)) and imaginary part (\(Q\))}\label{fig:aesa-indata}
-}
-\end{figure}
-
-\begin{figure}
-\hypertarget{fig:aesa-odata-atom}{%
-\centering
-\includegraphics{figs/AESA_OUTPUT.pdf}
-\caption{One output cube with radar data}\label{fig:aesa-odata-atom}
-}
-\end{figure}
-
-\clearpage
-
-\hypertarget{sec:shallow}{%
-\section{Model Implementations in ForSyDe-Shallow}\label{sec:shallow}}
-
-\href{https://forsyde.github.io/forsyde-shallow/}{ForSyDe-Shallow} is
-the flagship and the oldest modeling language of the ForSyDe methodology
-(Sander and Jantsch \protect\hyperlink{ref-sander-2004}{2004}). It is a
-domain specific language (DSL) shallow-embedded into the functional
-programming language Haskell and uses the host's type system, lazy
-evaluation mechanisms and the concept of higher-order functions to
-describe the formal modeling framework defined by ForSyDe.
-
-As a first exercise we present a rather naïve model the AESA application
-in ForSyDe-Shallow which mainly ``translates'' specification model as
-given and presented in Figure~\ref{fig:video-chain-spec} into
-ForSyDe-Haskell. We gradually build the designer's mindset and introduce
-modeling concepts while we parse the source code of the ForSyDe model.
-The model file is found at
-\texttt{\textless{}root\textgreater{}/src/ForSyDe/Shallow/AESA.lhs} and
-can be imported as a generic library (e.g.~in the interpreter session).
 
 \hypertarget{references}{%
 \section*{References}\label{references}}

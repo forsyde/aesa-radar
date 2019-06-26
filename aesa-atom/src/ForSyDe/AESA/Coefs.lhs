@@ -72,13 +72,14 @@ fixed point representation.
 > mkPcCoefs :: Fractional a => Int -> Vector a
 > mkPcCoefs n = V.farm11 (\a -> realToFrac a / realToFrac n) $ hanning n
 
-> -- Can be used without importing the ForSyDe.Atom libraries.
-> mkPcCoefs' :: Fractional a => Int -> [a]
-> mkPcCoefs' n = fromVector $ mkPcCoefs n
-
 | Function  | Original module                    | Package                 |
 |-----------|------------------------------------|-------------------------|
 | `hanning` | `ForSyDe.Atom.Skeleton.Vector.DSP` | forsyde-atom-extensions |
+
+> 
+> -- Can be used without importing the ForSyDe.Atom libraries.
+> mkPcCoefs' :: Fractional a => Int -> [a]
+> mkPcCoefs' n = fromVector $ mkPcCoefs n
 
 We use also a Hanning window to generate the complex weight coefficients for
 decreasing the Doppler side lobes during DFB in [@sec:dfb-atom]. This can be changed

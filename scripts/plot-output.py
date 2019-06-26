@@ -6,40 +6,31 @@ from matplotlib import colors
 import numpy as np
 import argparse
 
-# class ObjectScanner:
-#    def __init__(self, threshold, scope=False, vmax=0, x=0, y=0):
-#       self.scope=scope
-#       self.vmax=vmax
-#       self.x=x
-#       self.y=y
-#       self.threshold=threshold
+class ObjectScanner:
+   def __init__(self, scope=False, vmax=0, x=0, y=0):
+      self.scope=scope
+      self.vmax=vmax
+      self.x=x
+      self.y=y
+      self.prevy=0
+      self.prevoffset=0
 
-#    def detect(self,x,y,val):
-#       if self.scope:
-#          if x>self.x+2 and y>self.y+2 and self.vmax >= val:
-#             self.scope=False
-#          return True
-#          if currmax<val:
-#             self.vmax=val
-#             self.x=x
-#             self.y=y
-#       else:
-#          if val > self.threshold:
-#             self.scope=True
-#             self.x=x
-#             self.y=y
-#             self.vmax=val
-#       return False
-
-#    def annotate(self,ax,x,y):
-#       yoffset=0
-#       if y >507 and y< 515 :
-#          yoffset = +20
-#       if y > 501 and y < 505:
-#          yoffset= -20
-#          ax.annotate("{:.1f}".format(self.vmax), xy=(self.x, self.y),
-#                      xytext=(self.x-70,self.y+yoffset), fontsize='10',
-#                      arrowprops=dict(facecolor='red', arrowstyle='-'))
+   def annotate(self,ax):
+      if self.y - self.prevy < 20:
+         self.prevoffset=self.prevoffset+20
+      else:
+         self.prevoffset=0
+      self.prevy=self.y
+      xoffset = 50 if self.x<128 else (-95)
+      yoffset=-5+self.prevoffset
+      ax.annotate("{:.1f}".format(self.vmax), xy=(self.x, self.y),
+                  xytext=(self.x+xoffset,self.y+yoffset), fontsize='8',
+                  arrowprops=dict(facecolor='red',arrowstyle='->'))
+      
+   def update(self, vmax, x, y):
+      self.vmax=vmax
+      self.x=x
+      self.y=y 
       
 parser = argparse.ArgumentParser(description='Plots the AESA signal processing data.')
 parser.add_argument('inpath', nargs=1, type=str,  metavar='PATH',
@@ -57,7 +48,7 @@ beams=[]
 for i in range(nbeams):
    beams.append(data[i*nbins:(i+1)*nbins-1])
    
-fig, axs = plt.subplots(1, nbeams, figsize=(8*nbeams/4,8), sharey=True)
+fig, axs = plt.subplots(1, nbeams, figsize=(7*nbeams/4,7), sharey=True)
 images = []
 for i in range(nbeams):
    images.append(axs[i].imshow(beams[i], cmap='PuBuGn', aspect='equal', interpolation="nearest"))
@@ -72,37 +63,24 @@ norm = colors.Normalize(vmin=vmin, vmax=vmax)
 for im in images:
     im.set_norm(norm)
 
-fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
-
 if args.threshold:
    for i in range(nbeams):
-       scope=False
-       currmax=0
-       currx=0
-       curry=0
-       for y in range(len(beams[i])):
-          for x in range(len(beams[i][y])):
-             if scope:
-               if x>currx+2 and y>curry+2 and currmax>=beams[i][y][x]:
-                  yoffset=0
-                  if y >507 and y< 515 :
-                     yoffset = +20
-                  if y > 501 and y < 505:
-                     yoffset= -20
-                  axs[i].annotate("{:.1f}".format(currmax), xy=(currx, curry), xytext=(currx-70,curry+yoffset),
-                                  fontsize='10' , arrowprops=dict(facecolor='red', arrowstyle='-')
-                     )
-                  scope=False
-               if currmax<beams[i][y][x]:
-                  currmax=beams[i][y][x]
-                  currx=x
-                  curry=y
-             else:
-                if beams[i][y][x] > args.threshold:
-                   scope=True
-                   currx=x
-                   curry=y
-                   currmax=beams[i][y][x]
+      scanner=ObjectScanner()
+      for y in range(len(beams[i])):
+         for x in range(len(beams[i][y])):
+            if scanner.scope:
+               if x>scanner.x+2 and y>scanner.y+2 and scanner.vmax>=beams[i][y][x]:
+                  scanner.annotate(axs[i])
+                  scanner.scope=False
+               if scanner.vmax<beams[i][y][x]:
+                  scanner.update(beams[i][y][x],x,y)
+            else:
+               if beams[i][y][x] > args.threshold:
+                  scanner.update(beams[i][y][x],x,y)
+                  scanner.scope=True
+
+
+fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
 
 plt.yticks(rotation=0,fontsize=10);
 plt.xticks(fontsize=12);

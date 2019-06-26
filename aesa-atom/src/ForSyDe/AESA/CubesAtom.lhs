@@ -43,7 +43,7 @@ ForSyDe-Atom, see [@ungureanu17], using an appropriate alias.
 
 For describing parallel operations on data we use algorithmic skeletons
 (@Fischer-2003,@skillicorn05), formulated on ForSyDe-Atom's in-house
-[`Vector`](http://hackage.haskell.org/package/forsyde-shallow/docs/ForSyDe-Shallow-Core-Vector.html)
+[`Vector`](http://hackage.haskell.org/package/forsyde-atom/docs/ForSyDe-atom-Core-Vector.html)
 data type, which is a shallow, lazy-evaluated implementation of unbounded arrays,
 ideal for early design validation. Although dependent, bounded, and even boxed
 (i.e. memory-mapped) alternatives exist, such as
@@ -65,7 +65,7 @@ AESA algorithms, presented in detail in @sec:coefs-atom.
 
 > import ForSyDe.AESA.Coefs
 
- ### Type Aliases and Constants{#sec:cube-aliases-shallow label="Type Aliases and Constants"}
+ ### Type Aliases and Constants{#sec:cube-aliases-atom}
 
 The system parameters are integer constants defining the size of the application. For
 a simple test scenario provided by Saab AB, we have bundled these parameters in the
@@ -125,7 +125,7 @@ combinational SY process `comb` acting upon signals of `Cube`s, namely mapping t
 beamforming function $f_{DBF}$ on each column of each _pulse matrix_ (see
 [@fig:cube-dbf-cube]).
 
-![DBF stage process](figs/dbf-proc-atom.pdf){#fig:cube-dbf-proc-shallow}
+![DBF stage process](figs/dbf-proc-atom.pdf){#fig:cube-dbf-proc-atom}
 
 > dbf :: Signal (Antenna (Window (Range CpxData)))
 >     -> Signal (Window  (Range  (Beam  CpxData)))

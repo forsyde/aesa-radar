@@ -15,7 +15,7 @@
 | Package | aesa-atom-0.1.0               | path: `./aesa-atom/README.md`                      |
 | Deps    | forsyde-atom-0.2.2            | url: `https://forsyde.github.io/forsyde-atom/api/` |
 |         | forsyde-atom-extensions-0.1.1 | path: `./forsyde-atom-extensions/README.md`        |
-| Bin     | aesa-hl                       | usage: `aesa-hl --help`                            |
+| Bin     | aesa-cube                     | usage: `aesa-cube --help`                          |
 
 
 Historically, [ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/) has been a

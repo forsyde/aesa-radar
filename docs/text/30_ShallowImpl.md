@@ -1,19 +1,28 @@
-# Model Implementations in ForSyDe-Shallow{#sec:shallow}
+# Alternative Modeling Framework: ForSyDe-Shallow{#sec:shallow}
 
-[ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/) is the
-flagship and the oldest modeling language of the ForSyDe methodology
-[@sander-2004]. It is a domain specific language (DSL)
-shallow-embedded into the functional programming language Haskell and
-uses the host's type system, lazy evaluation mechanisms and the
-concept of higher-order functions to describe the formal modeling
-framework defined by ForSyDe.
+> _This section follows step-by-step the same approach as @sec:atom, but this time
+> using the ForSyDe-Shallow modeling framework. The purpose is to familiarize the
+> reader to the syntax of ForSyDe-Shallow should the designer prefer it instead of
+> ForSyDe-Atom. This section is also meant to show that, except for minor syntactic
+> differences, the same modeling concepts are holding and the user experience and API
+> design are very similar._
 
-As a first exercise we present a rather naïve model the AESA
-application in ForSyDe-Shallow which mainly "translates" specification
-model as given and presented in [@fig:video-chain-spec] into
-ForSyDe-Haskell. We gradually build the designer's mindset and
-introduce modeling concepts while we parse the source code of the
-ForSyDe model. The model file is found at
-`<root>/src/ForSyDe/Shallow/AESA.lhs` and can be imported as a generic
-library (e.g. in the interpreter session).
+|         |                           |                                                    |
+| -----   | ------------------------- | -------------------------------------------------- |
+| Package | aesa-shallow-0.1.0        | path: `./aesa-shallow/README.md`                   |
+| Deps    | forsyde-shallow-0.2.2     | url:`http://hackage.haskell.org/package/forsyde-shallow` |
+|         | forsyde-atom-extensions-0.1.1 | path: `./forsyde-shallow-extensions/README.md` |
+|         | aesa-atom-0.1.1           | path: `./aesa-atom/README.md`                      |
+| Bin     | aesa-cube-sh              | usage: `aesa-cube-sh --help`                       |
 
+[ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/) is the flagship and the
+oldest modeling language of the ForSyDe methodology [@sander-2004]. It is a domain
+specific language (DSL) shallow-embedded into the functional programming language
+Haskell and uses the host's type system, lazy evaluation mechanisms and the concept of
+higher-order functions to describe the formal modeling framework defined by
+ForSyDe. At the moment of writing this report, ForSyDe-Shallow is the more "mature"
+counterpart of ForSyDe-Atom. Although some practical modeling concepts such as
+*layers*, *patterns* and *skeletons* have been originally developped within
+ForSyDe-Atom, they are now well-supported by ForSyDe-Shallow as well. In the future
+the modeling frameworks such as ForSyDe-Atom and ForSyDe-Shallow are planned to be
+merged into a single one incorporating the experience accumulated with them.
