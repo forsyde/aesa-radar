@@ -1,1 +1,1 @@
-# Refinements
+# Refinements {#sec:refine}

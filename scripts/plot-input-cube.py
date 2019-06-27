@@ -47,7 +47,8 @@ for im in images:
     im.set_norm(norm)
 
     
-fig.colorbar(images[nantennas-1], ax=axs[nantennas-1], orientation='vertical')
+fig.colorbar(images[nantennas-1], ax=axs[nantennas-1], orientation='vertical',use_gridspec=True)
+# fig.colorbar(images[nantennas-1], ax=axs.ravel().tolist(), shrink=0.7, fraction=.1)
    
 plt.yticks(rotation=0,fontsize=10);
 plt.xticks(fontsize=12);
@@ -55,4 +56,4 @@ plt.tight_layout()
 
 filename=os.path.splitext(os.path.basename(args.inpath[0]))[0] + '_C.pdf'
 plt.savefig(filename)
-plt.show()
+# plt.show()

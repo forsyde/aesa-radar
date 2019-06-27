@@ -18,8 +18,8 @@ import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), SY(..)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF (Signal(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11)
 
-import ForSyDe.AESA.StreamsAtom
-import ForSyDe.AESA.Params
+import AESA.StreamsAtom
+import AESA.Params
 
 import Utils
 

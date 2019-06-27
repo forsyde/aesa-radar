@@ -25,4 +25,5 @@ counterpart of ForSyDe-Atom. Although some practical modeling concepts such as
 *layers*, *patterns* and *skeletons* have been originally developped within
 ForSyDe-Atom, they are now well-supported by ForSyDe-Shallow as well. In the future
 the modeling frameworks such as ForSyDe-Atom and ForSyDe-Shallow are planned to be
-merged into a single one incorporating the experience accumulated with them.
+merged into a single one incorporating the main language features of each one and
+having a similar user experience as ForSyDe-Shallow.

@@ -205,7 +205,7 @@ be familiar with some basic ForSyDe modeling concepts, such as _process construc
 _process_ or _signal_. We recommend going through at least the online getting started
 [tutorial on ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/getting_started)
 or the one [on ForSyDe-Atom](https://forsyde.github.io/forsyde-atom/assets/manual.pdf),
-and if possible, consulting the (slightly outdated) book chapter on ForSyDe [@Sander2017].
+and if possible, consulting the (slightly outdated) book chapter on ForSyDe [@sander-2017-forsy].
 
 This document has been created using literate programming. This means that all code shown
 in the listings is compilable and executable. There are two types of code listing found in

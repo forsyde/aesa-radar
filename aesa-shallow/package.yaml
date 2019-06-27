@@ -21,12 +21,24 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- aesa-atom
+- forsyde-shallow
+- forsyde-shallow-extensions
+# for the executables
+- directory
+- filepath
+- process
+- bytestring-lexing
+- bytestring
+- double-conversion
+- deepseq
+- parallel
 
 library:
   source-dirs: src
 
 executables:
-  aesa-shallow-exe:
+  aesa-shallow:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

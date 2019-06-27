@@ -17,6 +17,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:   ForSyDe.Shallow.Core.Vector
+                   , ForSyDe.Shallow.Utility
                    , ForSyDe.Shallow.Utility.Cube
                    , ForSyDe.Shallow.Utility.Matrix
                    , ForSyDe.Shallow.Utility.DSP

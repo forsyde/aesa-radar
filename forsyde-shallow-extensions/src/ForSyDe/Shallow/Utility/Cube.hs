@@ -2,6 +2,8 @@ module ForSyDe.Shallow.Utility.Cube where
 
 import ForSyDe.Shallow.Core.Vector
 import ForSyDe.Shallow.Utility.Matrix
+import ForSyDe.Shallow.MoC.Synchronous (unzipxSY, zipxSY)
+import ForSyDe.Shallow (Signal(..))
 
 -- | 'Cube' is simply a type synonym for vector of vectors. This
 -- means that /any/ function on 'Vector' works also on 'Cube'.
@@ -81,6 +83,10 @@ unit :: a -> Cube a -- ^ /size/ = @(1,1)@
 unit a = ((a:>NullV):>NullV):>NullV
 
 -- | Creates an /infinite cube/ which repeats one element
+repeatCube :: a -> Cube a
+repeatCube = vector . repeat . vector . repeat . vector . repeat
+
+-- | Creates an /finite cube/ which repeats one element
 copyCube :: Int -> Int -> Int -> a -> Cube a
 copyCube x y z n = copyV z $ copyV y $ copyV x n
 
@@ -183,3 +189,9 @@ dropCube :: Int       -- ^ X index starting from zero
 dropCube x y z = mapV (dropMat x y) . dropV z
 
 infiniteCube  = vector . repeat . vector . repeat . vector . repeat
+
+unzipCubeSY :: Signal (Cube a) -> Cube (Signal a)
+unzipCubeSY = mapMat unzipxSY . mapV unzipxSY . unzipxSY
+
+zipCubeSY :: Cube (Signal a) -> Signal (Cube a)
+zipCubeSY = zipxSY . mapV zipxSY . mapMat zipxSY

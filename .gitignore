@@ -7,5 +7,5 @@ dist
 TAGS
 *.cabal
 gen
-AESA_INDATA.*
-AESA_OUTPUT.*
+./AESA_*
+./AESA_*

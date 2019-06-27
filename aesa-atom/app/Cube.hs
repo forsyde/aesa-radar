@@ -18,9 +18,9 @@ import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), SY(..)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF (Signal(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11)
 
-import ForSyDe.AESA.CubesAtom
-import ForSyDe.AESA.Params
--- import ForSyDe.AESA.Coefs
+import AESA.CubesAtom
+import AESA.Params
+-- import AESA.Coefs
 
 import Utils
 
@@ -85,7 +85,7 @@ main = do
     cfarOutFile args = (outPath args ++ "/CFAR_R_C.csv",outPath args ++ "/CFAR_L_C.csv")
     ---------------------------------------------------------
     -- take only the last cube of data!
-    toCubeLists :: [[a]] -> Vector (Vector (Vector (a)))
+    toCubeLists :: [[a]] -> Vector (Vector (Vector a))
     toCubeLists = vector . map (vector . map vector . sublist nb) 
     toListCube  = map (map fromVector . fromVector) . fromVector . last . SY.fromSignal
     ---------------------------------------------------------
@@ -99,7 +99,7 @@ main = do
       'a' -> dumpData3 (fst $ cfarOutFile args) showFloat outCfarrData >> printDimen3 "CFARro :" outCfarrData >>
              dumpData3 (snd $ cfarOutFile args) showFloat outCfarlData >> printDimen3 "CFARlo :" outCfarlData
       'o' -> dumpData3 (outFilePath args) showFloat outAesaData        >> printDimen3 "AESAo  :" outAesaData
-      ls_ -> return ()
+      _   -> return ()
     ---------------------------------------------------------
 
 data Args = Args

@@ -104,81 +104,28 @@ blackman size =  vector $ map func [1..]
 -- | applied in reverse order (more optimized)
 -- >>> let v = vector [0,0,0,0,0,1]
 -- >>> let c = vector [1,2,1]
--- >>> fir c v
+-- >>> mav c v
 -- <0,0,0,1,2,1>
-fir :: Num a
+mav :: Num a
     => Vector a  -- ^ vector of coefficients
     -> Vector a  -- ^ input vector of numbers; /size/ = @n@
     -> Vector a  -- ^ output vector of numbers; /size/ = @n@
-fir coefs = mapV applyFilter . tailsV
+mav coefs = mapV applyFilter . tailsV
   where
     applyFilter = reduceV (+) . zipWithV (*) coefs 
 
--- |
--- >>> let c = vector [1,2,1]
--- >>> let s = SY.signal [1,0,0,0,0,0,0,0]
--- >>> fir' (SY.comb21 (+)) (\c -> SY.comb11 (*c)) (SY.delay 0) c s
--- {1,2,1,0,0,0,0,0}
-fir' :: (a -> a -> a)  -- ^ process/operation replacing '+'
-     -> (c -> a -> a)  -- ^ process/operation replacing '*'
-     -> (a -> a)       -- ^ delay process
-     -> Vector c       -- ^ vector of coefficients
-     -> a              -- ^ input signal/structure 
-     -> a              -- ^ output signal/structure
-fir' plus times delay coefs =
-  reduceV plus . zipWithV (\c -> times c) coefs . recuriV (copyV n delay)
-  where n = lengthV coefs - 1
-
-
-
-----------------------------------------------------------------------------------
-
--- | The function 'dft' performs a standard Discrete Fourier Transformation
-dft :: RealFloat a => Int -> Vector (Complex a) -> Vector (Complex a)
-dft bigN x | bigN == (lengthV x) = mapV (bigX_k bigN x) (nVector x)
-           | otherwise = error "DFT: Vector has not the right size!"
-  where
-    nVector x'        = iterateV (lengthV x') (+1) 0
-    bigX_k bigN' x' k = sumV (zipWithV (*) x' (bigW' k bigN'))
-    bigW' k' bigN'    = mapV (** k') (mapV cis (fullcircle bigN'))
-    sumV              = foldlV (+) (0:+ 0)
-
-fullcircle :: RealFloat a => Int -> Vector a
-fullcircle n = fullcircle1 0 (fromIntegral n) n
-  where
-    fullcircle1 l m n'
-      | l == m    = NullV
-      | otherwise = -2*pi*l/(fromIntegral n')
-                    :> fullcircle1 (l+1) m n'
-
--- | The function 'fft' implements a fast Fourier transform (FFT)
--- algorithm, for computing the DFT, when the size N is a power of 2.
-fft :: RealFloat a => Int -> Vector (Complex a) -> Vector (Complex a)
-fft bigN xv | bigN == (lengthV xv) = mapV (bigX xv) (kVector bigN)
-            | otherwise = error "FFT: Vector has not the right size!"
-
-kVector :: (Num b, Num a, Eq a) => a -> Vector b
-kVector bigN = iterateV bigN (+1) 0
-
-bigX :: RealFloat a => Vector (Complex a) -> Int -> Complex a
-bigX (x0:>x1:>NullV) k | even k = x0 + x1 * bigW 2 0
-                       | odd k  = x0 - x1 * bigW 2 0
-bigX xv k = bigF_even k + bigF_odd k * bigW bigN (fromIntegral k)
-  where bigF_even k' = bigX (evens xv) k'
-        bigF_odd k' = bigX (odds xv) k'
-        bigN = lengthV xv
-
-bigW :: RealFloat a => Int -> Int -> Complex a
-bigW bigN k = cis (-2 * pi * (fromIntegral k) / (fromIntegral bigN))
-
-evens :: Vector a -> Vector a
-evens NullV   = NullV
-evens (v1:>NullV) = v1 :> NullV
-evens (v1:>_:>v)  = v1 :> evens v
-
-odds :: Vector a -> Vector a
-odds NullV    = NullV
-odds (_:>NullV)   = NullV
-odds (_:>v2:>v)   = v2 :> odds v
-
+-- -- |
+-- -- >>> let c = vector [1,2,1]
+-- -- >>> let s = SY.signal [1,0,0,0,0,0,0,0]
+-- -- >>> fir' (SY.comb21 (+)) (\c -> SY.comb11 (*c)) (SY.delay 0) c s
+-- -- {1,2,1,0,0,0,0,0}
+-- fir' :: (a -> a -> a)  -- ^ process/operation replacing '+'
+--      -> (c -> a -> a)  -- ^ process/operation replacing '*'
+--      -> (a -> a)       -- ^ delay process
+--      -> Vector c       -- ^ vector of coefficients
+--      -> a              -- ^ input signal/structure 
+--      -> a              -- ^ output signal/structure
+-- fir' plus times delay coefs =
+--   reduceV plus . zipWithV times coefs . recuriV (copyV n delay)
+--   where n = lengthV coefs - 1
 

@@ -16,7 +16,7 @@ class ObjectScanner:
       self.prevoffset=0
 
    def annotate(self,ax):
-      if self.y - self.prevy < 20:
+      if self.y - self.prevy < 15:
          self.prevoffset=self.prevoffset+20
       else:
          self.prevoffset=0
@@ -24,7 +24,7 @@ class ObjectScanner:
       xoffset = 50 if self.x<128 else (-95)
       yoffset=-5+self.prevoffset
       ax.annotate("{:.1f}".format(self.vmax), xy=(self.x, self.y),
-                  xytext=(self.x+xoffset,self.y+yoffset), fontsize='8',
+                  xytext=(self.x+xoffset,self.y+yoffset), fontsize='12',
                   arrowprops=dict(facecolor='red',arrowstyle='->'))
       
    def update(self, vmax, x, y):
@@ -35,7 +35,7 @@ class ObjectScanner:
 parser = argparse.ArgumentParser(description='Plots the AESA signal processing data.')
 parser.add_argument('inpath', nargs=1, type=str,  metavar='PATH',
                     help='Plots the AESA antenna input. Expects path to antenna data')
-parser.add_argument('-t', '--threshold', nargs='?', type=int,  metavar='VAL', default=15,
+parser.add_argument('-t', '--threshold', nargs='?', type=float,  metavar='VAL', default=15,
                     help='Threshold value for detected objects. If 0 then detection values are not annotated. Default: 15')
 
 args = parser.parse_args()
@@ -48,7 +48,7 @@ beams=[]
 for i in range(nbeams):
    beams.append(data[i*nbins:(i+1)*nbins-1])
    
-fig, axs = plt.subplots(1, nbeams, figsize=(7*nbeams/4,7), sharey=True)
+fig, axs = plt.subplots(1, nbeams, figsize=(10*nbeams/4,10))
 images = []
 for i in range(nbeams):
    images.append(axs[i].imshow(beams[i], cmap='PuBuGn', aspect='equal', interpolation="nearest"))
@@ -79,8 +79,9 @@ if args.threshold:
                   scanner.update(beams[i][y][x],x,y)
                   scanner.scope=True
 
+# fig.colorbar(images[nbeams-1], ax=axs[nbeams], orientation='vertical', fraction=.1)
 
-fig.colorbar(images[nbeams-1], ax=axs[nbeams-1], orientation='vertical', fraction=.1)
+# fig.colorbar(images[nbeams-1], ax=axs.ravel().tolist(), shrink=0.7, fraction=.1)
 
 plt.yticks(rotation=0,fontsize=10);
 plt.xticks(fontsize=12);

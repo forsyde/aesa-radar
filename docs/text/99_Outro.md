@@ -2,5 +2,10 @@
 [`ForSyDe.Atom.Skeleton.Vector`]: https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html
 [`ForSyDe.Atom.MoC.SY`]: https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html
 [`ForSyDe.Atom.MoC.SDF`]: https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html
+[`ForSyDe.Shallow.MoC.Synchronous`]: http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-MoC-Synchronous.html
+[`ForSyDe.Shallow.Core.Vector`]: http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-Core-Vector.html
+[`ForSyDe.Shallow.Utility.Matrix`]: http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-Utility-Matrix.html
+[`ForSyDe.Shallow.Utility.DFT`]: http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-Utility-DFT.html
+[`ForSyDe.Shallow.Utility.FIR`]: http://hackage.haskell.org/package/forsyde-shallow-3.4.0.0/docs/ForSyDe-Shallow-Utility-FIR.html
 
 # References

@@ -6,10 +6,10 @@ TXT_DIR  = ./text
 FIGS_SRC = ./figs_src
 FIGS_DIR = ./figs
 
-LHS_FILES :=	21:../aesa-atom/src/ForSyDe/AESA/CubesAtom.lhs \
-		22:../aesa-atom/src/ForSyDe/AESA/Params.lhs \
-		23:../aesa-atom/src/ForSyDe/AESA/Coefs.lhs \
-		31:../aesa-shallow/src/ForSyDe/AESA/CubesShallow.lhs #\
+LHS_FILES :=	21:../aesa-atom/src/AESA/CubesAtom.lhs \
+		22:../aesa-atom/src/AESA/Params.lhs \
+		23:../aesa-atom/src/AESA/Coefs.lhs \
+		31:../aesa-shallow/src/AESA/CubesShallow.lhs #\
 		41:../aesa-atom/src/ForSyDe/AESA/StreamsAtom.lhs #\
 
 BIB_FILE := refs.bib
