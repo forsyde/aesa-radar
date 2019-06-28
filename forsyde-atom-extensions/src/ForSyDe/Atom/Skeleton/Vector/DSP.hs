@@ -205,7 +205,7 @@ twiddles bN = (V.bitrev . V.take (bN `div` 2)) (V.farm11 bW $ vector [0..])
 -- https://www.slideshare.net/chappidi_saritha/decimation-in-time-and-frequency
 fft :: RealFloat a
      => Int -> V.Vector (Complex a) -> V.Vector (Complex a)
-fft k vs | n == 2^k = V.bitrev $ (stage `V.pipe1` V.iterate k (*2) 2) vs
+fft k vs | n == 2^k = V.reverse $ V.bitrev $ (stage `V.pipe1` V.iterate k (*2) 2) vs
          | otherwise = error $ "n=" ++ show n ++ "; k=" ++ show k
   where
     stage   w = V.concat . V.farm21 segment (twiddles n) . V.group w

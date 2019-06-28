@@ -1,5 +1,4 @@
 
-
 ## Model Simulation Against Test Data{#sec:cube-atom-sim}
 
 As a first trial to validate that our AESA high-level model is "sane", i.e. is
@@ -49,7 +48,7 @@ Table:  Objects reflected in the generated AESA indata {#tbl:in-objects}
 
 ![One output cube with radar data](figs/AESA_OUT_C.pdf){#fig:aesa-odata-atom}
 
-Figure: AESA data plots
+AESA data plots
 
 </div>
 
@@ -74,6 +73,6 @@ and data passage, as well as more complex use of skeletons and patterns, gradual
 reaching enough system details to start considering the synthesis of the model in
 @sec:synth to a hardware platform. Until then we will introduce an alternative
 modeling framework, as well as practical tools to verify the conformance of the
-ForSyDe model, as well as all its subsequent refinements, to the given specification.
+ForSyDe model and all its subsequent refinements to the given specification.
 
 \clearpage

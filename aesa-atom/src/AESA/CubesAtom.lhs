@@ -384,7 +384,7 @@ parallel skeleton within the $f_{CFAR}$ function.
 >     aritMean  = V.farm11 (/n) . V.reduce addV . V.farm11 geomMean . V.group 4
 >     geomMean  = V.farm11 (logBase 2 . (/4)) . V.reduce addV
 >     -----------------------------------------------
->     dummy     = V.fanoutn nFFT $ (-maxFloat)/n
+>     dummy     = V.fanoutn nFFT (-maxFloat)
 >     neighbors = V.stencil nFFT rbins
 >     -----------------------------------------------
 >     addV      = V.farm21 (+)

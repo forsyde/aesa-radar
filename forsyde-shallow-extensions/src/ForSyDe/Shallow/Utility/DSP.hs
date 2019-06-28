@@ -110,22 +110,22 @@ mav :: Num a
     => Vector a  -- ^ vector of coefficients
     -> Vector a  -- ^ input vector of numbers; /size/ = @n@
     -> Vector a  -- ^ output vector of numbers; /size/ = @n@
-mav coefs = mapV applyFilter . tailsV
+mav coefs = mapV applyFilter . initV . tailsV
   where
     applyFilter = reduceV (+) . zipWithV (*) coefs 
 
--- -- |
--- -- >>> let c = vector [1,2,1]
--- -- >>> let s = SY.signal [1,0,0,0,0,0,0,0]
--- -- >>> fir' (SY.comb21 (+)) (\c -> SY.comb11 (*c)) (SY.delay 0) c s
--- -- {1,2,1,0,0,0,0,0}
--- fir' :: (a -> a -> a)  -- ^ process/operation replacing '+'
---      -> (c -> a -> a)  -- ^ process/operation replacing '*'
---      -> (a -> a)       -- ^ delay process
---      -> Vector c       -- ^ vector of coefficients
---      -> a              -- ^ input signal/structure 
---      -> a              -- ^ output signal/structure
--- fir' plus times delay coefs =
---   reduceV plus . zipWithV times coefs . recuriV (copyV n delay)
---   where n = lengthV coefs - 1
+-- |
+-- >>> let c = vector [1,2,1]
+-- >>> let s = SY.signal [1,0,0,0,0,0,0,0]
+-- >>> fir' (SY.comb21 (+)) (\c -> SY.comb11 (*c)) (SY.delay 0) c s
+-- {1,2,1,0,0,0,0,0}
+fir' :: (a -> a -> a)  -- ^ process/operation replacing '+'
+     -> (c -> a -> a)  -- ^ process/operation replacing '*'
+     -> (a -> a)       -- ^ delay process
+     -> Vector c       -- ^ vector of coefficients
+     -> a              -- ^ input signal/structure 
+     -> a              -- ^ output signal/structure
+fir' plus times delay coefs =
+  reduceV plus . zipWithV times coefs . recuriV (copyV n delay)
+  where n = lengthV coefs - 1
 

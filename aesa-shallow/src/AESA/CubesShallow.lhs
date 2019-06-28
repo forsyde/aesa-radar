@@ -116,21 +116,27 @@ as the Doppler filter bank (DFB) and the constant false alarm ratio (CFAR) stage
 >   where
 >     nextState _ cube = dropV (nFFT `div` 2) cube
 >     outDecode s cube = s <+> takeV (nFFT `div` 2) cube
->     initState        =  copyCube nb nB (nFFT `div` 2) 0 -- (copyV (nFFT `div` 2) . copyV nB . copyV ) 0
+>     initState        =  copyCube nb nB (nFFT `div` 2) 0 
+
+<!-- -- (copyV (nFFT `div` 2) . copyV nB . copyV ) 0 -->
 
 > dfb :: Signal (Window (Beam  (Range  CpxData )))
 >     -> Signal (Beam   (Range (Window RealData)))
 > dfb = combSY (mapMat fDFB . transposeCube)
 > 
 > fDFB :: Window CpxData -> Window RealData
-> fDFB = mapV envelope . fromDouble (fft nFFT) . weight
+> fDFB = mapV envelope . onComplexFloat (fft nFFT) . weight
 >   where
 >     weight     = zipWithV (*) (mkWeightCoefs nFFT)
 >     envelope a = let (i, q) = (realPart a, imagPart a)
 >                  in realToFrac $ sqrt (i * i + q * q)
->     -- since ForSyDe-Shallow's 'fft' is monomorphic defined on Double, 
->     -- we need to wrap it in order to work with another type (in our case Float)
->     fromDouble f = mapV (fmap realToFrac) . f . mapV (fmap realToFrac)
+>     onComplexFloat f = mapV (fmap realToFrac) . f . mapV (fmap realToFrac)
+
+The `fft` function from ForSyDe-Shallow is provided as a *monomorphic* utility
+function, and not necessarily as a skeleton. This is why, although slightly more
+efficient, it is not as flexible as the skeleton counterpart, and thus we need to wrap
+it inside our custom data type converter `onComplexFloat` to be able to "plug it" into
+our system, i.e. there are no data type mismatches.
 
 > cfar :: Signal (Beam (Range (Window RealData)))
 >      -> Signal (Beam (Range (Window RealData)))
@@ -141,13 +147,13 @@ as the Doppler filter bank (DFB) and the constant false alarm ratio (CFAR) stage
 >   where
 >     md  = mapV (logBase 2 . reduceV min) rbins
 >     emv = (copyV (nFFT + 1) dummy) <+> (mapV aritMean neighbors)
->     lmv = (dropV 2 $ mapV aritMean neighbors) <+> (copyV (nFFT+2) dummy) 
+>     lmv = (dropV 2 $ mapV aritMean neighbors) <+> (copyV (nFFT*2) dummy) 
 >     -----------------------------------------------
 >     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
 >     aritMean  = mapV (/n) . reduceV addV . mapV geomMean . groupV 4
 >     geomMean  = mapV (logBase 2 . (/4)) . reduceV addV
 >     -----------------------------------------------
->     dummy     = copyV nFFT $ (-maxFloat)/n
+>     dummy     = copyV nFFT (-maxFloat)
 >     neighbors = stencilV nFFT rbins
 >     -----------------------------------------------
 >     addV      = zipWithV (+)
@@ -161,9 +167,14 @@ implement this stage exactly as before:
 > int :: Signal (Beam (Range (Window RealData)))
 >     -> Signal (Beam (Range (Window RealData)))
 >     -> Signal (Beam (Range (Window RealData)))
-> int r l = firNet $ interleaveSY r l
+> -- int r l = firNet $ interleaveSY r l
+> --   where
+> --     firNet = zipCubeSY . mapCube (firSY mkIntCoefs) . unzipCubeSY
+> int r l = fir' addSC mulSC dlySC mkIntCoefs $ interleaveSY r l
 >   where
->     firNet = zipCubeSY . mapCube (firSY mkIntCoefs) . unzipCubeSY
+>     addSC   = comb2SY (zipWithCube (+))
+>     mulSC c = combSY  (mapCube (*c))
+>     dlySC   = delaySY (repeatCube 0)
 
 [^fn:utils]: at this moment it is enough to know that both are implemented in terms of existing skeletons or process constructors. More complex behaviors such as these two will be made explicit later in @sec:refine. Interested readers can consult the implementations in the `forsyde-shallow-extensions` package.
 
