@@ -33,7 +33,6 @@ dependencies:
 - deepseq
 - parallel
 
-
 library:
   source-dirs: src
 
@@ -62,12 +61,17 @@ executables:
     - aesa-atom
     
 tests:
-  tests-hl:
-    main:                Spec.hs
+  tests-cube:
+    main:                SpecCube.lhs
     source-dirs:         test
     ghc-options:
+    - -main-is           SpecCube
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - aesa-atom
+    - QuickCheck
+    - test-framework
+    - test-framework-hunit
+    - test-framework-quickcheck2

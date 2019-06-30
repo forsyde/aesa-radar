@@ -13,7 +13,7 @@
 | Deps    | forsyde-shallow-0.2.2     | url:`http://hackage.haskell.org/package/forsyde-shallow` |
 |         | forsyde-atom-extensions-0.1.1 | path: `./forsyde-shallow-extensions/README.md` |
 |         | aesa-atom-0.1.1           | path: `./aesa-atom/README.md`                      |
-| Bin     | aesa-cube-sh              | usage: `aesa-cube-sh --help`                       |
+| Bin     | aesa-shallow              | usage: `aesa-shallow --help`                       |
 
 [ForSyDe-Shallow](https://forsyde.github.io/forsyde-shallow/) is the flagship and the
 oldest modeling language of the ForSyDe methodology [@sander-2004]. It is a domain
