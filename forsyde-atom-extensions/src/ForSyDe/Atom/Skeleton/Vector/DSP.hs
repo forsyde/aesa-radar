@@ -130,6 +130,9 @@ dotvm' :: (b -> b -> b)     -- ^ kernel function for a row/column reduction, e.g
        -> Vector b          -- ^ /length/ = @ya@
 dotvm' f g vs = V.reduce (V.farm21 f) . V.farm21 (\x -> V.farm11 (g x)) vs
 
+dotvm :: Num a => Vector a -> Vector (Vector a) -> Vector a
+dotvm = dotvm' (+) (*)
+
 -- | Compute a Hanning window.
 -- |
 -- | Inspired from <<https://hackage.haskell.org/package/sdr-0.1.0.6/src/hs_sources/SDR/FilterDesign.hs>>

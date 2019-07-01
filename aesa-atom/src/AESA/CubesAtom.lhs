@@ -190,15 +190,30 @@ $$ \begin{gathered}
    \end{gathered}
 $$ {#eq:dbf-mat}
 
+In fact the operation performed by the $f_{DBF}$ function in @eq:dbf, respectively in
+@eq:dbf-mat is nothing else but a dot operation between a vector and a
+matrix. Luckily, `ForSyDe.Atom.Skeleton.Vector.DSP` exports a utility skeleton called
+`dotvm` which instantiates exactly this type of operation. Thus we can instantiate an
+equivalent $f_{DBF}'$ simply as
+
+> fDBF' antennaEl = antennaEl `dotvm` beamConsts
+>   where
+>     beamConsts = mkBeamConsts dElements waveLength nA nB :: Matrix CpxData
+
+The expanded version `fDBF` was given mainly for didactic purpose, to get a feeling
+for how to manipulate different skeletons to obtain more complex operations or
+systems. From now on, in this section we will only use the library-provided
+operations, and we will study them in-depth only later in @sec:refine.
+
  #### Pulse Compression (PC){#sec:cube-pc-atom}
+
+![PC: direction of application on video structure (left); process (right)](figs/pc-cube.pdf){#fig:cube-pc-cube}
 
 In this stage the received echo of the modulated pulse, i.e. the information contained
 by the range bins, is passed through a matched filter for decoding their
 modulation. This essentially applies a sliding window, or a moving average on the
 range bin samples. Considering the video cube, the PC transformation is applied in the
 direction shown in @fig:cube-pc-cube, i.e. on vectors formed from the range of every pulse.
-
-![PC: direction of application on video structure (left); process (right)](figs/pc-cube.pdf){#fig:cube-pc-cube}
 
 The PC process is mapping the $f_{PC}$ on each row of the pulse matrices in a cube,
 however the previous stage has arranged the cube to be aligned beam-wise. This is why
@@ -232,6 +247,8 @@ application we also use a relatively small average window (5 taps).
 
  #### Corner Turn (CT) with 50% overlapping data {#sec:cube-ct-atom}
 
+![Concurrent processing on 50% overlapped data](figs/ct-cube.pdf){#fig:cube-ct-cube} 
+
 During the CT a rearrangement of data must be performed between functions that process
 data in “different” directions, e.g. range and pulse, in order to be able to calculate
 the Doppler channels further in the processing pipeline. The process of corner turning
@@ -243,8 +260,6 @@ until the beginning of the next stage. However, a much more interesting operatio
 depicted in [@fig:cube-ct-cube]: in order to maximize the efficiency of the AESA processing
 the datapath is split into two concurrent processing channels with 50% overlapped
 data.
-
-![Concurrent processing on 50% overlapped data](figs/ct-cube.pdf){#fig:cube-ct-cube} 
 
 Implmeneting such a behavior requires a bit of "ForSyDe thinking". At a first glance,
 the problem seems easily solved considering only the cube structures: just "ignore"
@@ -298,6 +313,8 @@ system: as "observers", we will ignore the effects of the initial state propagat
 from the output signal and instead plot only the useful data.
 
 [^fn:abst]: For more information on absent semantics, check out Chapter 3 of [@leeseshia-15]
+
+\nopandoc{\vspace{1em}}
 
  #### Doppler Filter Bank (DFB){#sec:cube-dfb-atom}
 

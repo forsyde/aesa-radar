@@ -32,3 +32,11 @@ instance Arbitrary a => Arbitrary (SDF.SDF a) where
   arbitrary = do
     x <- arbitrary
     return (SDF.SDF x)
+
+withinRangeComplex :: Ord a => a -> a -> Complex a -> Bool
+withinRangeComplex a b c | realPart c <  a = False
+                         | imagPart c <  a = False
+                         | realPart c >= b = False
+                         | imagPart c >= b = False
+                         | otherwise = True
+
