@@ -193,9 +193,10 @@ We instantiate a vector generator having a fixed length first:
 which we use to generate random dimensioned cubes:
 
 > prop_ct_dimensions = forAll (sizedVector nFFT $ sizedVector nB $ sizedVector nb arbitrary)
->                      $ \c -> dimensionsMatch $ L.head $ SY.fromSignal $ overlap $ SY.signal [c]
+>                      $ \c -> dimensionsMatch $ overlap $ SY.signal [c]
 >   where
->     dimensionsMatch c = let z = V.length c
+>     dimensionsMatch s = let c = L.head $ SY.fromSignal $ s
+>                             z = V.length c
 >                             y = V.length $ V.first c
 >                             x = V.length $ V.first $ V.first c
 >                         in z == nFFT && y == nB && x == nb
