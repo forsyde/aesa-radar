@@ -20,6 +20,7 @@ library
                    , ForSyDe.Atom.Skeleton.Vector.DSP
                    , ForSyDe.Atom.MoC.SY
                    , ForSyDe.Atom.MoC.SDF
+                   , ForSyDe.Atom.MoC.BDF
   other-modules:     Paths_forsyde_atom_extensions
   -- other-extensions:
   build-depends:       base >=4.2 && <5,

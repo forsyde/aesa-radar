@@ -12,7 +12,7 @@ packages:
 
 extra-deps:
 - git: git@github.com:forsyde/forsyde-atom.git
-  commit: 59aeeb6130bc3fa4665aebd2634ebe3a575a7208
+  commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
