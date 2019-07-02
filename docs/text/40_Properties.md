@@ -52,3 +52,15 @@ tutorial](http://www.cse.chalmers.se/~rjmh/QuickCheck/manual.html).
 Properties in the QuickCheck DSL are formulated as \emph{pre-condition} $\Rightarrow$
 \emph{statement}, where pre-conditions are defining generators for legal inputs under
 which the statement is evaluated.
+
+In order to ease the understanding of the QuickCheck code, for each property we will
+also provide a short-hand mathematical notation using the \emph{pre-condition}
+$\Rightarrow$ \emph{statemen} format, using the following conventions:
+
+| Notation                   | Meaning              |
+|----------------------------|----------------------|
+| $\langle\alpha\rangle$     | `Vector a`           |
+| $|v|$                      | `length v`           |
+| $\overline{s}$             | a signal `s`         |
+| $\langle a,b,c,...\rangle$ | `vector [a,b,c,...]` |
+| $\overline{\{a,b,c,...\}}$ | `signal [a,b,c,...]` |

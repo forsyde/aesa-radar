@@ -1,4 +1,4 @@
- ## Properties
+ ## Properties {#sec:prop-defs}
 
 In this subsetion we formulate a handful of properties whose purpose is:
 
@@ -31,6 +31,8 @@ structure of ForSyDe types such as `Vector` or `Signal`.
 
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 > import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY as SY
+> import qualified ForSyDe.Atom.Skeleton.Vector.Matrix as M
+> import qualified ForSyDe.Atom.Skeleton.Vector.Cube as C
 > import ForSyDe.Atom.Skeleton.Vector.DSP (fir)
 
 Obviously, we need to import the AESA designs modules as well.
@@ -201,11 +203,62 @@ which we use to generate random dimensioned cubes:
 >                             x = V.length $ V.first $ V.first c
 >                         in z == nFFT && y == nB && x == nb
 
-However, what we _can_ test in reasonable time is that the cubes in the left and the
-right channels are 50% overlapped for a set of _known_ data. Thus we can create our
-own unit test rather than let QuickCheck generate a bunch of random ones.
+From DFB onwards we deal with Doppler values which have a higher range, so we are no
+longer concerned with testing for owerflowing output data, until we take a decision in
+the refinement process to fix a particular number representation. However, we would
+still like to test that the format and dimensions of the intermediate cubes is the
+same, thus we formulate:
+
+> prop_dfb_num_outputs = forAll (sizedVector nFFT arbitrary)
+>                        $ \v -> V.length v == V.length (fDFB v)
+
+> prop_cfar_num_outputs :: M.Matrix RealData -> Bool
+> prop_cfar_num_outputs m = M.size m == M.size (fCFAR m)
+
+The DFB contains a FFT function which is hardcoded to work for $n_{FFT}$ samples thus
+we need to fix the input size accordingly. For the CFAR output, we use the `Matrix`
+`size` utility.
+
+We have tested that the `fir` implementation gives the correct impulse response, but
+what about our `fir'` network instantiation `firNet` defined in @sec:cube-int-atom?
+Does it act like a proper FIR filter? We test it by giving it an "impulse cube"
+signal, and test that the response is the expected one:
+$$\forall v \in \langle\mathbb{R}\rangle, c_1, c_0 \in
+\langle\langle\langle\mathbb{R}\rangle\rangle\rangle, e_1 \in c_1, e_0 \in c_0 : e_1 =
+1 \wedge e_0=0 \Rightarrow \texttt{firNet} (v,\overline{\{c_1,c_0,c_0,...\}}) = \overline{s_v}
+$${#eq:prop_generic_farm_structure}
+
+where $\overline{s_v}$ is the response signal whose events are events are cubes
+containing the coefficients in $v$. Again we define a generator for the impulse signal of cubes:
+
+> impulseSigOfCubes :: Int -> Gen (SY.Signal (C.Cube Int))
+> impulseSigOfCubes n = do
+>   windowLen <- choose (2, 20)  -- do not choose too large dimensions otherwise
+>   rangeLen  <- choose (2, 20)  -- the tests will take too long... small tests are
+>   beamLen   <- choose (2, 20)  -- good enough
+>   impulse   <- sizedCube beamLen rangeLen windowLen $ elements [1] 
+>   trail     <- sizedCube beamLen rangeLen windowLen $ elements [0]
+>   return (SY.signal (impulse : replicate n trail))
+>   where
+>     sizedCube z y x  = sizedVector z . sizedVector y . sizedVector x
+
+which we use in the property:
+
+> prop_int_fir_response :: V.Vector Int -> Property
+> prop_int_fir_response cf = forAll (impulseSigOfCubes $ V.length cf)
+>                            $ \i -> correctResponse (firNet cf i)
+>  where
+>     correctResponse r = and $ zipWith checkEq coefsL (toLists r)
+>     checkEq i = all (all (all (==i)))
+>     coefsL    = L.reverse $ V.fromVector cf
+>     toLists   = map (map (map V.fromVector . V.fromVector) . V.fromVector) . fromSignal
 
  ### Main function
+
+Finally we gather all the properties defined in this section in a bundle of tests
+called "Cube HL Model Tests", using the utilities provided by the `Test.Framework`
+library. `withMaxSuccess` determines how many random tests will be generated per
+propert durin one run.
 
 > tests :: [Test]
 > tests = [
@@ -226,6 +279,12 @@ own unit test rather than let QuickCheck generate a bunch of random ones.
 >       (withMaxSuccess 200 prop_pc_value_range)
 >     , testProperty "CT   both channels have cubes of the same dimensions    "
 >       (withMaxSuccess 100 prop_ct_dimensions)
+>     , testProperty "DFB  right number of outputs                            "
+>       (withMaxSuccess 100 prop_dfb_num_outputs)
+>     , testProperty "CFAR right number of outputs                            "
+>       (withMaxSuccess 100 prop_cfar_num_outputs)
+>     , testProperty "INT  right unit impulse response                        "
+>       (withMaxSuccess  70 prop_int_fir_response)
 >     ]
 >   ]
 
