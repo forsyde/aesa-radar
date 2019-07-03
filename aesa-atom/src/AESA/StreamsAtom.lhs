@@ -13,13 +13,14 @@ We import exactly the same libraries as in @sec:cube-atom-operation, so we don't
 to explain what each one does. However, in this model we introduce a new MoC.  For
 describing streaming behavior of the application our design will use a heterogeneous
 approach, using a combination of _synchronous reactive (SY)_ processes
-(@leeseshia-15,@Benveniste03), where the main assumption is that all events in the
+[@leeseshia-15;@Benveniste03], where the main assumption is that all events in the
 system are synchronized; and _synchronous data flow (SDF)_ processes
-(@leeseshia-15,@lee95), where the temporal behavior is formulated in terms of partial
-order constraints between events. We import the
-[`SY`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html) and
+[@leeseshia-15;@lee95], where the temporal behavior is formulated in terms of partial
+order constraints between events. We also use the Boolean dataflow model, which is an
+extension to SDF to allow for dynamic behaviors [@buck93]. We import the
+[`SY`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html),
 [`SDF`](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SDF.html)
-libraries described in the
+and `BDF` libraries described in the
 _[MoC](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html) layer_, see
 [@ungureanu17], using an appropriate alias for each.
 
@@ -32,6 +33,8 @@ _[MoC](https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC.html) layer_,
 > import AESA.Coefs
 > import AESA.Params
 > import Data.Complex
+
+> import qualified AESA.CubesAtom as CAESA
 
 We use the same internal aliases to name the different types employed in this model:
 
@@ -156,69 +159,39 @@ from these tokens, and applies the same `fir` function used in @sec:cube-pc-atom
 these vectors. Also notice that the type signature for `procPC` is left polymorphic as
 to be more convenient later when we formulate properties over it.
 
- #### Corner Turn (CT){#sec:ct-atom}
+ #### Corner Turn (CT) with 50% overlap {#sec:ct-atom}
 
 The role of the CT stage is explained in @sec:cube-ct-atom. In this model we make use
 of the knowledge that for each beam sample arrives in order, one range bin at a time,
 in the direction of consumption suggested in @fig:ct-samp, and "fill back in" the
 video cube in the direction of production. In order to maximize the efficiency of the
 AESA processing the datapath is split into two concurrent processing channels with 50%
-overlapped data, as shown in [@fig:ct-cube].
+overlapped data, as shown in [@fig:cube-ct-cube] from @sec:cube-ct-atom.
 
 ![Building matrices of complex samples during CT](figs/ct-samp.pdf){#fig:ct-samp}
 
 <!-- ![Concurrent processing on 50% overlapped data](figs/ct-cube.pdf){#fig:ct-cube}  -->
 
-Our CT network thus maps on each beam signal a corner turn process which, under the
-SDF execution semantics, consumes $N_{FFT}\times N_b$ ordered samples, interprets them
-as a matrix, transposes this matrix, and produces $N_b\times N_{FFT}$ samples ordered
-in the direction suggested in @fig:ct-samp. In order to achieve 50% overlapping
-between the two output channels, the left one needs to be "delayed" with a prefix
-signal equivalent to half a video cube. In this case that prefix is formed of
-$\frac{N_b \times N_{FFT}}{2}$ complex zeroes on each beam path. This way, whatever
-input arrives from the PC stage, will be observed at the left channel only after
-$N_{FFT}/2$ samples.
-
 > ct :: Beam (SDF.Signal CpxData)
 >    -> (Beam (SDF.Signal CpxData),
 >        Beam (SDF.Signal CpxData))
 > ct = V.farm12 procCT
-> 
+
+Our CT network thus maps on each beam signal a corner turn process which, under the
+SDF execution semantics, consumes $N_{FFT}\times N_b$ ordered samples, interprets them
+as a matrix, transposes this matrix, and produces $N_b\times N_{FFT}$ samples ordered
+in the direction suggested in @fig:ct-samp.
+
 > procCT :: Num a => SDF.Signal a -> (SDF.Signal a, SDF.Signal a)
-> procCT sig = (cornerTurn rightChan, cornerTurn leftChan)
+> procCT sig = (corner rightCh, corner leftCh)
 >   where
->     rightChan    = sig
->     (_,leftChan) = BDF.switch selectSig sig
->     selectSig    = SDF.delay (replicate (nb * nFFT `div` 2) True)
->                    $ SDF.constant1 [False]
->     cornerTurn   = SDF.comb11 (nFFT * nb, nb * nFFT,
->                                fromMatrix . M.transpose . matrix nb nFFT)
+>     leftCh      = sig
+>     (_,rightCh) = BDF.switch selectSig sig
+>     selectSig   = SDF.delay (replicate (nb * nFFT `div` 2) True)
+>                   $ SDF.constant1 [False]
+>     corner      = SDF.comb11 (nFFT * nb, nb * nFFT,
+>                               fromMatrix . M.transpose . matrix nb nFFT)
 
-![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
-
-*Modeling tips:* the application specification mentions that the first $N_{FFT}$ batch
- of pulses is ignored, yet we do the other way around: we "fill in" with dummy
- data. Although in ForSyDe-Atom it is possible to "clean up" signals using any class
- of dynamic dataflow (i.e. adaptive, scenario-aware) processes, doing so without a
- proper system-wide causality or schedulability analysis is considered bad practice,
- especially since at this stage in development we have no knowledge whether the AESA
- processing chain is going to be part of a closed-loop system or not. Ignoring the
- beginning of a signal implies that some parts of the system start "in the future",
- which can cause serious problems due to non-deterministic behavior especially if
- feedback is involved. Starting a design process with such an assumption is dangerous,
- this is why we "stay safe" and consider that the _entire_ system has _completely
- determined_ behavior starting from time 0, even if this means filling up 50% of the
- first batch with junk/dummy data. We pass the responsibility of ignoring the effects
- of this junk data to an observer (i.e. testbench, sink), which has full knowledge of
- this effect can provide a safe open-loop environment. We shall see this soon in
- section @sec:atom-sim where we test the system and gather only the relevant
- output. Still, using dynamic processes is a versatile modeling technique but their
- analysis is far from trivial and we leave their study for a future report.
- 
- <!-- In fact ForSyDe-Atom does not allow "cleaning up" (i.e. dropping, ignoring) -->
- <!-- events from signals, due to non-determinism introduced in case of possible feedback -->
- <!-- loops. Only an observer (i.e. testbench, sink) is allowed to do that, outside the -->
- <!-- process network, as we shall see soon, when testing the system. -->
 
 | Function                 | Original module                       | Package                 |
 |--------------------------|---------------------------------------|-------------------------|
@@ -227,276 +200,141 @@ $N_{FFT}/2$ samples.
 | `comb11`, `delay`        | [`ForSyDe.Atom.MoC.SDF`]              | forsyde-atom            |
 | `nb`, `nFFT`             | `AESA.Params`                 | aesa-atom               |
 
- #### Doppler Filter Bank (DFB){#sec:dfb-atom}
 
-During the Doppler filter bank, every window of samples, associated with each range
-bin is transformed into a Doppler channel and the complex samples are converted to
-real numbers by calculating their envelope. Since the samples have been arranged in
-pulse window-order during the previous stage, the DFB transformation is applied over a
-window of $N_{FFT}$ samples arriving in-order, like in @fig:dfb-samp.
+Recall that, in order to achieve 50% overlapping between the two output channels, in
+the initial high-level model in @sec:cube-ct-atom we "delayed" the left channel with
+half a cube of "useless data" which we later ignored in the testbench. While it is
+possible to do the same trick here, i.e. delay the left channel with $N_b \times
+N_{FFT}/2$ samples per beam, which is the equivalent of half a cube, we agreed upon it
+being a simulation artifice to avoid undefined behavior, but not really reflecting the
+target implementation. The end artifact would start streaming the left channels only
+after the first half cube. We can think of three ways how to model such a behavior
+_without stepping outside the data flow paradigm_[^fn:outdataflow]:
+
+1. "starting" the _entire_ system (i.e. considering time 0) once we _know_ the values
+  for half a cube. This means that the behavior of the AESA system does not include
+  the acquisition of the first half video cube, which would be described in its
+  _history_ (i.e. initial state, e.g. passed as top-level argument).
+
+1. _using absent semantics_, which would be the _correct_ way to define such an
+  abstract behavior, but would render the description of the whole system more
+  complicated, since every block would then need to be aware of the "absence" aspect
+  of computation.
+
+1. _using a dynamic dataflow MoC_, which is a bit more risky, because in general most
+  of these MoCs are undecideable and might lead to deadlocks if not used properly, but
+  are less abstract and much closer to what you would expect from a dynamic
+  "start/stop" mechanism.
+
+[^fn:outdataflow]: this type of behavior is quite naturally expressed in other
+paradigms, such as communicating sequential processes (CSP), redezvous or Petri
+Nets. Currently ForSyDe does not support such MoCs and they are out of the scope of
+this report.
+
+![CT network](figs/ct-net-atom.pdf){#fig:ct-net-atom}
+
+Since we are already considering a refined behavior model of the AESA system, we have
+chosen the third approach, as hinted in @fig:ct-net-atom. We use the Boolean dataflow
+(BDF) MoC introduced by @buck93 to express the dynamic switching behavior. BDF
+_extends_ SDF with two actors `switch` and `select` which are able to redirect the
+flow of data to/from separate channels based on an input selection signal carrying
+Boolean tokens. We use the BDF `switch` process which uses the _hard-coded_
+`selectSig` signal to redirect the first $N_b \times N_{FFT}/2$ tokens for each beam
+(the equivlent of half a cube of indata) to a "null" channel, and only after that to
+start streaming into the right channel.
+
+**OBS:** in general it is advised to _avoid_ BDF, which does not benefit from static
+analysis methods for schedulability and deadlock detection, in favor of a more
+analizable one, such as scenario aware dataflow (SADF) [@stuijk-2011]. However, in our
+case we base our modeling choice based on the knowledge that, lacking any type of
+feedback composition, the AESA signal processing system cannot cause any deadlock in
+any of its possible states. Even so, hard-coding the selection signa can also be
+considered a safe practice, because it is possible to derive a fixed set of SDF
+scenarios based on a known reconfiguration stream.
+
+ #### Doppler Filter Bank (DFB) and Constant False Alarm Ratio (CFAR) {#sec:dfb-cfar-atom}
+
+For these two processing stages presented in [@sec:cube-dfb-atom;@sec:cube-cfar-atom],
+we do not change the functional description at all, but rather the granularity of
+their timed description. We continue to work over the premise that signals are
+streaming samples of data, which have recently been arranged to arrive in _pulse
+order_, as suggested by @fig:dfb-samp. As such, both stages are modeled as farms of
+SDF processes operating over beam streams, and for each stream they consume the
+necessary data, apply their (vector) function, and produce their respective data.
 
 ![Doppler Filter Bank on streams of complex samples](figs/dfb-samp.pdf){#fig:dfb-samp}
 
-The `dfb` process applies the the following chain of functions on each window of
-complex samples, in three consecutive steps:
-
- * scale the window samples with a set of coefficients to decrease the Doppler side
-   lobes from each FFT output and thereby to increase the clutter rejection.
-
- * apply an $N_{FFT}$-point 2-radix decimation in frequency Fast Fourier Transform
-   (FFT) algorithm.
-
- * compute the envelope of each complex sample when phase information is no longer of
-   interest. The envelope is obtained by calculating the absolute value of the complex
-   number, converting it into a real number.
+![DFB + CFAR networks](figs/dfb-cfar-net-atom.pdf){#fig:dfb-net-atom}
 
 
 > dfb :: Beam (SDF.Signal CpxData)
 >     -> Beam (SDF.Signal RealData)
 > dfb = V.farm11 procDFB
-> 
-> procDFB :: SDF.Signal CpxData -> SDF.Signal RealData
-> procDFB = SDF.comb11 (nFFT, nFFT, fromVector . fDFB . vector)
->   where
->     fDFB       = V.farm11 envelope . fft nS . V.farm21 (*) (mkWeightCoefs nFFT)
->     envelope a = let (i, q) = (realPart a, imagPart a)
->                  in sqrt (i * i + q * q)
-
-![DFB network](figs/dfb-net-atom.pdf){#fig:dfb-net-atom}
-
-| Function           | Original module                     | Package                 |
-|--------------------|-------------------------------------|-------------------------|
-| `farm11`,` farm21` | [`ForSyDe.Atom.Skeleton.Vector`]    | forsyde-atom            |
-| `fft`              | `ForSyDe.Atom.Skeleton.Vector.DSP`  | forsyde-atom-extensions |
-| `transpose`        | `ForSyDe.Atom.Skeleton.Vector.Cube` | forsyde-atom-extensions |
-| `mkWeightCoefs`    | `AESA.Coefs`                | aesa-atom               |
-| `nS`, `nFFT`       | `AESA.Params`               | aesa-atom               |
-
-*Modeling tips:* each function composing $f_{DFB}$ is itself inherently parallel, as
-it is described in terms of parallel skeletons. We could have "lifted" these skeletons
-as far as associating a process for each elementary arithmetic operation, following
-the example set in @sec:dbf-atom. Although the two representation (if carefully
-modeled) are semantically equivalent, at this stage the modeling choice should be
-driven by the designer's intuition of the application's behavior. Only further in the
-design process, thanks to the formal description, can choose, or transform (ideally
-being aided by a computer/tool) between different equivalent representations, one
-which is more appropriate to the target platform model. The skeleton lifting to the
-process network level is left as an exercise for the reader. The interested reader is
-also recommended to read the skeletons chapter in the technical manual [@atom-manual]
-to see how the `fft` skeleton is defined, and how it behaves during different
-instantiations.
-
- #### Constant False Alarm Ratio (CFAR)
-
-The CFAR normalizes the data within the video cubes in order to maintain a constant
-false alarm rate with respect to a detection threshold. This is done in order to keep
-the number of false targets at an acceptable level by adapting the normalization to
-the clutter situation in the area (around a cell under test) of interest. The
-described process can be depicted as in @fig:cfar-cube which suggests the
-[stencil](https://en.wikipedia.org/wiki/Stencil_code) data accessing pattern within
-the video cubes.
-
-![Constant False Alarm Ratio on cubes of complex samples](figs/cfar-cube.pdf){#fig:cfar-cube}
 
 > cfar :: Beam (SDF.Signal RealData)
 >      -> Beam (SDF.Signal (Range (Window RealData)))
 > cfar = V.farm11 procCFAR
->
-> procCFAR = SDF.comb11 (nb * nFFT, 1, (:[]) . fCFAR . M.matrix nFFT nb)
 
-![CFAR network](figs/cfar-proc-atom.pdf){#fig:cfar-net-atom}
+> procDFB  = SDF.comb11 (nFFT, nFFT, fromVector . CAESA.fDFB . vector)
+> procCFAR = SDF.comb11 (nb * nFFT, 1, (:[]) . CAESA.fCFAR . M.matrix nFFT nb)
 
+| Function                   | Original module                       | Package                 |
+|----------------------------|---------------------------------------|-------------------------|
+| `farm11`,(`from`-)`vector` | [`ForSyDe.Atom.Skeleton.Vector`]      | forsyde-atom            |
+| `matrix`                   | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
+| `nb`, `nFFT`               | `AESA.Params`                         | aesa-atom               |
 
-Similar to the `cornerTurn` process in @sec:ct-atom, the `procCFAR` process builds
-up matrices of $N_b\times N_{FFT}$ samples and applies $f_{CFAR}$ function on these
-matrices. The $f_{CFAR}$ function normalizes each Doppler window, after which the
-sensitivity will be adapted to the clutter situation in current area, as seen in
-@fig:cfar-signal. The blue line indicates the mean value of maximum of the left and
-right reference bins, which means that for each Doppler sample, a swipe of
-neighbouring bins is necessary, as suggested by [@fig:cfar-cube]. This is a typical
-pattern in signal processing called
-[stencil](https://en.wikipedia.org/wiki/Stencil_code), which will constitute the main
-parallel skeleton within the $f_{CFAR}$ function.
+Notice how we reuse the _exact same_ functions $f_{DFB}$ and $f_{CFAR}$ imported from
+the `AESA.CubesAtom` previously defined in @sec:cube-atom-operation. This way we are
+sure that we have not introduced coding errors. Also, notice that after the CFAR
+process we do not unwrap the matrices any longer, but produce them as _individual
+tokens_. This is because the subsequent INT block, as seen in the next paragraph,
+operates much more efficiently on matrices, and thus we spare some intermediate
+wrapping/unwrapping.
 
-![The signal level within one pulse window: a) before CFAR; b) after CFAR](figs/cfar-signal.pdf){#fig:cfar-signal width=400px}
-
-> fCFAR :: Range (Window RealData) -> Range (Window RealData)
-> fCFAR rbins = V.farm41 (\m -> V.farm31 (normCfa m)) md rbins lmv emv
->   where
->     md  = V.farm11 (logBase 2 . V.reduce min) rbins
->     emv = (V.fanoutn (nFFT + 1) dummy) <++> (V.farm11 aritMean neighbors)
->     lmv = (V.drop 2 $ V.farm11 aritMean neighbors) <++> (V.fanout dummy) 
->     -----------------------------------------------
->     normCfa m a l e = 2 ** (5 + logBase 2 a - maximum [l,e,m])
->     aritMean :: Vector (Vector RealData) -> Vector RealData
->     aritMean  = V.farm11 (/n) . V.reduce addV . V.farm11 geomMean . V.group 4
->     geomMean  = V.farm11 (logBase 2 . (/4)) . V.reduce addV
->     -----------------------------------------------
->     dummy     = V.fanoutn nFFT $ (-maxFloat)/n
->     neighbors = V.stencil nFFT rbins
->     -----------------------------------------------
->     addV      = V.farm21 (+)
->     n         = fromIntegral nFFT
-
-
-| Function                                  | Original module                  | Package      |
-|-------------------------------------------|----------------------------------|--------------|
-| `farm`[`4`/`3`/`1`]`1`, `reduce`, `<++>`, | [`ForSyDe.Atom.Skeleton.Vector`] | forsyde-atom |
-| `drop`, `fanout`, `fanoutn`, `stencil `   |                                  |              |
-| `comb11`                                  | [`ForSyDe.Atom.MoC.SDF`]         | forsyde-atom |
-| `maxFloat`                                | AESA.Coefs               | aesa-atom    |
-| `nb`, `nFFT`                              | `AESA.Params`            | aesa-atom    |
-
-The $f_{CFAR}$ function itself can be described with the system of [@eq:cfar], where
-
- * $MD$ is the minimum value over all Doppler channels in a batch for a specific data
-   channel and range bin.
-
- * $EMV$ and $LMV$ calculate the early and respectively late mean values from the
-   neighboring range bins as a combination of geometric and arithmetic mean values.
-
- * $eb$ and $lb$ are the earliest bin, respectively latest bin for which the CFAR can
-   be calculated as $EMV$ and $LMV$ require at least $N_{FFT}$ bins + 1 guard bin
-   before and respectively after the current bin. This phenomenon is also called the
-   "stencil halo", which means that CFAR, as defined in [@eq:cfar] is applied only on
-   $N_b'=N_b-2N_{FFT}-2$ bins.
-   
- * bins earlier than $eb$, respectively later than $lb$, are ingnored by the CFAR
-   formula and therefore their respective EMV and LMV are replaced with the lowest
-   representable value.
-   
- * 5 is added to the exponent of the CFAR equation to set the gain to 32 (i.e. with
-   only noi se in the incoming video the output values will be 32).
-
-$$\begin{aligned}&\left\{\begin{aligned}
-  &CFAR(a_{ij})= 2^{(5 + \log_2 a_{ij}) - \max (EMV(a_{ij}),LMV(a_{ij}),MD(a_{ij}))}\\
-  &EMV(a_{ij}) = \frac{1}{N}\sum_{k=0}^{N-1}\left(\log_2\left(\frac{1}{4}\sum_{l=0}^{3}a_{(i-2-4k-l)j}\right)\right)\\
-  &LMV(a_{ij}) = \frac{1}{N}\sum_{k=0}^{N-1}\left(\log_2\left(\frac{1}{4}\sum_{l=0}^{3}a_{(i+2+4k+l)j}\right)\right)\\
-  &MD(a_{ij})  = \log_{2}\left(\min_{k=1}^N(a_{ik})\right)
-  \end{aligned}\right.\\
-  &\qquad \forall i\in[eb,lb], j\in[1,N] \text{ where }\left\{
-  \begin{aligned}
-  &N = N_{FFT}\\
-  &eb = N_{FFT} + 1\\
-  &lb = N_b - N_{FFT} - 1\\
-  \end{aligned}\right.
-  \end{aligned}
-$${#eq:cfar}
-
-The first thing we calculate is the $MD$ for each Doppler window (row). For each row
-of `rbins` (i.e. range bins of Doppler windows) we look for the minimum value
-(`reduceV min`) and apply the binary logarithm on it.
-
-Another action performed over the matrix `rbins` is to form two stencil "cubes" for
-EMV and LMV respectively, by gathering batches of $N_{FFT}$ Doppler windows like in
-[@eq:cfar-stencil], computing them like in [@eq:cfar-emv].
-
-$$
-  \stackrel{\mbox{rbins}}{
-  \begin{bmatrix}
-  a_{11} & a_{12} & \cdots & a_{1N_{FFT}} \\
-  a_{21} & a_{22} & \cdots & a_{2N_{FFT}} \\
-  \vdots & \vdots & \ddots & \vdots \\
-  a_{N_b1} & a_{N_b2} & \cdots & a_{N_bN_{FFT}}
-  \end{bmatrix}}
-  \stackrel{\mathtt{stencil}}{\rightarrow}
-  \stackrel{\mbox{neighbors}}{
-  \begin{bmatrix}
-  \begin{bmatrix}
-  a_{11} & a_{12} & \cdots & a_{1N_{FFT}} \\
-  \vdots & \vdots & \ddots & \vdots \\
-  a_{N_{FFT}1} & a_{N_{FFT}2} & \cdots & a_{N_{FFT}N_{FFT}} \\
-  \end{bmatrix}\\
-  \begin{bmatrix}
-  a_{21} & a_{22} & \cdots & a_{2N_{FFT}} \\
-  \vdots & \vdots & \ddots & \vdots \\
-  a_{(N_{FFT}+1)1} & a_{(N_{FFT}+1)2} & \cdots & a_{(N_{FFT}+1)N_{FFT}} \\
-  \end{bmatrix}\\
-  \vdots \\
-  \begin{bmatrix}
-  a_{(N_b-N_{FFT})1} & a_{(N_b-N_{FFT})2} & \cdots & a_{(N_b-N_{FFT})N_{FFT}}\\
-  \vdots & \vdots & \ddots & \vdots \\
-  a_{N_b1} & a_{N_b2} & \cdots & a_{N_bN_{FFT}}
-  \end{bmatrix}
-  \end{bmatrix}}
-$${#eq:cfar-stencil}
-
-Each one of these neighbors matrices will constitute the input data for calculating
-the $EMV$ and $LMV$ for each Doppler window. $EMV$ and $LMV$ are calculated by
-applying the mean function `arithMean` over them, as shown (only for the window
-associated with the $eb$ bin) in [@eq:cfar-emv]. The resulting `emv` and `lmv`
-matrices are padded with rows of the minimum representable value `-maxFloat`, so that
-they align properly with `rbins` in order to combine into the 2D farm/stencil defined
-at @eq:cfar. Finally, `fCFAR` yields a matrix of normalized Doppler windows. The resulting matrices are not transformed back into sample streams by the parent process, but rather they are passed as single tokens downstream to the INT stage, where they will be processed as such.
-
-$$\begin{aligned}
-  &\begin{bmatrix}
-  a_{11} & \cdots & a_{1N_{FFT}} \\
-  \vdots  & \ddots & \vdots \\
-  a_{N_{FFT}1}  & \cdots & a_{N_{FFT}N_{FFT}}
-  \end{bmatrix}
-  \stackrel{\mathtt{group}}{\rightarrow}
-  \begin{bmatrix}
-  \begin{bmatrix}
-  a_{11} & \cdots & a_{1N_{FFT}} \\
-  \vdots & \ddots & \vdots \\
-  a_{41} & \cdots & a_{4N_{FFT}}
-  \end{bmatrix}\\
-  \vdots \\
-  \begin{bmatrix}
-  a_{(N_{FFT}-4)1}  & \cdots & a_{(N_{FFT}-4)N_{FFT}}\\
-  \vdots & \ddots & \vdots \\
-  a_{N_{FFT}1}  & \cdots & a_{N_{FFT}N_{FFT}}
-  \end{bmatrix}
-  \end{bmatrix}\\
-  &\stackrel{\mathtt{farm(geomMean)}}{\rightarrow}
-  \begin{bmatrix}
-  \log_2\frac{1}{4}\sum_{i=1}^{4}a_{i1} & \cdots & \log_2\frac{1}{4}\sum_{i=1}^{4}a_{iN_{FFT}} \\
-  \vdots & \ddots & \vdots \\
-  \log_2\frac{1}{4}\sum_{i=N_{FFT}-4}^{N_{FFT}}a_{i1} & \cdots & \log_2\frac{1}{4}\sum_{i=N_{FFT}-4}^{N_{FFT}}a_{iN_{FFT}}
-  \end{bmatrix}\\
-  &\stackrel{\mathtt{(/N_{FFT})\circ reduce(+)}}{\rightarrow}
-  \begin{bmatrix}
-  EMV(a_{eb,1}) & \cdots & EMV(a_{eb,N_{FFT}}) 
-  \end{bmatrix}
-  \end{aligned}
-$${#eq:cfar-emv}
-
+**OBS:** each function composing $f_{DFB}$ and $f_{CFAR}$ is itself inherently
+parallel, as it is described in terms of parallel skeletons. We could have "lifted"
+these skeletons as far as associating a process for each elementary arithmetic
+operation, following the example set by the DBF network in @sec:dbf-atom. The two
+representations (if carefully modeled) are semantically equivalent and, thanks to the
+chosen formal description, can be transformed (ideally being aided by a computer/tool
+in the future) from one to another. In fact there are multiple degrees of freedom to
+partition the application on the time/space domains, thus a particular representation
+should be chosen in order to be more appropriate to the target platform model. However
+in this report we are not planning to refine these blocks even further, so for the
+purpose of simulation and visualisation, this abstraction level is good enough for
+now. The skeleton lifting to the process network level is left as an exercise for the
+reader. The interested reader is also recommended to read the skeletons chapter in the
+technical manual [@atom-manual] to see how the `fft` skeleton used in $f_{DFB}$ is
+defined, and how it behaves during different instantiations, as network of processes
+or as function.
 
  #### Integrator (INT){#sec:int-atom}
 
 During the last stage of the video processing chain each data sample of the video cube
-is integrated against its 8 previous values using an 8-tap FIR filter, as suggested by
-the drawing in @fig:int-cube-atom.
+is integrated against its 8 previous values using an 8-tap FIR filter.
 
 ![Integration on cubes of complex samples](figs/int-cube.pdf){#fig:int-cube-atom}
 
-The integration depicted in @fig:int-cube-atom, like each stage until now, can be
-modeled in dozens of different ways based on how the designer envisions the
-partitioning of the data "in time" or "in space". This partitioning could be as
-coarse-grained as streams of cubes of samples, or as fine-grained as networks of
-streams of indvidual samples. For convenience and for simulation efficiency[^eff] we
-choose a middle approach: video cubes are represented as farms (i.e. vectors) of
-streams of matrices, as conveniently bundled by the previous DFB stages. We pass the
-responsibility of re-partitioning and interpreting the data accordingly to the
-downstream process, e.g. a control/monitoring system, or a testbench sink.
+The integration, re-drawn in @fig:int-cube-atom, like each stage until now, can be
+modeled in different ways based on how the designer envisions the partitioning of the
+data "in time" or "in space". This partitioning could be as coarse-grained as streams
+of cubes of samples, or as fine-grained as networks of streams of indvidual
+samples. For convenience and for simulation efficiency[^eff] we choose a middle
+approach: video cubes are represented as farms (i.e. vectors) of streams of matrices,
+as conveniently bundled by the previous DFB stages. We pass the responsibility of
+re-partitioning and interpreting the data accordingly to the downstream process,
+e.g. a control/monitoring system, or a testbench sink.
 
 > int :: Beam (SDF.Signal (Range (Window RealData)))
 >     -> Beam (SDF.Signal (Range (Window RealData)))
 >     -> Beam (SY.Signal  (Range (Window RealData)))
 > int = V.farm21 procINT
 
-Before integrating though, the data from both the left and the right channel need to
-be merged. This is done by the process `merge` below, which consumes one (matrix)
-token from each channel and interleaves them at its output. When considering only
-abstract tokens, the `merge` process can be regarded as an up-sampler with the rate
-2/1. When taking into consideration the size of the entire data set (i.e. token rates
-$\times$ structure sizes $\times$ data size), we can easily see that the overall
-required system bandwidth (ratio) remains the same between the PC and INT stages,
-i.e. $\frac{2\times N_B \times N_{b} \times N_{FFT}\times
-\mathit{size}(\mathtt{RealData})}{N_B \times N_{b} \times N_{FFT}\times
-\mathit{size}(\mathtt{CpxData})}=1/1$. For the integration stage `firNet` it is more
-appropriate to translate back to SY MoC semantics, hence the `toSY` domain interface.
+Please review @sec:cube-int-atom concerning the up-sampler `interleave` used as a SY
+utility process. Here, since you have been already introduced to the SDF MoC, we can
+"unmask" how an interleaving process actually operates underneath. It is in fact a SDF
+actor which consumes one token from each input and interleaves them at the output.
 
 ![INT network](figs/int-net.pdf){#fig:int-net-atom}
 
@@ -505,18 +343,9 @@ appropriate to translate back to SY MoC semantics, hence the `toSY` domain inter
 >   where
 >     merge   = SDF.comb21 ((1,1), 2, \[r] [l] -> [r, l])
  
-The 8-tap FIR filter used for integration is also a moving average, but as compared to
-the `mav` function used in @sec:pc-atom, the window slides in time domain,
-i.e. over streaming samples rather than over vector elements. To instantiate a FIR
-system we use the `firSk` skeleton provided by the ForSyDe-Atom utility libraries,
-which constructs the the well-recognizable FIR pattern in @fig:int-net-atom, i.e. a
-recur-farm-reduce composition. In order to do so, `firSk` needs to know _what_ to fill
-this template with, thus we need to provide as arguments its "basic" operations, which
-in our case are processes operating on signals of matrices.  In fact, `mav` itself is
-a _specialization_ of the `firSk` skeleton, which defines its basic operations as
-corresponding functions on vectors. This feature derives from a powerful algebra of
-skeletons which grants them both modularity, and the possibility to transform them
-into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
+As for the FIR network, we prefer working in the SY MoC domain, which describes more
+naturally a streaming $n$-tap filter, hennce we use translate back using the `toSY`
+MoC interface.
 
 > firNet :: Num a => Vector a -> SY.Signal (Matrix a) -> SY.Signal (Matrix a)
 > firNet coefs = fir' addSM mulSM dlySM coefs
@@ -533,7 +362,7 @@ into semantically-equivalent forms, as we shall soon explore in @sec:refinement.
 | `comb21`,`comb11` | [`ForSyDe.Atom.MoC.SDF`]            | forsyde-atom            |
 | `mkFirCoefs`      | AESA.Coefs                  | aesa-atom               |
 
-[^eff]: we try to avoid unnecessary transposes (i.e. type traversals) which are time-consuming.
+[^eff]: we try to avoid unnecessary transposes (i.e. type traversals) which, at the moment, are not very efficiently implemented.
 
  ### System Process Network
 
@@ -549,19 +378,14 @@ Finally, when putting all the blocks together in an equation, we obtain the syst
 >     rCfar     = cfar $ dfb rCt
 >     (rCt,lCt) = ct $ pc $ dbf video
 
-Although completely functional and modular, the system depicted in @fig:aesa-net-atom
-is not the most "pleasant" to look at. For the sake of code elegance and to increase
-the potential of simulation distribution (see @sec:parallel-sim), we refine the system
-`aesa'` to avoid unnecessary merging-splitting of vectors between stages. On the other
-hand, from the point of view of sequential performance it does not really matter,
-because these patterns are "ignored" (reduced) by Haskell's lazy evaluation system
-which can easily identify them as compositions of inverse functions. Once we
-understand that between PC and INT the processing path is replicated for each beam
-generated by the DBF. Therefore it is possible to fuse the related `farm` skeletons
-into the much simpler and more elegant model from @fig:aesa-net-atom2. As both models
-are semantically-equivalent an automated or tool-assisted transformation process
-should be trivial.
-
+At least for the sake of code elegance if not for more, we refine the system `aesa'`
+in @fig:aesa-net-atom to avoid unnecessary merging-splitting of vectors between
+stages, by _fusing_ the `farm` skeletons between the PC and INT stages, like in
+@fig:aesa-net-atom2. While for simulation this transformation does not make much of a
+difference (thanks to Haskell's lazy evaluation mechanisms), for future synthesis
+stages it might be a valuable insight, e.g. it increases the potential of parallel
+distribution. As both models are semantically equivalent an automated or tool-assisted
+transformation process should be trivial.
 
 > aesa :: Antenna (SY.Signal CpxData) -> Beam (SY.Signal (Range (Window RealData)))
 > aesa = V.farm11 pcToInt . dbf
@@ -572,8 +396,3 @@ should be trivial.
 >                in  procINT rCFAR lCFAR
 
 ![AESA network when fusing the related `farm`s](figs/aesa-net-atom2.pdf){#fig:aesa-net-atom2}
-
- ## Coefficients, constants and parameters {#sec:consts-coefs-atom}
-
-This section briefly presents the constants and coefficients which have been used
-until now, and which shall be further used throughout this report.

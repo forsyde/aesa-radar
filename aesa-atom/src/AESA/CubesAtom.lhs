@@ -73,6 +73,7 @@ a simple test scenario provided by Saab AB, we have bundled these parameters in 
 following module, and we shall use their variable names throughout the whole report:
 
 > import AESA.Params
+> import Data.Ratio
 
 For ease of documentation we will be using type synonyms (aliases) for all types and
 structures throughout this design:

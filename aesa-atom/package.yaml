@@ -75,3 +75,17 @@ tests:
     - test-framework
     - test-framework-hunit
     - test-framework-quickcheck2
+  tests-stream:
+    main:                SpecStream.lhs
+    source-dirs:         test
+    ghc-options:
+    - -main-is           SpecStream
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - aesa-atom
+    - QuickCheck
+    - test-framework
+    - test-framework-hunit
+    - test-framework-quickcheck2

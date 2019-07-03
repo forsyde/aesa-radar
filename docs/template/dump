@@ -1,0 +1,24 @@
+
+*Modeling tips:* the application specification mentions that the first $N_{FFT}$ batch
+ of pulses is ignored, yet we do the other way around: we "fill in" with dummy
+ data. Although in ForSyDe-Atom it is possible to "clean up" signals using any class
+ of dynamic dataflow (i.e. adaptive, scenario-aware) processes, doing so without a
+ proper system-wide causality or schedulability analysis is considered bad practice,
+ especially since at this stage in development we have no knowledge whether the AESA
+ processing chain is going to be part of a closed-loop system or not. Ignoring the
+ beginning of a signal implies that some parts of the system start "in the future",
+ which can cause serious problems due to non-deterministic behavior especially if
+ feedback is involved. Starting a design process with such an assumption is dangerous,
+ this is why we "stay safe" and consider that the _entire_ system has _completely
+ determined_ behavior starting from time 0, even if this means filling up 50% of the
+ first batch with junk/dummy data. We pass the responsibility of ignoring the effects
+ of this junk data to an observer (i.e. testbench, sink), which has full knowledge of
+ this effect can provide a safe open-loop environment. We shall see this soon in
+ section @sec:atom-sim where we test the system and gather only the relevant
+ output. Still, using dynamic processes is a versatile modeling technique but their
+ analysis is far from trivial and we leave their study for a future report.
+ 
+ <!-- In fact ForSyDe-Atom does not allow "cleaning up" (i.e. dropping, ignoring) -->
+ <!-- events from signals, due to non-determinism introduced in case of possible feedback -->
+ <!-- loops. Only an observer (i.e. testbench, sink) is allowed to do that, outside the -->
+ <!-- process network, as we shall see soon, when testing the system. -->

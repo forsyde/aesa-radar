@@ -43,7 +43,7 @@ main = do
       (oCTR,oCTL)     = ct oPC
       (oDFBR,oDFBL)   = (dfb oCTR,dfb oCTL)
       (oCFARR,oCFARL) = (cfar oDFBR,cfar oDFBL)
-      oAESA           = let aesa = int oCFARR $ V.farm11 tailS oCFARL
+      oAESA           = let aesa = int oCFARR oCFARL
                         in if (parExec args)
                            then vector (fromVector aesa `using` parList rdeepseq)
                            else aesa

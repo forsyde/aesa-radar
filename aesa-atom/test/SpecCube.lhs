@@ -31,8 +31,7 @@ structure of ForSyDe types such as `Vector` or `Signal`.
 
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 > import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY as SY
-> import qualified ForSyDe.Atom.Skeleton.Vector.Matrix as M
-> import qualified ForSyDe.Atom.Skeleton.Vector.Cube as C
+> import ForSyDe.Atom.Skeleton.Vector.Matrix (Matrix, size)
 > import ForSyDe.Atom.Skeleton.Vector.DSP (fir)
 
 Obviously, we need to import the AESA designs modules as well.
@@ -41,11 +40,11 @@ Obviously, we need to import the AESA designs modules as well.
 > import AESA.Coefs
 > import AESA.Params
 
-Finally, we import some in-house utilities which define `Arbitrary` instances for
-ForSyDe types, as well as getters and setters to ease the definition of properties, as
-well as some Haskell data type libraries.
+Finally, we import some in-house data generators which will be used in formulating the
+pre-conditions below, as well as some Haskell data type libraries. The generators are
+futher documented in @sec:prop-gens.
 
-> import Util
+> import Generators
 > import Data.List as L
 > import Data.Complex
 
@@ -59,16 +58,9 @@ $$
 \forall v \in \langle\mathbb{C}\rangle : |v| > 0 \Rightarrow |f_{DBF}(v)|=n_B
 $$ {#eq:prop_dbf_num_outputs}
 
-First of all, we need to instantiate a generator that greates non-null vectors from a
-base type, i.e. the generated vectors will always satisfy $\forall
-v\in\langle\alpha\rangle:|v|>0$, which we will use all across this module:
-
-> nonNullVector :: Gen a -> Gen (Vector a)
-> nonNullVector a = do
->   ld <- listOf a `suchThat` (not . L.null)
->   return $ V.vector ld 
-
-Now to translate @eq:prop_dbf_num_outputs to QuickCheck code:
+Using our custom generator `nonNullVector` (see @sec:prop-gens) which satisfies
+$\forall v\in\langle\alpha\rangle:|v|>0$. we translate @eq:prop_dbf_num_outputs to
+QuickCheck code:
 
 > prop_dbf_num_outputs = forAll (nonNullVector arbitrary)
 >                        $ \v -> V.length (fDBF v) == nB
@@ -110,15 +102,6 @@ functional level we need to ensure that the outputs themselves remain within the
 $[-1-i,1+i)$ value pool as well, in order to avoid overflow in an arbitrary number
 representation.
 
-First we need to instantiate a number generator for complex numbers within
-$[-1-i,1+i)$:
-
-> decimalCpxNum :: Gen CpxData
-> decimalCpxNum = do
->   realPart <- choose (-1,0.99999999999)
->   imagPart <- choose (-1,0.99999999999)
->   return (realPart :+ imagPart)
-
 For the function $f_{DBF}$, the property ensuring legal value bounds would be
 formulated as:
 $$
@@ -130,7 +113,7 @@ which translates into QuickCheck code[^fn:range] to:
 > prop_dbf_value_range = forAll (nonNullVector decimalCpxNum)
 >                        $ \v -> all (withinRangeComplex (-1) 1) $ V.fromVector (fDBF v)
 
-[^fn:range]: using our in-house `withinRangeComplex` defined in the `Util` module
+[^fn:range]:the `decimalCpxNum` generator and `withinRangeComplex` utility are defined in the `Generators` module, see @sec:prop-gens
 
 Recall that in @sec:cube-dbf-atom we have said that $f_{DBF}$ is the equivalent of a
 simple vector-matrix dot operation, and provided a simplified definition $f_{DBF}'$
@@ -140,8 +123,8 @@ $$
 \forall v \in \langle\mathbb{C}\rangle \Rightarrow f_{DBF}(v) = f_{DBF}'(v)
 $$ {#eq:prop_dbf_value_range}
 
-> prop_dbf_func_equiv :: V.Vector CpxData -> Bool
-> prop_dbf_func_equiv v = fDBF v == fDBF' v
+> prop_dbf_func_equiv = forAll (nonNullVector arbitrary)
+>                       $ \v -> fDBF v == fDBF' v
 
 Next we target the PC component (see @sec:cube-pc-atom). The problem of dimension
 preserving has been solved by the previous `prop_generic_farm_structure` however,
@@ -185,16 +168,7 @@ $$
 \forall c \in \langle\langle\langle\mathbb{C}\rangle\rangle\rangle, o \in \texttt{overlap}(\overline{c}) : |c| = (n_b,n_B,n_{FFT}) \Rightarrow |o| = (n_b,n_B,n_{FFT})
 $$ {#eq:prop_dbf_value_range}
 
-We instantiate a vector generator having a fixed length first:
-
-> sizedVector :: Int -> Gen a -> Gen (Vector a)
-> sizedVector n a = do
->   v <- QC.vectorOf n a
->   return $ V.vector v
-
-which we use to generate random dimensioned cubes:
-
-> prop_ct_dimensions = forAll (sizedVector nFFT $ sizedVector nB $ sizedVector nb arbitrary)
+> prop_ct_dimensions = forAll (sizedCube nFFT nB nb arbitrary)
 >                      $ \c -> dimensionsMatch $ overlap $ SY.signal [c]
 >   where
 >     dimensionsMatch s = let c = L.head $ SY.fromSignal $ s
@@ -212,8 +186,8 @@ same, thus we formulate:
 > prop_dfb_num_outputs = forAll (sizedVector nFFT arbitrary)
 >                        $ \v -> V.length v == V.length (fDFB v)
 
-> prop_cfar_num_outputs :: M.Matrix RealData -> Bool
-> prop_cfar_num_outputs m = M.size m == M.size (fCFAR m)
+> prop_cfar_num_outputs = forAll (nonNullVector $ nonNullVector arbitrary)
+>                         $ \m -> size m == size (fCFAR m)
 
 The DFB contains a FFT function which is hardcoded to work for $n_{FFT}$ samples thus
 we need to fix the input size accordingly. For the CFAR output, we use the `Matrix`
@@ -229,20 +203,8 @@ $$\forall v \in \langle\mathbb{R}\rangle, c_1, c_0 \in
 $${#eq:prop_generic_farm_structure}
 
 where $\overline{s_v}$ is the response signal whose events are events are cubes
-containing the coefficients in $v$. Again we define a generator for the impulse signal of cubes:
-
-> impulseSigOfCubes :: Int -> Gen (SY.Signal (C.Cube Int))
-> impulseSigOfCubes n = do
->   windowLen <- choose (2, 20)  -- do not choose too large dimensions otherwise
->   rangeLen  <- choose (2, 20)  -- the tests will take too long... small tests are
->   beamLen   <- choose (2, 20)  -- good enough
->   impulse   <- sizedCube beamLen rangeLen windowLen $ elements [1] 
->   trail     <- sizedCube beamLen rangeLen windowLen $ elements [0]
->   return (SY.signal (impulse : replicate n trail))
->   where
->     sizedCube z y x  = sizedVector z . sizedVector y . sizedVector x
-
-which we use in the property:
+containing the coefficients in $v$. The generator `impulseSigOfCubes` is, again,
+defined in @sec:prop-gens.
 
 > prop_int_fir_response :: V.Vector Int -> Property
 > prop_int_fir_response cf = forAll (impulseSigOfCubes $ V.length cf)

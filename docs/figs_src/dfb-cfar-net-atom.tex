@@ -1,0 +1,28 @@
+\documentclass{standalone}
+\usepackage[tikz,math]{forsyde}
+\usepackage{ifthen}
+
+\begin{document}
+\begin{tikzpicture}[scale=1.5]
+  \standard[process,f={$f_{DFB}$},moc=sdf,type=comb](dfb){procDFB};
+  \resetportinfo{dfb}\wpinfo{$N_{FFT}$}\epinfo{$N_{FFT}$}
+
+  \standard[process,f={$f_{CFAR}$},moc=sdf,type=comb,right of=dfb,xshift=3.5cm](cfar){procCFAR};
+  \resetportinfo{cfar}\wpinfo{$N_b\times N_{FFT}$}\epinfo{$1$}
+  \coordinate[xshift=-.7cm] (dum) at (cfar.west);
+  
+  \cluster[farmstyle,type=farm,inner xsep=30pt](all-dfb)<(dfb)>{dfb};
+  \cluster[farmstyle,type=farm,inner xsep=30pt](all-cfar)<(dum)(cfar)>{cfar};
+  \draw[trans={s=sdf,<-}{all-dfb-west}{v=sdf,srcport}] (dfb) --++(-2,0) node[black,anchor=east]{$\langle b^{ct}_{1}...b^{ct}_{N_B}\rangle$};
+  \draw[trans={s=sdf}{all-cfar-east}{v=sdf,srcport,->}] (cfar) --++(2,0) node[black,anchor=west]{$\langle b^{cfar}_{1}...b^{cfar}_{N_B}\rangle$};
+  
+  \draw[v=sdf] (all-dfb.e1) edge (all-cfar.w1);
+  \draw[s=sdf] (dfb.e1) edge[dstport] (all-dfb.e1) (all-cfar.w1) edge [srcport,->] (cfar.w1);
+\end{tikzpicture}
+\end{document}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

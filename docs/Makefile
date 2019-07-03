@@ -11,7 +11,9 @@ LHS_FILES :=	21:../aesa-atom/src/AESA/CubesAtom.lhs \
 		23:../aesa-atom/src/AESA/Coefs.lhs \
 		31:../aesa-shallow/src/AESA/CubesShallow.lhs \
 		41:../aesa-atom/test/SpecCube.lhs \
-		51:../aesa-atom/src/AESA/StreamsAtom.lhs #\
+		42:../aesa-atom/test/Generators.lhs \
+		51:../aesa-atom/src/AESA/StreamsAtom.lhs \
+		56:../aesa-atom/test/SpecStream.lhs #\
 
 BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))

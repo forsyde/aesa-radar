@@ -1,19 +1,28 @@
 \documentclass{standalone}
 \usepackage[tikz,math]{forsyde}
+\usepackage{mathtools}% Loads amsmath
+\usetikzlibrary{shapes.geometric}
 
 \begin{document}
 \begin{tikzpicture}[scale=1.5]
-  \standard[process,f={$^T$},moc=sdf,type=comb](ct){cornerTurn};
-  \resetportinfo{ct}\wpinfo{$N_{FFT}\times N_b$}\epinfo{$N_b\times N_{FFT}$}
-  \basic[primitive,f={$\SkelVec{0}_{\noexpand\frac{N_b \times N_{FFT}}{2}}$}](tok)<$(ct.east)+(1.6,-.5)$>{$\MocDel$}
-  \node[] (dum) at ($(ct.east)+(1,0)$) {};
-  \cluster[composite,inner ysep=25pt, inner xsep=55](ctproc)<(ct)(dum)>{procCT};
-  \cluster[farmstyle,type=farm](all)<(ctproc)>{CT};
-  \draw[trans={s=sdf,<-}{all-west}{v=sdf,srcport}] (ct) --++(-3,0) node[black,anchor=east]{$\langle b^{pc}_{1}...b^{pc}_{N_B}\rangle$};
-  \draw[s=sdf] (ct.east) -|++(1,.5) edge[trans={s=sdf}{all-east}{v=sdf,->,srcport}]++(2.2,0)
-       ++(2.2,0) node[black,anchor=west]{$\langle b^{ct,r}_{1}...b^{ct,r}_{N_B}\rangle$};
-  \draw[s=sdf] (ct.east) -|++(1,-.5) -- (tok) (tok) edge[trans={s=sdf}{all-east}{v=sdf,->,srcport}]++(1.6,0)
-       ++(1.6,0) node[black,anchor=west]{$\langle b^{ct,l}_{1}...b^{ct,l}_{N_B}\rangle$};
+  \standard[process,f={$^T$},moc=sdf,type=comb](ct1){corner};
+  \resetportinfo{ct1}\wpinfo{$N_{FFT}\times N_b$}\epinfo{$N_b\times N_{FFT}$}
+  \standard[process,f={$^T$},moc=sdf,type=comb,above of=ct1, yshift=1.5cm](ct2){corner};
+  \resetportinfo{ct2}\wpinfo{$N_{FFT}\times N_b$}\epinfo{$N_b\times N_{FFT}$}
+  \node [trapezium, trapezium angle=60, draw, thick,rotate=90, inner xsep=-8pt, anchor=330, yshift=2cm, fill=orange!40,minimum height=2em] at (ct2.w1) (swc) {\tt\small BDF.switch};
+  \coordinate (inp) at ($(ct1.w1)!.5!(ct2.w1)-(2.5,0)$);
+  \node[anchor=east,xshift=-.5cm,yshift=-.2cm] (selsig) at (swc.east) {\scriptsize$\{\underbrace{T,T,...,T}_{N_b\times N_{FFT}/2},F,...\}$};
+
+  \cluster[composite,inner ysep=15pt, inner xsep=50](ctproc)<(ct1)(ct2)(inp)>{procCT};
+  \cluster[farmstyle,type=farm](all)<(ctproc)>{ct};
+
+  \draw[trans={s=sdf}{all-west}{v=sdf,srcport}] (inp) --++(-2,0) node[black,anchor=east]{$\langle b^{pc}_{1}...b^{pc}_{N_B}\rangle$};
+  \draw (ct1.east)++(2,0) node[black,anchor=west]{$\langle b^{ct,l}_{1}...b^{ct,l}_{N_B}\rangle$} edge[trans={v=sdf,<-}{all-east}{s=sdf,srcport}] (ct1);
+  \draw (ct2.east)++(2,0) node[black,anchor=west]{$\langle b^{ct,r}_{1}...b^{ct,r}_{N_B}\rangle$} edge[trans={v=sdf,<-}{all-east}{s=sdf,srcport}] (ct2);
+  \draw[s=sdf]
+  (inp) edge [|-,->] (swc.north) edge [|-,->] (ct1.w1)
+  (swc.330) edge [->] (ct2.w1) (swc.210)++(.7,0) node[anchor=west,draw=black, inner ysep=10pt, inner xsep=0] {} edge [<-] (swc.210)
+  (selsig.8) edge[->] (swc.east);
   
 \end{tikzpicture}
 \end{document}
@@ -22,3 +31,4 @@
 %%% mode: latex
 %%% TeX-master: t
 %%% End:
+
