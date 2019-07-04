@@ -17,7 +17,7 @@ values of the complex samples in the first video indata cube, comprising of 16 a
 
 In @fig:aesa-odata-atom a cube consisting of 8 beam (Doppler $\times$ range) matrices
 from the AESA signal processing output is shown. We can see the 13 objects detected
-with different intensities accros the 8 beams. As they are all positioned at
+with different intensities across the 8 beams. As they are all positioned at
 approximately the same angle relative to the antenna (i.e. $\frac{\pi}{3} +
 2(\pi-\frac{2\pi}{3})/7$) we can see the maximum correlation values are reflected in
 beam 2.

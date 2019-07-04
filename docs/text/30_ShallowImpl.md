@@ -22,7 +22,7 @@ Haskell and uses the host's type system, lazy evaluation mechanisms and the conc
 higher-order functions to describe the formal modeling framework defined by
 ForSyDe. At the moment of writing this report, ForSyDe-Shallow is the more "mature"
 counterpart of ForSyDe-Atom. Although some practical modeling concepts such as
-*layers*, *patterns* and *skeletons* have been originally developped within
+*layers*, *patterns* and *skeletons* have been originally developed within
 ForSyDe-Atom, they are now well-supported by ForSyDe-Shallow as well. In the future
 the modeling frameworks such as ForSyDe-Atom and ForSyDe-Shallow are planned to be
 merged into a single one incorporating the main language features of each one and

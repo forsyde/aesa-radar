@@ -82,7 +82,7 @@ fixed point representation.
 > mkPcCoefs' n = fromVector $ mkPcCoefs n
 
 We use also a Hanning window to generate the complex weight coefficients for
-decreasing the Doppler side lobes during DFB in [@sec:dfb-atom]. This can be changed
+decreasing the Doppler side lobes during DFB in [@sec:cube-dfb-atom]. This can be changed
 according to the user requirements.
 
 > mkWeightCoefs :: Fractional a => Int -> Vector a

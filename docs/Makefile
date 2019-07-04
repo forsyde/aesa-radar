@@ -70,6 +70,15 @@ $(DOC).pdf: Makefile title.pdf $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PDF_FIGS) $(T
 		--bibliography=refs.bib \
 		-f markdown+table_captions+raw_tex -s -o $@
 
+$(DOC).odt: Makefile $(BIB_FILE) $(FIGS_DIR) $(MD_DIR) $(PNG_FIGS) $(PNG_ORIG_FIGS) $(TX_FILES) $(MD_FILES) template/html.template
+	pandoc $(MD_DIR)/* \
+		--mathml --number-sections --toc \
+		--template template/html.template \
+		--filter pandoc-crossref \
+		--filter pandoc-citeproc \
+		--filter=scripts/includes-png.hs \
+		--bibliography=refs.bib \
+		-f markdown -t html -s -o $@
 
 title.pdf : title.tex
 	pdflatex title.tex

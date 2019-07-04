@@ -43,12 +43,12 @@ comments.
 > sizedCube :: Int -> Int -> Int -> Gen a -> Gen (C.Cube a)
 > sizedCube z y x  = sizedVector z . sizedVector y . sizedVector x
 
-> -- | Generator for a signal of (small) regular cubes
-> sigOfCubes :: Gen a -> Gen (SY.Signal (C.Cube a))
-> sigOfCubes g = do
+> -- | Generator for a SY signal
+> sigOfSmallCubes :: Gen a -> Gen (SY.Signal (C.Cube a))
+> sigOfSmallCubes g = do
 >   x <- choose (2, 20)  -- do not choose too large dimensions otherwise
 >   y <- choose (2, 20)  -- the tests will take too long... small tests are
->   z <- choose (2, 20)  -- good enough
+>   z <- choose (2, 20)  -- good enough   
 >   sigData <- listOf1 $ sizedCube z y x g
 >   return (SY.signal sigData)
 

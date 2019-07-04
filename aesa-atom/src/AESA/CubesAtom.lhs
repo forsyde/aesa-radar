@@ -30,8 +30,8 @@ The only timed behavior exerted by the model in this section is the causal,
 i.e. ordered, passing of cubes from one stage to another. In order to enable a simple,
 abstract, and thus analyzable "pipeline" behavior this passing can be described
 according to the _perfect synchrony hypothesis_, which assumes the processing of each
-event (cube) takes an infinetly small amount of time and it is ready before the next
-sinchronization point. This in turn implies that all events in a system are
+event (cube) takes an infinitely small amount of time and it is ready before the next
+synchronization point. This in turn implies that all events in a system are
 synchronized, enabling the description of fully deterministic behaviors over infinite
 streams of events. These precise execution semantics are captured by the _synchronous
 reactive (SY) model of computation (MoC)_ (@leeseshia-15,@Benveniste03), hence we
@@ -256,13 +256,13 @@ the Doppler channels further in the processing pipeline. The process of corner t
 becomes highly relevant when detailed time behavior of the application is being
 derived or inferred, since it demands well-planned design decisions to make full use
 of the underlying architecture. At the level of abstraction on which we work right now
-though, it is merely a matrix `transpose` operation, and it can very well be posponed
+though, it is merely a matrix `transpose` operation, and it can very well be postponed
 until the beginning of the next stage. However, a much more interesting operation is
 depicted in [@fig:cube-ct-cube]: in order to maximize the efficiency of the AESA processing
 the datapath is split into two concurrent processing channels with 50% overlapped
 data.
 
-Implmeneting such a behavior requires a bit of "ForSyDe thinking". At a first glance,
+Implementing such a behavior requires a bit of "ForSyDe thinking". At a first glance,
 the problem seems easily solved considering only the cube structures: just "ignore"
 half of the first cube of the right channel, while the left channel replicates the
 input. However, there are some timing issues with this setup: from the left channel's
@@ -271,7 +271,7 @@ abnormal behavior. Without going too much into details, you need to understand t
 _any type of signal "cleaning", like dropping or filtering out events, can cause
 serious causality issues in a generic process network, and thus it is **illegal** in
 ForSyDe system modeling_. On the other hand we could _delay_ the left channel in a
-determinstic manner by assuming a well-defined *initial state* (e.g. all zeroes) while
+deterministic manner by assuming a well-defined *initial state* (e.g. all zeroes) while
 it waits for the right channel to consume and process its first half of data. This
 defines the history of a system where all components start from *time zero* and
 eliminates any source of "clairvoyant"/ambiguous behavior.
@@ -321,9 +321,7 @@ from the output signal and instead plot only the useful data.
 
 During the Doppler filter bank, every window of samples, associated with each range
 bin is transformed into a Doppler channel and the complex samples are converted to
-real numbers by calculating their envelope. The DFB transformation is applied over a
-window of $N_{FFT}$ samples, thus we need to re-arrange the data cubes again as
-suggested in @fig:cube-dfb-samp.
+real numbers by calculating their envelope.
 
 The `dfb` process applies the the following chain of functions on each window of
 complex samples, in three consecutive steps:
@@ -431,12 +429,12 @@ The $f_{CFAR}$ function itself can be described with the system of [@eq:cfar], w
    "stencil halo", which means that CFAR, as defined in [@eq:cfar] is applied only on
    $N_b'=N_b-2N_{FFT}-2$ bins.
    
- * bins earlier than $eb$, respectively later than $lb$, are ingnored by the CFAR
+ * bins earlier than $eb$, respectively later than $lb$, are ignored by the CFAR
    formula and therefore their respective EMV and LMV are replaced with the lowest
    representable value.
    
  * 5 is added to the exponent of the CFAR equation to set the gain to 32 (i.e. with
-   only noi se in the incoming video the output values will be 32).
+   only noise in the incoming video the output values will be 32).
 
 $$\begin{aligned}&\left\{\begin{aligned}
   &CFAR(a_{ij})= 2^{(5 + \log_2 a_{ij}) - \max (EMV(a_{ij}),LMV(a_{ij}),MD(a_{ij}))}\\
@@ -455,7 +453,7 @@ $${#eq:cfar}
 
 The first thing we calculate is the $MD$ for each Doppler window (row). For each row
 of `rbins` (i.e. range bins of Doppler windows) we look for the minimum value
-(`reduceV min`) and apply the binary logarithm on it.
+(`reduce min`) and apply the binary logarithm on it.
 
 Another action performed over the matrix `rbins` is to form two stencil "cubes" for
 EMV and LMV respectively, by gathering batches of $N_{FFT}$ Doppler windows like in
@@ -570,7 +568,7 @@ The 8-tap FIR filter used for integration is also a moving average, but as compa
 the `fir` function used in @sec:cube-pc-atom, the window slides in time domain,
 i.e. over streaming samples rather than over vector elements. To instantiate a FIR
 system we use the `fir'` skeleton provided by the ForSyDe-Atom DSP utility libraries,
-which constructs the the well-recognizable FIR pattern in @fig:cube-int-net-atom,
+which constructs the the well-recognizable FIR pattern in @fig:cube-int-atom,
 i.e. a recur-farm-reduce composition. In order to do so, `fir'` needs to know _what_
 to fill this template with, thus we need to provide as arguments its "basic"
 operations, which in our case are processes operating on signals of matrices.  In
@@ -578,7 +576,7 @@ fact, `fir` itself is a _specialization_ of the `fir'` skeleton, which defines i
 basic operations as corresponding functions on vectors. This feature derives from a
 powerful algebra of skeletons which grants them both modularity, and the possibility
 to transform them into semantically-equivalent forms, as we shall soon explore in
-@sec:refinement.
+@sec:synth.
 
 > firNet :: Num a => Vector a -> SY.Signal (Cube a) -> SY.Signal (Cube a)
 > firNet coefs = fir' addSC mulSC dlySC coefs

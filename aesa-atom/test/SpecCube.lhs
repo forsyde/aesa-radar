@@ -1,11 +1,11 @@
  ## Properties {#sec:prop-defs}
 
-In this subsetion we formulate a handful of properties whose purpose is:
+In this subsection we formulate a handful of properties whose purpose is:
 
 1. to test that the model implementation from @sec:cube-atom-operation does not
    violate in any circumstance these "contracts"; and
 
-1. ensure that any future (iterative) model refinement does not alter or violate tese
+1. ensure that any future (iterative) model refinement does not alter or violate these
    "contracts".
 
 Below you find the code written in a runnable module found at `aesa-atom/test`, which
@@ -42,7 +42,7 @@ Obviously, we need to import the AESA designs modules as well.
 
 Finally, we import some in-house data generators which will be used in formulating the
 pre-conditions below, as well as some Haskell data type libraries. The generators are
-futher documented in @sec:prop-gens.
+further documented in @sec:prop-gens.
 
 > import Generators
 > import Data.List as L
@@ -68,7 +68,7 @@ QuickCheck code:
 This property ensures that the `Beam` dimension is respected, but what about the
 `Range` and `Pulse` dimensions of the indata video cube? These dimensions must not be
 altered. This is easy to prove, since the vector on those dimensions undergo a set of
-nested `farm` transformations, which _esure by definition_ that they do not alter the
+nested `farm` transformations, which _ensure by definition_ that they do not alter the
 structure of the input data. However, let us be skeptical and assume that the library
 might be faulty, since `farm` is such an essential skeleton in the AESA system.
 A property which verifies that `farm` does not alter the structure of its
@@ -83,7 +83,7 @@ $$ {#eq:prop_generic_farm_structure}
 
 Notice that if there are no special pre-conditions for the input data, e.g. $\forall v
 \in \langle\mathbb{C}\rangle$, we don't need to invoke our own generator with the
-`forAll` keyword, but rather just specify de input type and QuickCheck will
+`forAll` keyword, but rather just specify the input type and QuickCheck will
 automatically call the default `arbitrary` generator for that particular type. Also,
 we enable QuickCheck to generate _arbitrary unary functions_ along with arbitrary
 data, by using its `Fun a b = Fun {apply :: a -> b}` function wrapper.
@@ -121,7 +121,7 @@ using the library-provided `dotvm` function. But _are_ $f_{DBF}$ and $f_{DBF}'$ 
 equivalent? We test this out by formulating a property:
 $$
 \forall v \in \langle\mathbb{C}\rangle \Rightarrow f_{DBF}(v) = f_{DBF}'(v)
-$$ {#eq:prop_dbf_value_range}
+$$ {#eq:prop_dbf_func_equiv}
 
 > prop_dbf_func_equiv = forAll (nonNullVector arbitrary)
 >                       $ \v -> fDBF v == fDBF' v
@@ -133,14 +133,14 @@ function performing a moving average, does not alter the dimensions of the input
 
 $$
 \forall v \in \langle\mathbb{C}\rangle \Rightarrow |f_{PC}(v)| = |v|
-$$ {#eq:prop_generic_farm_structure}
+$$ {#eq:prop_pc_num_outputs}
 
 > prop_pc_num_outputs :: Vector CpxData -> Bool
 > prop_pc_num_outputs v = V.length v == V.length (fPC v)
 
 or that it is indeed having the right response to an impulse sequence:
 $$\forall v \in \langle\mathbb{C}\rangle, i=\langle 1, 0,...\rangle \Rightarrow \texttt{fir} (v,i) = v
-$$ {#eq:prop_generic_farm_structure}
+$$ {#eq:prop_pc_fir_response}
 
 > prop_pc_fir_response :: Vector CpxData -> Bool
 > prop_pc_fir_response v = and $ zipWith (==) coefs response
@@ -149,7 +149,7 @@ $$ {#eq:prop_generic_farm_structure}
 >     response = L.reverse $ fromVector $ fir v impulse
 >     impulse  = V.vector $ L.reverse $ 1 : replicate 100 0
 
-Furthernire we need to check that the FIR coefficients are scaled correctly and the
+Furthermore we need to check that the FIR coefficients are scaled correctly and the
 outputs are within the legal range to avoid future possible overflows.
 $$
 \forall v \in \langle\mathbb{C}\rangle, a \in v, b \in f_{PC}(v) : |v| > 0 \wedge a \in [-1-i,1+i) \Rightarrow b \in [-1-i,1+i)
@@ -166,7 +166,7 @@ overlap will be able to be tested more easily using a random test generator furt
 function:
 $$
 \forall c \in \langle\langle\langle\mathbb{C}\rangle\rangle\rangle, o \in \texttt{overlap}(\overline{c}) : |c| = (n_b,n_B,n_{FFT}) \Rightarrow |o| = (n_b,n_B,n_{FFT})
-$$ {#eq:prop_dbf_value_range}
+$$ {#eq:prop_ct_dimensions}
 
 > prop_ct_dimensions = forAll (sizedCube nFFT nB nb arbitrary)
 >                      $ \c -> dimensionsMatch $ overlap $ SY.signal [c]
@@ -177,8 +177,8 @@ $$ {#eq:prop_dbf_value_range}
 >                             x = V.length $ V.first $ V.first c
 >                         in z == nFFT && y == nB && x == nb
 
-From DFB onwards we deal with Doppler values which have a higher range, so we are no
-longer concerned with testing for owerflowing output data, until we take a decision in
+From DFB onward we deal with Doppler values which have a higher range, so we are no
+longer concerned with testing for overflowing output data, until we take a decision in
 the refinement process to fix a particular number representation. However, we would
 still like to test that the format and dimensions of the intermediate cubes is the
 same, thus we formulate:
@@ -189,7 +189,7 @@ same, thus we formulate:
 > prop_cfar_num_outputs = forAll (nonNullVector $ nonNullVector arbitrary)
 >                         $ \m -> size m == size (fCFAR m)
 
-The DFB contains a FFT function which is hardcoded to work for $n_{FFT}$ samples thus
+The DFB contains a FFT function which is hard-coded to work for $n_{FFT}$ samples thus
 we need to fix the input size accordingly. For the CFAR output, we use the `Matrix`
 `size` utility.
 
@@ -199,8 +199,8 @@ Does it act like a proper FIR filter? We test it by giving it an "impulse cube"
 signal, and test that the response is the expected one:
 $$\forall v \in \langle\mathbb{R}\rangle, c_1, c_0 \in
 \langle\langle\langle\mathbb{R}\rangle\rangle\rangle, e_1 \in c_1, e_0 \in c_0 : e_1 =
-1 \wedge e_0=0 \Rightarrow \texttt{firNet} (v,\overline{\{c_1,c_0,c_0,...\}}) = \overline{s_v}
-$${#eq:prop_generic_farm_structure}
+1 \wedge e_0=0 \Rightarrow \texttt{firNet} (v,\{c_1,c_0,c_0,...\}) = \overline{s_v}
+$${#eq:prop_int_fir_response}
 
 where $\overline{s_v}$ is the response signal whose events are events are cubes
 containing the coefficients in $v$. The generator `impulseSigOfCubes` is, again,
@@ -220,7 +220,7 @@ defined in @sec:prop-gens.
 Finally we gather all the properties defined in this section in a bundle of tests
 called "Cube HL Model Tests", using the utilities provided by the `Test.Framework`
 library. `withMaxSuccess` determines how many random tests will be generated per
-propert durin one run.
+property during one run.
 
 > tests :: [Test]
 > tests = [

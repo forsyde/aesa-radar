@@ -14,8 +14,8 @@ picture in @fig:aesa-odata-shallow.
 ![One output cube with radar data](figs/AESA_OUT_CS.pdf){#fig:aesa-odata-shallow}
 
 Comparing @fig:aesa-odata-shallow with @fig:aesa-odata-atom one can see that the same
-objects have been identified, albeit with slighly different correlation values.  This
-is because we use single-precision folating point `Float` as the base number
+objects have been identified, albeit with slightly different correlation values.  This
+is because we use single-precision floating point `Float` as the base number
 representation in our model, which are
 [well-known](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html) to be
 very sensitive to slight variations in arithmetic operations, as far as the order of

@@ -95,7 +95,7 @@ network in @fig:dbf-net-atom, where an  $\oplus$ represents a combinational proc
 | `farm21`                     | `ForSyDe.Atom.Skeleton.Vector.Matrix` | forsyde-atom-extensions |
 | `comb11`, `comb21`           | [`ForSyDe.Atom.MoC.SY`]               | forsyde-atom            |
 | `mkBeamConsts`               | `AESA.Coefs`                  | aesa-atom               |
-| `dElements`, `waveLenth`, `nA`, `nB` | `AESA.Params`         | aesa-atom               |
+| `dElements`, `waveLength`, `nA`, `nB` | `AESA.Params`         | aesa-atom               |
 
 The previous code listing, depicted in @fig:dbf-net-atom, is actually showing the
 _exact same_ "internals" as the vector-matrix dot product presented in
@@ -149,7 +149,7 @@ Following the reasoning above, we instantiate the PC video processing stage as a
 before being able to apply the SDF actors we need to translate the SY signals yielded
 by the DBF stage into SDF signals. This is done by the `toSDF` interface which is an
 injective mapping from the (timed) domain of a SY MoC tag system, to the (untimed)
-codomain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
+co-domain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
 
 > procPC :: Fractional a => SDF.Signal a -> SDF.Signal a 
 > procPC = SDF.comb11 (nb, nb, V.fromVector . fir (mkPcCoefs 5) . V.vector)
@@ -182,7 +182,7 @@ SDF execution semantics, consumes $N_{FFT}\times N_b$ ordered samples, interpret
 as a matrix, transposes this matrix, and produces $N_b\times N_{FFT}$ samples ordered
 in the direction suggested in @fig:ct-samp.
 
-> procCT :: Num a => SDF.Signal a -> (SDF.Signal a, SDF.Signal a)
+> procCT :: SDF.Signal a -> (SDF.Signal a, SDF.Signal a)
 > procCT sig = (corner rightCh, corner leftCh)
 >   where
 >     leftCh      = sig
@@ -222,12 +222,12 @@ _without stepping outside the data flow paradigm_[^fn:outdataflow]:
   of computation.
 
 1. _using a dynamic dataflow MoC_, which is a bit more risky, because in general most
-  of these MoCs are undecideable and might lead to deadlocks if not used properly, but
+  of these MoCs are undecidable and might lead to deadlocks if not used properly, but
   are less abstract and much closer to what you would expect from a dynamic
   "start/stop" mechanism.
 
 [^fn:outdataflow]: this type of behavior is quite naturally expressed in other
-paradigms, such as communicating sequential processes (CSP), redezvous or Petri
+paradigms, such as communicating sequential processes (CSP), rendezvous or Petri
 Nets. Currently ForSyDe does not support such MoCs and they are out of the scope of
 this report.
 
@@ -240,15 +240,15 @@ _extends_ SDF with two actors `switch` and `select` which are able to redirect t
 flow of data to/from separate channels based on an input selection signal carrying
 Boolean tokens. We use the BDF `switch` process which uses the _hard-coded_
 `selectSig` signal to redirect the first $N_b \times N_{FFT}/2$ tokens for each beam
-(the equivlent of half a cube of indata) to a "null" channel, and only after that to
+(the equivalent of half a cube of indata) to a "null" channel, and only after that to
 start streaming into the right channel.
 
 **OBS:** in general it is advised to _avoid_ BDF, which does not benefit from static
 analysis methods for schedulability and deadlock detection, in favor of a more
-analizable one, such as scenario aware dataflow (SADF) [@stuijk-2011]. However, in our
+analyzable one, such as scenario aware dataflow (SADF) [@stuijk-2011]. However, in our
 case we base our modeling choice based on the knowledge that, lacking any type of
 feedback composition, the AESA signal processing system cannot cause any deadlock in
-any of its possible states. Even so, hard-coding the selection signa can also be
+any of its possible states. Even so, hard-coding the selection signal can also be
 considered a safe practice, because it is possible to derive a fixed set of SDF
 scenarios based on a known reconfiguration stream.
 
@@ -302,7 +302,7 @@ in the future) from one to another. In fact there are multiple degrees of freedo
 partition the application on the time/space domains, thus a particular representation
 should be chosen in order to be more appropriate to the target platform model. However
 in this report we are not planning to refine these blocks even further, so for the
-purpose of simulation and visualisation, this abstraction level is good enough for
+purpose of simulation and visualization, this abstraction level is good enough for
 now. The skeleton lifting to the process network level is left as an exercise for the
 reader. The interested reader is also recommended to read the skeletons chapter in the
 technical manual [@atom-manual] to see how the `fft` skeleton used in $f_{DFB}$ is
@@ -319,7 +319,7 @@ is integrated against its 8 previous values using an 8-tap FIR filter.
 The integration, re-drawn in @fig:int-cube-atom, like each stage until now, can be
 modeled in different ways based on how the designer envisions the partitioning of the
 data "in time" or "in space". This partitioning could be as coarse-grained as streams
-of cubes of samples, or as fine-grained as networks of streams of indvidual
+of cubes of samples, or as fine-grained as networks of streams of individual
 samples. For convenience and for simulation efficiency[^eff] we choose a middle
 approach: video cubes are represented as farms (i.e. vectors) of streams of matrices,
 as conveniently bundled by the previous DFB stages. We pass the responsibility of
@@ -344,7 +344,7 @@ actor which consumes one token from each input and interleaves them at the outpu
 >     merge   = SDF.comb21 ((1,1), 2, \[r] [l] -> [r, l])
  
 As for the FIR network, we prefer working in the SY MoC domain, which describes more
-naturally a streaming $n$-tap filter, hennce we use translate back using the `toSY`
+naturally a streaming $n$-tap filter, hence we use translate back using the `toSY`
 MoC interface.
 
 > firNet :: Num a => Vector a -> SY.Signal (Matrix a) -> SY.Signal (Matrix a)
@@ -358,9 +358,9 @@ MoC interface.
 |-------------------|-------------------------------------|-------------------------|
 | `farm21`          | [`ForSyDe.Atom.Skeleton.Vector`]    | forsyde-atom            |
 | `farm21`,`farm11`,`fanout` | ForSyDe.Atom.Skeleton.Vector.Matrix | forsyde-atom-extensions |
-| `firSk`           | ForSyDe.Atom.Skeleton.Vector.DSP    | forsyde-atom-extensions |
+| `fir'`           | ForSyDe.Atom.Skeleton.Vector.DSP    | forsyde-atom-extensions |
 | `comb21`,`comb11` | [`ForSyDe.Atom.MoC.SDF`]            | forsyde-atom            |
-| `mkFirCoefs`      | AESA.Coefs                  | aesa-atom               |
+| `mkIntCoefs`      | AESA.Coefs                  | aesa-atom               |
 
 [^eff]: we try to avoid unnecessary transposes (i.e. type traversals) which, at the moment, are not very efficiently implemented.
 

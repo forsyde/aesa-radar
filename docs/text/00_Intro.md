@@ -88,7 +88,7 @@ interacting _layers_ of minimalistic languages of primitive operations called _a
 [@ungureanu17]. [ForSyDe-Deep](https://forsyde.github.io/forsyde-deep) is a deep-embedded
 DSL implementing a synthesizable subset of ForSyDe, meaning that it can parse the
 structure of process networks written in this language and operate on their abstract
-syntax: either simulate them or futher feed them to design flows. Currently ForSyDe-Deep
+syntax: either simulate them or further feed them to design flows. Currently ForSyDe-Deep
 is able to generate GraphML structure files and synthesizable VHDL code.
 
 This documents presents alternatives ways to modelling the AESA radar signal processing
@@ -110,10 +110,10 @@ the concept of property checking for the purpose of validation of ForSyDe design
 formulate a set of properties in the
 [QuicCheck](https://begriffs.com/posts/2017-01-14-design-use-quickcheck.html) DSL for each
 component of the AESA model which are validated against a number of randomly-generated
-tests. In @sec:refine-model we focus on gradually refining the initial (high-level)
+tests. In @sec:atom-network we focus on refining the behavior of the initial (high-level)
 specification model to lower level ones, more suitable for (backend) implementation
-synthesis, followed by @sec:refine-props where we formulate new properties for validating
-each of these new refinements. All refinenents in @sec:refine happen in the domain(s) of
+synthesis, followed by @sec:stream-prop-defs where we formulate new properties for validating
+some of these refinements. All refinements in @sec:refine happen in the domain(s) of
 the ForSyDe-Atom DSL. In @sec:synth we switch the DSL to ForSyDe-Deep, which benefits from
 automatic synthesis towards VHDL: @sec:synth-model presents further refined models,
 whereas in @sec:synth-props properties for validating these models are formulated. Finally
@@ -129,10 +129,10 @@ the VHDL code is generated, validated and tested in @sec:synth-vhdl.
 
 ![Reading order dependencies](figs/reading-order.pdf){#fig:reading-order}
 
-@fig:reading-order depicts a readin order suggestion, based on information
+@fig:reading-order depicts a reading order suggestion, based on information
 dependencies. The dashed line between @sec:shallow and @sec:synth-model suggests that
 understanding the latter is not directly dependent on the former, but since ForSyDe-Deep
-sytax is derived from ForSyDe-Shallow, it is recommended to get acquainted with the
+syntax is derived from ForSyDe-Shallow, it is recommended to get acquainted with the
 ForSyDe-Shallow syntax and its equivalence with the ForSyDe-Atom syntax.
 
 ## Application Specification{#sec:video-chain-spec label="Application Specification"}
@@ -235,7 +235,7 @@ sandbox on the user's local machine with all dependencies and requirements taken
 of. Please refer to the project's `README` file for instructions on how to install and
 compile or run the Haskell files.
 
-At the beginning of each chapter there is metadata guiding the reader what tools and
+At the beginning of each chapter there is meta-data guiding the reader what tools and
 packages are used, like:
 
 |         |                               |                                                    |

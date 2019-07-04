@@ -64,7 +64,7 @@ a cyber-physical system (CPS). Layers interact with one another by virtue of the
 abstraction principle inherent to a functional programming language [@backus-1978]:
 each layer defines at least one higher order function that is able to take a function
 (i.e. abstraction) from another layer as an argument and to lift it within its own
-domain. To nepicture the interaction between layers, consider @fig:video-chain-spec
+domain. To picture the interaction between layers, consider @fig:video-chain-spec
 where, although we use the same `farm` vector skeleton and `comb` synchronous (SY)
 process constructor, the two different compositions describe two different (albeit
 semantically equivalent) systems: the first one is instantiating a farm network of SY

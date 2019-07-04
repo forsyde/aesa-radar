@@ -57,10 +57,13 @@ In order to ease the understanding of the QuickCheck code, for each property we 
 also provide a short-hand mathematical notation using the \emph{pre-condition}
 $\Rightarrow$ \emph{statemen} format, using the following conventions:
 
-| Notation                   | Meaning              |
-|----------------------------|----------------------|
-| $\langle\alpha\rangle$     | `Vector a`           |
-| $|v|$                      | `length v`           |
-| $\overline{s}$             | a signal `s`         |
-| $\langle a,b,c,...\rangle$ | `vector [a,b,c,...]` |
-| $\overline{\{a,b,c,...\}}$ | `signal [a,b,c,...]` |
+| Notation | Meaning             |
+|---------:|:--------------------|
+| $\langle\alpha\rangle$     | `Vector a`                                                                 |
+| $|v|$                      | `length v`                                                                 |
+| $\overline{s}$             | a signal with events with the type of `s`                                  |
+| $\langle a,b,c,...\rangle$ | `vector [a,b,c,...]`                                                       |
+| $\{a,b,c,...\}$            | `signal [a,b,c,...]`                                                       |
+| $\Sigma(s)$ or $\Sigma(v)$ | the (ordered) sequence with the elements from a signal `s` or a vector `v` |
+
+

@@ -192,7 +192,7 @@ implement this stage exactly as before:
 | `interleaveSY`                            | `ForSyDe.Shallow.Utility`           | forsyde-shallow-extensions |
 | `mkBeamConsts`,`mkPcCoefs`,               | `AESA.Coefs`                        | aesa-atom                  |
 | `mkWeightCoefs`, `mkFirCoefs`, `maxFloat` |                                     |                            |
-| `dElements`, `waveLenth`, `nA`, `nB`      | `AESA.Params`                       | aesa-atom                  |
+| `dElements`, `waveLength`, `nA`, `nB`     | `AESA.Params`                       | aesa-atom                  |
 | `nFFT`, `nb`                              |                                     |                            |
 
  ### The AESA Process Network

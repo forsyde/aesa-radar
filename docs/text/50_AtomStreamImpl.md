@@ -4,7 +4,7 @@
 > @sec:atom focusing on a more fine-grained timed (i.e. streaming) aspects of the
 > computation. We do this in an attempt to expose the inherent parallelism of the AESA
 > application, by describing it as parallel networks of concurrent, independent
-> processes operating on streaming elements rather than monolithical blocks operating
+> processes operating on streaming elements rather than monolithic blocks operating
 > on cubes. This perspective should pave the way for a more efficient exploration of
 > the available design space in future refinement decisions. We present an alternative
 > streaming-oriented model of the AESA system, validate it against test data and

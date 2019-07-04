@@ -32,7 +32,7 @@ However it should not be taken for granted that during the development process t
 printed output is *this* flawless. As mentioned in this section's introduction, like
 any other software project, a ForSyDe model grows organically with consecutive
 iterations between system specification and model implementation, often held
-accountable by different paties or groups. Along with traditional unit tests (not
+accountable by different parties or groups. Along with traditional unit tests (not
 covered by this report), property checking is a powerful tool which shortens these
 iteration cycles by setting a formal "legal frame" within which each (sub-)component
 in a a model needs to operate. Apart from helping in understanding the specification
