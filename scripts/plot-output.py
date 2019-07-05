@@ -24,7 +24,7 @@ class ObjectScanner:
       xoffset = 50 if self.x<128 else (-95)
       yoffset=-5+self.prevoffset
       ax.annotate("{:.1f}".format(self.vmax), xy=(self.x, self.y),
-                  xytext=(self.x+xoffset,self.y+yoffset), fontsize='12',
+                  xytext=(self.x+xoffset,self.y+yoffset), fontsize='10',
                   arrowprops=dict(facecolor='red',arrowstyle='->'))
       
    def update(self, vmax, x, y):
@@ -48,20 +48,21 @@ beams=[]
 for i in range(nbeams):
    beams.append(data[i*nbins:(i+1)*nbins-1])
    
-fig, axs = plt.subplots(1, nbeams, figsize=(10*nbeams/4,10))
+fig, axs = plt.subplots(1, nbeams, figsize=(8*nbeams/4,8))
 images = []
 for i in range(nbeams):
    images.append(axs[i].imshow(beams[i], cmap='PuBuGn', aspect='equal', interpolation="nearest"))
    axs[i].grid(False)
    axs[i].label_outer()
    axs[i].set_title('beam ' + str(i))
+   axs[i].tick_params(which='major', labelsize=10);
 
       
 vmin = min(image.get_array().min() for image in images)
 vmax = max(image.get_array().max() for image in images)
 norm = colors.Normalize(vmin=vmin, vmax=vmax)
 for im in images:
-    im.set_norm(norm)
+    im.set_norm(norm) 
 
 if args.threshold:
    for i in range(nbeams):
@@ -84,7 +85,7 @@ if args.threshold:
 # fig.colorbar(images[nbeams-1], ax=axs.ravel().tolist(), shrink=0.7, fraction=.1)
 
 plt.yticks(rotation=0,fontsize=10);
-plt.xticks(fontsize=12);
+plt.xticks(fontsize=10);
 plt.tight_layout()
 
 filename=os.path.splitext(os.path.basename(args.inpath[0]))[0] + '.pdf'

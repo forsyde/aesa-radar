@@ -32,13 +32,14 @@ for c in abscube:
     mat=np.transpose(np.array(np.split(c,npulses)))
     antennas.append(mat)
 
-fig, axs = plt.subplots(1, nantennas, figsize=(8*nantennas/4,8), sharey=True)
+fig, axs = plt.subplots(1, nantennas, figsize=(6*nantennas/4,5), sharey=True)
 images = []
 for i in range(nantennas):
     images.append(axs[i].imshow(antennas[i], cmap='RdBu', aspect='equal', interpolation="nearest"))
     axs[i].grid(False)
     axs[i].label_outer()
-    axs[i].set_title('antenna ' + str(i))
+    axs[i].set_title('antenna ' + str(i), size=10)
+    axs[i].tick_params(which='major', labelsize=8, labelrotation=45);
 
 vmin = min(image.get_array().min() for image in images)
 vmax = max(image.get_array().max() for image in images)
