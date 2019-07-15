@@ -34,11 +34,6 @@ header-includes: |
 	
 ---
 
-<!-- [^fn:ack]: This report was written as a deliverable for the Vinnova NFFP7 Swedish National project: Correct by construction design methodology [#2017-04892](https://www.vinnova.se/en/p/correct-by-construction-design-methodology/). -->
-<!-- acknowledgement: | -->
-<!--   The author would like to thank Anders Åhlander (Saab Group) for providing the application specification and for putting effort into clarifying many technical details; and Timmy Sundström (Saab Group) for his valuable feedback throughout the development process of this report. -->
-<!-- In ForSyDe-Atom we cover more advanced usage of models and their interpretation by showing two isomorphic, but intuitively different approaches to describing the same system: as a chain of processes operating on data blocks, vs. as a parallel network of streaming processes. -->
-
 \clearpage
 
 # Introduction{#sec:intro}

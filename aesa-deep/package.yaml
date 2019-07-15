@@ -21,12 +21,16 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- forsyde-deep
+- forsyde-atom
+- forsyde-atom-extensions
+- aesa-atom
 
 library:
   source-dirs: src
 
 executables:
-  aesa-deep-exe:
+  aesa-deep:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -37,7 +41,7 @@ executables:
     - aesa-deep
 
 tests:
-  aesa-deep-test:
+  tests-deep:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -46,3 +50,8 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - aesa-deep
+    - aesa-atom
+    - QuickCheck
+    - test-framework
+    - test-framework-hunit
+    - test-framework-quickcheck2

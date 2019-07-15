@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import AESA.PC.FIR
 
 main :: IO ()
-main = someFunc
+main = undefined

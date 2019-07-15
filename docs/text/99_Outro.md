@@ -1,3 +1,6 @@
+# Acknowledgements
+
+  The authors would like to acknowledge Per Ericsson for his contributions in designing the AESA signal processing chain (in @fig:video-chain-spec) and in writing the specifications.
 
 [`ForSyDe.Atom.Skeleton.Vector`]: https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-Skeleton-Vector.html
 [`ForSyDe.Atom.MoC.SY`]: https://forsyde.github.io/forsyde-atom/api/ForSyDe-Atom-MoC-SY.html
