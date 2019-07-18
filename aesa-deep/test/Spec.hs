@@ -39,6 +39,15 @@ prop_refine1_equiv = forAll largeSigs $ \s -> equiv s (SDF.toSY1 s)
                    (SY.fromSignal $ R1.pcFirNet nb (mkPcCoefs 5) sy)
 
 
+prop_refine2_values :: SY.Signal Fixed8 -> Bool
+
+  = forAll largeSigs $ \s -> equiv s (SDF.toSY1 s)
+  where
+    equiv sdf sy = all id $ zipWith (==)
+                   (SDF.fromSignal $ R1.procPC' nb (mkPcCoefs 5) sdf)
+                   (SY.fromSignal $ R1.pcFirNet nb (mkPcCoefs 5) sy)
+
+
 
 tests :: [Test]
 tests = [

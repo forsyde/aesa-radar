@@ -1,0 +1,9 @@
+resolver: lts-9.4
+
+packages:
+- .
+
+extra-deps:
+- parameterized-data-0.1.6
+- type-level-0.3.0
+- forsyde-deep-0.2.0

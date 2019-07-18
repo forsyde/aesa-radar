@@ -13,7 +13,7 @@ parser.add_argument('inpath', nargs=1, type=str,  metavar='PATH',
 parser.add_argument('-f', '--first', nargs='?', type=int,  metavar='VAL', default=250,
                     help='First row of plotted samples. Default 250')
 parser.add_argument('-l', '--last', nargs='?', type=int,  metavar='VAL', default=375,
-                    help='First row of plotted samples. Default 375')
+                    help='First row ofheight=1cm plotted samples. Default 375')
 
 args = parser.parse_args()
      
@@ -24,7 +24,7 @@ absval=list(map(lambda a, b: list(map(lambda x, y: 20*math.log10(math.sqrt(x*x+y
 
 pdata=[reals,imags]
 
-fig, axs = plt.subplots(1, 1, figsize=(12,4))
+fig, axs = plt.subplots(1, 1, figsize=(6,4))
 images = []
 # for i in range(2):
 #     # Generate data with a range that varies from one plot to the next.
@@ -35,6 +35,7 @@ axs.set_xlim(args.first,args.last)
 
 axs.set_ylabel("antenna")   
 axs.set_xlabel("sample")
+axs.get_yaxis().set_ticks([])
 
 # Find the min and max of all colors for use in setting the color scale.
 vmin = min(image.get_array().min() for image in images)
@@ -43,7 +44,7 @@ norm = colors.Normalize(vmin=vmin, vmax=vmax)
 for im in images:
     im.set_norm(norm)
 
-fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.2)
+fig.colorbar(images[0], ax=axs, orientation='horizontal', fraction=.1)
 filename=os.path.splitext(os.path.basename(args.inpath[0]))[0] + '_s.pdf'
 plt.savefig(filename, bbox_inches='tight')
 plt.show()

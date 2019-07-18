@@ -3,6 +3,7 @@ resolver: lts-9.4
 packages:
 - .
 - ../forsyde-atom-extensions
+- ../forsyde-deep-extensions
 - ../aesa-atom
 
 extra-deps:
