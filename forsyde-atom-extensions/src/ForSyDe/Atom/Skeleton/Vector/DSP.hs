@@ -178,7 +178,7 @@ fir :: Num a
     => Vector a  -- ^ vector of coefficients
     -> Vector a  -- ^ input vector of numbers; /size/ = @n@
     -> Vector a  -- ^ output vector of numbers; /size/ = @n@
-fir coefs = V.farm11 applyFilter . tails
+fir coefs = V.reverse . V.farm11 applyFilter . tails . V.reverse
   where
     applyFilter = V.reduce (+) . V.farm21 (*) coefs 
 

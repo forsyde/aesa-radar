@@ -21,11 +21,13 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- forsyde-deep
+- forsyde-deep >= 0.2.1
 - forsyde-atom
-- forsyde-deep-extensions
+# - forsyde-deep-extensions
 - forsyde-atom-extensions
 - aesa-atom
+- type-level
+- parameterized-data
 
 library:
   source-dirs: src
@@ -40,6 +42,12 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - aesa-deep
+    - directory
+    - filepath
+    - process
+    - bytestring-lexing
+    - bytestring
+    - double-conversion
 
 tests:
   tests-deep:

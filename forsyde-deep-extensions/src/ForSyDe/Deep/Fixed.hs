@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 -----------------------------------------------------------------------------
 -- Signed Integers
 -- Suitable for use with Hugs 98 on 32 bit systems.
@@ -7,6 +8,8 @@ module ForSyDe.Deep.Fixed where
 
 import ForSyDe.Deep.Int
 import Data.Bits
+import Language.Haskell.TH.Lift
+import Data.Data
 
 class Coerce a where
   to   :: Int -> a
@@ -126,8 +129,8 @@ realToFixed16 x = if a == 0 then
   where    (a, b) = properFraction x        
            y      = truncate ((2^(16-1)) * b) 
 
-fixed16ToReal :: RealFrac a => Fixed8 -> a
-fixed16ToReal = (/(2^(8-1))) . realToFrac . fixed8ToInt
+fixed16ToReal :: RealFrac a => Fixed16 -> a
+fixed16ToReal = (/(2^16-1)) . realToFrac . fixed16ToInt
 
 fixed16ToInt (F16 x) = int16ToInt x
 intToFixed16 x       = F16 (intToInt16 x)
@@ -182,8 +185,8 @@ realToFixed32 x = if a == 0 then
   where    (a, b) = properFraction x        
            y      = truncate ((2^(32-1)) * b) 
 
-fixed32ToReal :: RealFrac a => Fixed8 -> a
-fixed32ToReal = (/(2^(8-1))) . realToFrac . fixed8ToInt
+fixed32ToReal :: RealFrac a => Fixed32 -> a
+fixed32ToReal = (/(2^(32-1))) . realToFrac . fixed32ToInt
            
 fixed32ToInt (F32 x) = int32ToInt x
 intToFixed32 x       = F32 (intToInt32 x)
@@ -241,8 +244,8 @@ realToFixed20 x = if a == 0 then
   where    (a, b) = properFraction x        
            y      = truncate ((2^(20-1)) * b) 
 
-fixed20ToReal :: RealFrac a => Fixed8 -> a
-fixed20ToReal = (/(2^(8-1))) . realToFrac . fixed8ToInt
+fixed20ToReal :: RealFrac a => Fixed20 -> a
+fixed20ToReal = (/(2^(20-1))) . realToFrac . fixed20ToInt
 
 fixed20ToInt (F20 x) = int20ToInt x
 intToFixed20 x       = F20 (intToInt20 x)
@@ -260,3 +263,16 @@ instance Coerce Fixed20 where
 
 instance Fixed Fixed20 where
   scale n (F20 x) = F20 (shift x n)
+
+$(mapM deriveLift [''Fixed8, ''Fixed16, ''Fixed20, ''Fixed32])
+
+fixed20Type :: DataType
+fixed20Type = mkIntType "ForSyDe.Deep.Int.Fixed20"
+
+instance Data Fixed20 where
+  toConstr = mkIntegralConstr fixed20Type . fixed20ToInt
+  gunfold _ z c = case constrRep c of
+                    (IntConstr x) -> z (fromIntegral x)
+                    _ -> errorWithoutStackTrace $ "Data.Data.gunfold: Constructor " ++ show c
+                                 ++ " is not of type Fixed20."
+  dataTypeOf _ = fixed20Type

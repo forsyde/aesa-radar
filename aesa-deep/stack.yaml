@@ -3,15 +3,16 @@ resolver: lts-9.4
 packages:
 - .
 - ../forsyde-atom-extensions
-- ../forsyde-deep-extensions
+# - ../forsyde-deep-extensions
 - ../aesa-atom
+- ../../forsyde-deep
 
 extra-deps:
 # extra-deps:
 - parameterized-data-0.1.6
 - type-level-0.3.0
 - QuickCheck-2.10.1
-- forsyde-deep-0.2.0
+# - forsyde-deep-0.2.0
 - type-level-natural-number-2.0
 - git: git@github.com:forsyde/forsyde-atom.git
   commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3

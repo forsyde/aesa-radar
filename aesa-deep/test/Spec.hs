@@ -10,7 +10,7 @@ import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY as SY
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
 
 import AESA.StreamsAtom as M1
-import AESA.PC.FIR as R1
+import AESA.PC.R1 as R1
 import AESA.Params
 import AESA.Coefs
 
@@ -31,22 +31,39 @@ largeSigs = do
   sigData <- vectorOf n arbitrary
   return (SDF.signal sigData)
 
+sigs :: Gen a -> Gen (SY.Signal a)
+sigs a = do
+  sigData <- listOf a
+  return (SY.signal sigData)
+
+
+decimalCpxNum :: Gen (Complex Float)
+decimalCpxNum = do
+  realPart <- choose (-1,0.99999999999)
+  imagPart <- choose (-1,0.99999999999)
+  return (realPart :+ imagPart)
+
+withinRangeComplex :: Ord a => a -> a -> Complex a -> Bool
+withinRangeComplex a b c
+  | realPart c <  a = False
+  | imagPart c <  a = False
+  | realPart c >= b = False
+  | imagPart c >= b = False
+  | otherwise = True
+
 
 prop_refine1_equiv = forAll largeSigs $ \s -> equiv s (SDF.toSY1 s)
   where
     equiv sdf sy = all id $ zipWith (==)
-                   (SDF.fromSignal $ R1.procPC' nb (mkPcCoefs 5) sdf)
-                   (SY.fromSignal $ R1.pcFirNet nb (mkPcCoefs 5) sy)
+                   (SDF.fromSignal $ M1.procPC sdf)
+                   (SY.fromSignal $ R1.pcFIR sy)
 
 
-prop_refine2_values :: SY.Signal Fixed8 -> Bool
+-- prop_refine2_values = forAll (sigs decimalCpxNum)
+--                       $ \s -> all (withinRangeComplex (-1) 1) $ SY.fromSignal (wrPcFirNet nb (mkPcCoefs 5) s)
 
-  = forAll largeSigs $ \s -> equiv s (SDF.toSY1 s)
-  where
-    equiv sdf sy = all id $ zipWith (==)
-                   (SDF.fromSignal $ R1.procPC' nb (mkPcCoefs 5) sdf)
-                   (SY.fromSignal $ R1.pcFirNet nb (mkPcCoefs 5) sy)
-
+-- prop_refine2_error = forAll largeSigs
+--                      $ \s -> all (\a -> let q = (1/2^18) in realPart a <= q && imagPart a <= q) $ zipWith (\a b-> abs (a - b)) (SY.fromSignal (pcFirNet nb (mkPcCoefs 5) s)) (SY.fromSignal (wrPcFirNet nb (mkPcCoefs 5) s))
 
 
 tests :: [Test]
@@ -54,6 +71,10 @@ tests = [
   testGroup "PC refinements tests "
     [ testProperty "PC' is sequence equivalent with PC "
       (withMaxSuccess 100 prop_refine1_equiv)
+    -- , testProperty "PC'' values are within range "
+    --   (withMaxSuccess 100 prop_refine2_values)
+    -- , testProperty "PC'' values are within range "
+    --   (withMaxSuccess 100 prop_refine2_error)
     ]
   ]
 

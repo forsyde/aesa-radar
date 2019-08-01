@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 -- TODO :: minimal Bit definitions for all types
 
 module ForSyDe.Deep.Int
@@ -21,7 +22,8 @@ module ForSyDe.Deep.Int
   ) where
 import Data.Bits
 import Data.Ratio
-
+import Language.Haskell.TH.Lift
+import Data.Data
 -----------------------------------------------------------------------------
 -- The "official" coercion functions
 -----------------------------------------------------------------------------
@@ -56,7 +58,7 @@ int32ToInt16 = I16 . int32ToInt
 -- Int8
 -----------------------------------------------------------------------------
 
-newtype Int8  = I8 Int
+data Int8  = I8 Int
 
 int8ToInt (I8 x) = if x' <= 0x7f then x' else x' - 0x100
   where x' = x .&. 0xff
@@ -131,7 +133,7 @@ instance Bits Int8 where
 -- Int16
 -----------------------------------------------------------------------------
 
-newtype Int16  = I16 Int
+data Int16  = I16 Int
 
 int16ToInt (I16 x) = if x' <= 0x7fff then x' else x' - 0x10000
  where x' = x .&. 0xffff
@@ -209,7 +211,7 @@ instance Bits Int16 where
 -- Int32
 -----------------------------------------------------------------------------
 
-newtype Int32  = I32 Int
+data Int32  = I32 Int
 
 int32ToInt (I32 x) = x
 intToInt32 = I32
@@ -294,10 +296,10 @@ type Int64 = Integer
 -- Int20
 -----------------------------------------------------------------------------
 
-newtype Int20  = I20 Int
+data Int20  = I20 Int
 
 int20ToInt (I20 x) = if x' <= 0x7ffff then x' else x' - 0x100000
- where x' = x .&. 0xfffff
+  where x' = x .&. 0xfffff
 intToInt20 = I20
 
 instance Eq  Int20     where (==)    = binop (==)
@@ -435,3 +437,29 @@ signumReal x | x == 0    =  0
 -----------------------------------------------------------------------------
 -- End
 -----------------------------------------------------------------------------
+
+$(mapM deriveLift [''Int8, ''Int16, ''Int20, ''Int32])
+
+
+int8Type :: DataType
+int8Type = mkIntType "ForSyDe.Deep.Int.Int8"
+
+instance Data Int8 where
+  toConstr = mkIntegralConstr int8Type
+  gunfold _ z c = case constrRep c of
+                    (IntConstr x) -> z (fromIntegral x)
+                    _ -> errorWithoutStackTrace $ "Data.Data.gunfold: Constructor " ++ show c
+                                 ++ " is not of type Int8."
+  dataTypeOf _ = int8Type
+
+
+int16Type :: DataType
+int16Type = mkIntType "ForSyDe.Deep.Int.Int16"
+
+instance Data Int16 where
+  toConstr = mkIntegralConstr int16Type
+  gunfold _ z c = case constrRep c of
+                    (IntConstr x) -> z (fromIntegral x)
+                    _ -> errorWithoutStackTrace $ "Data.Data.gunfold: Constructor " ++ show c
+                                 ++ " is not of type Int16."
+  dataTypeOf _ = int16Type
