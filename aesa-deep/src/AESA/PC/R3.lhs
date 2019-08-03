@@ -14,6 +14,7 @@
 > import ForSyDe.Deep
 > import ForSyDe.Deep.Skeleton
 > import ForSyDe.Deep.Int
+> import Data.Complex
 
 > import AESA.PC.R2 as R2
 > import AESA.Params (nb)
@@ -23,7 +24,7 @@
 > addFun :: ProcFun (Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20)
 > addFun = $(newProcFun
 >            [d|addf :: Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20
->               addf a b = a + b  |])
+>               addf a b = a +: b  |])
 
 > addProc :: Signal (Complex Fixed20)
 >         -> Signal (Complex Fixed20)
@@ -43,17 +44,17 @@
 >   where 
 >     mulFun = $(newProcFun
 >                [d|mulf :: Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20 
->                   mulf a b = a * b     |])
+>                   mulf a b = a *: b     |])
 
 > rDelaySys :: SysDef (Signal (Complex Fixed20) -> Signal (Complex Fixed20))
-> rDelaySys = newSysDef (mooreSY "rDelayProc" countReset propagate (0, 0))
+> rDelaySys = newSysDef (mooreSY "rDelayProc" countReset propagate (0, 0 :+ 0))
 >             "rDelay" ["i1"] ["o1"]
 >   where
 >     countReset = $(newProcFun
 >                    [d|cntf :: (Int16,Complex Fixed20) -> Complex Fixed20
 >                            -> (Int16,Complex Fixed20) 
 >                       cntf (c,_) p = if c == 1024-1      -- = nb', but templateHaskell does not recognize it 
->                                      then (0, 0)
+>                                      then (0, (:+) 0 0)
 >                                      else (c+1,p) |])
 >     propagate  = $(newProcFun
 >                    [d|prpf :: (Int16,Complex Fixed20) -> Complex Fixed20 

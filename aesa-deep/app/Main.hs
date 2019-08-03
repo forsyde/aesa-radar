@@ -11,7 +11,7 @@ import ForSyDe.Atom.MoC.Stream (Stream(..), tailS)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), SY(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF (Signal(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11)
-import ForSyDe.Deep.Complex (toDeepCpx, fromDeepCpx)
+-- import ForSyDe.Deep.Complex (toDeepCpx, fromDeepCpx)
 
 import AESA.StreamsAtom as M2
 import AESA.PC.R1 as R1
@@ -35,9 +35,7 @@ main = do
     ++ show ((nAntennas * nSamples) `div` (nA * nb * nFFT))
     ++ " indata cube(s)..."
   let iSigs = map SY.signal aesaIn
-      refPC = (fmap . fmap . fmap) fromDeepCpx
-              . selectPC runArg
-              . (fmap . fmap . fmap) toDeepCpx
+      refPC = selectPC runArg
       oSigs = let (oCTR,oCTL) = ct $ refPC $ dbf $ vector iSigs
                   oCFARR = cfar $ dfb $ oCTR
                   oCFARL = cfar $ dfb $ oCTL

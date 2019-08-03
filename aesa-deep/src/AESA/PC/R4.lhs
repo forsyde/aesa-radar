@@ -13,6 +13,7 @@
 > import Data.List as L
 > import ForSyDe.Deep
 > import ForSyDe.Deep.Skeleton
+> import Data.Complex
 
 > import AESA.PC.R2 as R2
 > import AESA.PC.R3 as R3

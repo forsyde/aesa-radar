@@ -5,8 +5,9 @@
 > import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
 > import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 
-> import ForSyDe.Deep.Complex
+> -- import ForSyDe.Deep.Complex
 > import ForSyDe.Deep.Fixed
+> import Data.Complex
 
 > import AESA.PC.R1
 
