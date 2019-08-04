@@ -24,7 +24,7 @@
 > addFun :: ProcFun (Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20)
 > addFun = $(newProcFun
 >            [d|addf :: Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20
->               addf a b = a +: b  |])
+>               addf (x :+ y) (x' :+ y') = (x + x') :+ (y + y')  |])
 
 > addProc :: Signal (Complex Fixed20)
 >         -> Signal (Complex Fixed20)
@@ -44,7 +44,8 @@
 >   where 
 >     mulFun = $(newProcFun
 >                [d|mulf :: Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20 
->                   mulf a b = a *: b     |])
+>                   mulf (x :+ y) (x' :+ y') = (fixmul20 x x' - fixmul20 y y') :+
+>                                              (fixmul20 x y' + fixmul20 y x') |])
 
 > rDelaySys :: SysDef (Signal (Complex Fixed20) -> Signal (Complex Fixed20))
 > rDelaySys = newSysDef (mooreSY "rDelayProc" countReset propagate (0, 0 :+ 0))
