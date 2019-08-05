@@ -52,3 +52,14 @@ as specified in @sec:video-chain-spec: each pulse of range bins needs
 to be computed independently from each other.
 
 ![`countDelay` process structure](figs/pc-counter-atom.pdf){#fig:pc-counter-atom}
+
+
+**OBS:** notice that we have used some strange functions `(+:)` and `(*:)` instead of
+`(+)` and `(*)` for complex numeral addition, respectively multiplication. These
+custom operators are defined in `ForSyDe.Deep.Complex` and perform exactly the two
+well-known operations, but relax the base type of `Complex a` to be of any `Num` type
+instance instead of forcing it be a member of the `RealFloat` class (see
+[`Data.Complex`
+API](http://hackage.haskell.org/package/base-4.12.0.0/docs/Data-Complex.html)). Although
+this does not make any improvement in particular at the time, it makes the code of
+`pcFIR` much more reusable in future refinement stages.

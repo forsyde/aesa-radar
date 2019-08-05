@@ -3,28 +3,33 @@
 \usepackage[tikz]{forsyde}
 
 \begin{document}
-\begin{tikzpicture}[constructors=shallow,scale=1.2]
-  \foreach \x/\i in {1/1,4/2,8/3}{
-    \standard[process,moc=sy,f={$0$},type=delay](d\i)<\x,3>{dlySC};
+\begin{tikzpicture}[xscale=1.4,yscale=1.1]
+  \foreach \x/\i in {2/1,6/2,10/3}{
+    \standard[process,moc=sy,f={$\noexpand\mathtt{countReset}$;$\noexpand\mathtt{propagate}$;$(0,0)$},type=moore](d\i)<\x,3>{resetDly};
   }
-  \foreach \x/\i in {0/1,3/2,10/3}{
-    \standard[process,moc=sy,f={$\times c$},type=comb](m\i)<\x,1.5>{mulSC};
+  \foreach \x/\i in {0/1,4/2,12/3}{
+    \standard[process,moc=sy,f={$\times c$},type=comb](m\i)<\x,1.5>{mulP};
   }
-  \foreach \x/\i in {5/1,9/2,12/3}{
-    \standard[process,moc=sy,f={$+$},ni=2,type=comb](a\i)<\x,0>{addSC};
+  \foreach \x/\i in {6/1,10/2,14/3}{
+    \standard[process,moc=sy,f={$+$},ni=2,type=comb](a\i)<\x,0>{addP};
   }
 
   \draw[s]
-  (-2,3) -- (d1) -- (d2) --++(2,0) node[fill=white,inner sep=20pt]{$\cdots$} -- (d3) 
-  (-2,3) to[-|-] (m1) (d1) to[-|-] (m2) (d2) to[-|-=.4] ++(2.5,-1.5) node[fill=white,inner sep=20pt]{$\cdots$} coordinate (o) (d3) to[-|-] (m3) 
-  (m1) to[-|-=.3] (a1.w2) (m2.e1) to[-|-] (a1.w1) (a1) to ++(2,0) node[fill=white,inner sep=20pt]{$\cdots$} to[-|-] (a2.w2)
+  (-1.5,3) -- (d1) -- (d2) --++(2,0) node[fill=blackboxcolor,inner sep=5pt]{$\cdots$} -- (d3) 
+  (-1.5,3) to[-|-] (m1) (d1.e1) to[-|-] (m2.w1) (d2.e1) to[-|-=.2] ++(1,-1.5) node[fill=blackboxcolor,inner sep=15pt]{$\cdots$} coordinate (o) (d3.e1) to[-|-] (m3.w1) 
+  (m1) to[-|-=.3] (a1.w2) (m2.e1) to[-|-] (a1.w1) (a1) to ++(2,0) node[fill=blackboxcolor,inner sep=15pt]{$\cdots$} to[-|-] (a2.w2)
   (o) to[-|-=.8] (a2.w1) (a2) to[-|-] (a3.w2) (m3.e1) to[-|-] (a3.w1)
   ;
-  \draw[s,->] (a3) --++(2,0);
+  \draw[s,->] (a3) --++(1.5,0);
 
+  \node (dum1) at (-.5,3) {};
+  \node (dum2) at (-.5,0) {};
+  \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=12pt,type=recur](rec)<(dum1)(d1)(d3)>{};
+  \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=16pt,type=farm](frm)<(m1)(m3)>{};
+  \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=12pt,type=reduce](red)<(dum2)(a1)(a3)>{};
 
   \cluster[composite,f={$\noexpand\langle c_1, c_2, \noexpand\cdots, c_8 \noexpand\rangle$},inner sep=22pt,type={fir'}](b)
-    <(d1)(m1)(a3)>{firNet};
+    <(d1)(m1)(a3)>{pcFIR};
   \draw[f] (b-f.s1) edge[|-|=.1,->] (m1) edge[|-|=.1,->] (m2) edge[|-|=.1,->] (m3);
 \end{tikzpicture}
 \end{document}

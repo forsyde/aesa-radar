@@ -1,62 +1,49 @@
-{-# LANGUAGE PackageImports #-}
 module Main where
 
 import Test.QuickCheck as QC
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
-import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
-import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY as SY
-import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF
+import TestR1
 
-import AESA.StreamsAtom as M1
-import AESA.PC.R1 as R1
-import AESA.Params
-import AESA.Coefs
+-- -- | Generates non-null vectors, i.e. which satisfy 'forall v . length v 0'.
+-- nonNullVector :: Gen a -> Gen (Vector a)
+-- nonNullVector a = do
+--   ld <- listOf a `suchThat` (not . L.null)
+--   return $ V.vector ld 
 
-import Data.List as L
-import Data.Complex
-import Data.Ratio
+-- largeSigs :: Gen (SDF.Signal Rational)
+-- largeSigs = do
+--   n <- choose (nb, nb * 2)
+--   sigData <- vectorOf n arbitrary
+--   return (SDF.signal sigData)
 
-
--- | Generates non-null vectors, i.e. which satisfy 'forall v . length v 0'.
-nonNullVector :: Gen a -> Gen (Vector a)
-nonNullVector a = do
-  ld <- listOf a `suchThat` (not . L.null)
-  return $ V.vector ld 
-
-largeSigs :: Gen (SDF.Signal Rational)
-largeSigs = do
-  n <- choose (nb, nb * 2)
-  sigData <- vectorOf n arbitrary
-  return (SDF.signal sigData)
-
-sigs :: Gen a -> Gen (SY.Signal a)
-sigs a = do
-  sigData <- listOf a
-  return (SY.signal sigData)
+-- sigs :: Gen a -> Gen (SY.Signal a)
+-- sigs a = do
+--   sigData <- listOf a
+--   return (SY.signal sigData)
 
 
-decimalCpxNum :: Gen (Complex Float)
-decimalCpxNum = do
-  realPart <- choose (-1,0.99999999999)
-  imagPart <- choose (-1,0.99999999999)
-  return (realPart :+ imagPart)
+-- decimalCpxNum :: Gen (Complex Float)
+-- decimalCpxNum = do
+--   realPart <- choose (-1,0.99999999999)
+--   imagPart <- choose (-1,0.99999999999)
+--   return (realPart :+ imagPart)
 
-withinRangeComplex :: Ord a => a -> a -> Complex a -> Bool
-withinRangeComplex a b c
-  | realPart c <  a = False
-  | imagPart c <  a = False
-  | realPart c >= b = False
-  | imagPart c >= b = False
-  | otherwise = True
+-- withinRangeComplex :: Ord a => a -> a -> Complex a -> Bool
+-- withinRangeComplex a b c
+--   | realPart c <  a = False
+--   | imagPart c <  a = False
+--   | realPart c >= b = False
+--   | imagPart c >= b = False
+--   | otherwise = True
 
 
-prop_refine1_equiv = forAll largeSigs $ \s -> equiv s (SDF.toSY1 s)
-  where
-    equiv sdf sy = all id $ zipWith (==)
-                   (SDF.fromSignal $ M1.procPC sdf)
-                   (SY.fromSignal $ R1.pcFIR sy)
+-- prop_refine1_equiv = forAll largeSigs $ \s -> equiv s (SDF.toSY1 s)
+--   where
+--     equiv sdf sy = all id $ zipWith (==)
+--                    (SDF.fromSignal $ M1.procPC sdf)
+--                    (SY.fromSignal $ R1.pcFIR sy)
 
 
 -- prop_refine2_values = forAll (sigs decimalCpxNum)

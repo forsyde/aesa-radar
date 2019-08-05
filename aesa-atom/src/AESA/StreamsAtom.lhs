@@ -152,7 +152,7 @@ injective mapping from the (timed) domain of a SY MoC tag system, to the (untime
 co-domain of a SDF MoC tag system. For more on tag systems please consult [@lee98].
 
 > procPC :: Fractional a => SDF.Signal a -> SDF.Signal a 
-> procPC = SDF.comb11 (nb, nb, V.fromVector . fir (mkPcCoefs 5) . V.vector)
+> procPC = SDF.comb11 (nb, nb, V.fromVector . fir (mkPcCoefs pcTap) . V.vector)
 
 The `procPC` actor consumes and produces `nb` tokens each firing, forms a `Vector`
 from these tokens, and applies the same `fir` function used in @sec:cube-pc-atom on

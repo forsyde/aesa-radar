@@ -236,7 +236,7 @@ application we also use a relatively small average window (5 taps).
 
 > fPC :: Range CpxData -- ^ input range bin     
 >     -> Range CpxData -- ^ output pulse-compressed bin
-> fPC = fir (mkPcCoefs 5)
+> fPC = fir (mkPcCoefs pcTap)
 
 | Function              | Original module                       | Package                 |
 |-----------------------|---------------------------------------|-------------------------|

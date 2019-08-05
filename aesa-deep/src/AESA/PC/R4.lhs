@@ -1,3 +1,5 @@
+ ## R4: Balancing the FIR Reduction
+
 > {-# LANGUAGE PackageImports, TemplateHaskell, FlexibleContexts #-} --can be ignored
 > module AESA.PC.R4 where
 
