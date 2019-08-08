@@ -78,6 +78,8 @@ that it uses the `procPC''` as the base process.
 >      -> Vector (SDF.Signal (Complex Fixed20))
 > pc'' = farm11 (SY.toSDF . procPC'')
 
+ ### Simulation
+
 In order to be able to "plug in" PC'' into the AESA signal processing system, we need
 to wrap it so that its type signature is the one expected. We thus define the
 following wrapper which translates the floating point numbers fed into PC to fixed
@@ -91,8 +93,6 @@ which is then used to wrap `pc''` so that it looks like `pc`.
 > wrappedPC'' :: Vector ( SY.Signal (Complex Float))
 >             -> Vector (SDF.Signal (Complex Float))
 > wrappedPC'' = wrapR2 pc''
-
- ### Simulation
 
 The effect of the refined PC'' signal processing stage can be observed by simulating
 the AESA application instantiating `wrappedPC''`. Please refer to the project's

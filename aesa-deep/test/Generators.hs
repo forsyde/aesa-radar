@@ -11,6 +11,7 @@ import Data.List as L
 import Data.Complex
 import Data.Ratio
 import ForSyDe.Deep.Fixed
+import ForSyDe.Deep.Int
 import AESA.Params
 
 
@@ -52,6 +53,13 @@ decimalCpxRat = do
   realPartNum <- choose (-2^31,2^31)
   imagPartNum <- choose (-2^31,2^31)
   return ((realPartNum % 2^32) :+ (imagPartNum % 2^32))
+
+
+cpxFixed20 :: Gen (Complex Fixed20)
+cpxFixed20 = do
+  x <- choose (-1,2^20-1)
+  y <- choose (-1,2^20-1)
+  return (F20 (I20 x) :+ F20 (I20 y))  
 
 nonNullVector :: Gen a -> Gen (Vector a)
 nonNullVector a = do

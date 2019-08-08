@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Utils where
 
 import qualified Data.ByteString.Char8 as S
@@ -6,6 +7,8 @@ import qualified Data.ByteString.Unsafe as S
 import           Data.Complex
 import           Data.Double.Conversion.ByteString
 import           Data.List
+import qualified ForSyDe.Deep as Deep
+import qualified ForSyDe.Deep.Skeleton
 import           System.Directory
 import           System.FilePath
 
@@ -75,3 +78,6 @@ dumpData2 file showNum list = S.writeFile file (toString2 list)
 dumpData3 file showNum list = S.writeFile file (toString3 list)
   where
     toString3 = S.unlines . map (S.unlines . map (S.concat . map showNum))
+
+
+simList f = map (Deep.simulate f)

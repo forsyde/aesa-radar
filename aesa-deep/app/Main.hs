@@ -50,7 +50,9 @@ main = do
     selectPC arg
       | arg == "1" = R1.pc'
       | arg == "2" = R2.wrappedPC''
-      | arg == "3" = R3.wrappedPC'''
+      -- for simulation efficiency we do not simulate 'wrappedPC3' because the zipx . unzipx pattern would
+      -- cause a memory overflow (32GB RAM are not enough!) we keep it within the list domain instead.
+      | arg == "3" = wrapR2 (V.vector . map SDF.signal . simList R3.procPCSys . map SY.fromSignal . V.fromVector)
       | otherwise  = error $ "No refinement stage " ++ arg ++ ". Re-run the program with --help to see the accepted input commands."
     
              

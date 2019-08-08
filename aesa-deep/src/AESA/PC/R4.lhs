@@ -33,14 +33,14 @@
 >       -> Signal (Complex Fixed20) 
 > pcFIR' = deepFIR "fir" addSys mulSys rDelaySys coefsR3
 
-> pc'''' :: FSVec D8 (Signal (Complex Fixed20))
+> pc4 :: FSVec D8 (Signal (Complex Fixed20))
 >        -> FSVec D8 (Signal (Complex Fixed20))
-> pc'''' = farm11V "pc" (newSysDef pcFIR' "FIR" ["i1"] ["o1"])
+> pc4 = farm11V "pc" (newSysDef pcFIR' "FIR" ["i1"] ["o1"])
 
-> sysPC'''' = newSysDef (zipxSY "zip" . pc'''' . unzipxSY "unzip") "PC" ["i1"] ["o1"]
+> sysPC4 = newSysDef (zipxSY "zip" . pc4 . unzipxSY "unzip") "PC" ["i1"] ["o1"]
 
-> wrappedPC'''' = wrapR2 (wrapR3 (simulate sysPC'''))
+> wrappedPC4 = wrapR2 (wrapR3 (simulate sysPC3))
 
-> graphmlPC'''' = writeGraphMLOps (defaultGraphMLOps {yFilesMarkup = True})  sysPC''''
+> graphmlPC4 = writeGraphMLOps (defaultGraphMLOps {yFilesMarkup = True})  sysPC4
 
-> vhdlPC'''' = writeVHDL sysPC''''
+> vhdlPC4 = writeVHDL sysPC4

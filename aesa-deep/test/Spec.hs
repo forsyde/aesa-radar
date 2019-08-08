@@ -6,6 +6,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import TestR1
 import TestR2
+import TestR3
 
 tests :: [Test]
 tests = [
@@ -16,6 +17,8 @@ tests = [
       (withMaxSuccess 100 prop_refine2_values)
     , testProperty "PC'' acceptable cumulative errors  "
       (withMaxSuccess 1000 prop_refine2_error)
+    , testProperty "PC3 is equivalent with PC''        "
+      (withMaxSuccess 100 prop_refine3_equiv)
     ]
   ]
 
