@@ -1,6 +1,30 @@
- ## R3: Deep Language Embedding
+ ## Refinement 3: Deep Language Embedding
 
-> {-# LANGUAGE PackageImports, TemplateHaskell, FlexibleContexts #-} --can be ignored
+In this refinement phase we translate the PC'' system defined in the previous phase to
+a language more appropriate for synthesis. Up until now we have used the
+shallow-embedded DSLs of ForSyDe, namely ForSyDe-Atom and ForSyDe-Shallow. In this
+section we will start using ForSyDe-Deep, a deep-embedded DSL, capable of extracting a
+system's internal structure as a netlist and synthesizing it to different backends (at
+present GraphML and VHDL).
+
+ ### Crash course in ForSyDe-Deep
+
+ForSyDe-Deep was originally created as a replacement for ForSyDe-Shallow. It provides
+a sub-set of the ForSyDe-Shallow language and, in principle, is based on the same
+modeling concepts. However its deep-embedded features (such as netlist traversing and
+language parsing) makes it less compact and more verbose than its shallow
+counterparts. This is why its syntax appeals less to new users, making it a fall-back
+framework for synthesis purposes only. Nevertheless translating from a shallow ForSyDe
+model to a deep one is straightforward, once you understand the principles listed in
+the following paragraphs.
+
+**N.B.:** future iterations of the ForSyDe language will most likely have a unified
+  syntax and translation from shallow (for efficient simulation) to deep (for
+  structure parsing and synthesis) versions will be done automatically. 
+
+![The difference between a shallow ForSyDe system and a deep one](figs/deep-syntax.pdf){#fig:deep-syntax}
+
+> {-# LANGUAGE PackageImports, TemplateHaskell, FlexibleContexts #-}
 > module AESA.PC.R3 where
 
 > import qualified "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY
@@ -20,8 +44,6 @@
 
 > import AESA.PC.R2 as R2
 > import AESA.Params (nb)
-> nb' = intToInt16 nb
-> -- nb' = fromIntegral nb
 
 > addFun :: ProcFun (Complex Fixed20 -> Complex Fixed20 -> Complex Fixed20)
 > addFun = $(newProcFun

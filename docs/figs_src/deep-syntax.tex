@@ -1,0 +1,82 @@
+\documentclass{standalone}
+
+\usepackage{tikz}
+\usetikzlibrary{fit,calc}
+
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground} 
+
+\newsavebox{\shallow}
+\savebox{\shallow}{
+  \begin{tikzpicture}[%
+  ent/.style={draw,rounded corners},
+  wrp/.style={draw,rounded corners,thick},
+  >={stealth}
+  ]
+  \node[ent,fill={cyan!30},inner sep=.8cm] (p1) {Process1};  
+  \node[ent,fill={green!20}, anchor=north] (f1) at (p1.north) {function(s)};
+  \node[anchor=south] (f1) at (p1.south) {\footnotesize\tt process constructor}; 
+
+  \node[ent,fill={cyan!30},inner sep=.8cm] (p2) at (3.5,2) {Process1};  
+  \node[ent,fill={green!20}, anchor=north] (f2) at (p2.north) {function(s)};
+  \node[anchor=south] (f2) at (p2.south) {\footnotesize\tt process constructor};
+
+  \node[ent,fill={cyan!30},inner sep=.8cm] (p3) at (4,-1) {Process2};  
+  \node[ent,fill={green!20}, anchor=north] (f3) at (p3.north) {function(s)};
+  \node[anchor=south] (f3) at (p3.south) {\footnotesize\tt process constructor};
+
+  \begin{pgfonlayer}{background}
+    \node[ent,fill=cyan!30,inner sep=8pt,fit={(p1)(p2)(p3)}] (cp) {};
+    \node[anchor=south west] at (cp.south west) {\footnotesize\tt composite process};
+  \end{pgfonlayer}
+
+  \draw[->,ultra thick] (p1) edge (p2) edge (p3) (p2) edge (p3) (p1) edge[<-] ++ (-2.5,0) (p3) edge ++(2.5,0);
+\end{tikzpicture}
+}
+
+
+\newcommand{\wrappedProc}[4]{%
+  \node[wrp,fill={blue!30},inner ysep=1.8cm,inner xsep=2cm] (#4) at (#1) {};
+  \node[anchor=north,inner sep=2pt] at (#4.north) {\footnotesize\bf #2};
+  \node[anchor=south,inner sep=2pt] at (#4.south) {\footnotesize\tt system instance };
+  \node[wrp,fill={cyan!50},inner ysep=1.4cm,inner xsep=1.8cm] (s1) at (#4) {};
+  \node[anchor=north,inner sep=2pt] at (s1.north) {\footnotesize\bf #3 [port\_names]};
+  \node[anchor=south,inner sep=2pt] at (s1.south) {\footnotesize\tt system definition };
+  \node[ent,fill={cyan!30},inner ysep=1cm,inner xsep=1.5cm] (p) at (s1) {};\node[] at ($(p.north)!.65!(p.south)$) {\bf #3};
+  \node[wrp,fill={green!60}, anchor=north,inner xsep=15pt, inner ysep=9pt] (fw1) at (p.north) {\phantom{function(s)}};
+  \node[anchor=south,inner sep=2pt] at (fw1.south) {\footnotesize\tt function wrapper};
+  \node[ent,fill={green!20},anchor=north] (fq) at (fw1.north) {function(s)};
+  \node[anchor=south] (f1) at (p.south) {\footnotesize\tt process constructor};   
+}
+
+\newsavebox{\deep}
+\savebox{\deep}{
+  \begin{tikzpicture}[%
+  ent/.style={draw,rounded corners},
+  wrp/.style={draw,rounded corners,thick},
+  >={stealth}
+  ]
+  \wrappedProc{0,0}{P1\_Instance1}{Process1}{p1}
+  \wrappedProc{5,2}{P1\_Instance2}{Process1}{p2}
+  \wrappedProc{6,-2.5}{P2\_Instance1}{Process2}{p3}
+
+  \begin{pgfonlayer}{background}
+    \node[wrp,fill={cyan!50},inner ysep=.7cm,inner xsep=.5cm,fit={(p1)(p2)(p3)}] (cpw1) {};
+    \node[anchor=north,inner sep=2pt] at (cpw1.north) {\footnotesize\bf System1 [port\_names]};
+    \node[anchor=south,inner sep=2pt] at (cpw1.south) {\footnotesize\tt system definition };
+    \node[ent,fill=cyan!30,inner sep=8pt,fit={(p1)(p2)(p3)}] (cp) {};
+    \node[anchor=south west] at (cp.south west) {\footnotesize\tt composite process};
+  \end{pgfonlayer}
+
+
+  \draw[->,ultra thick] (p1) edge (p2) edge (p3) (p2) edge (p3) (p1) edge[<-] ++ (-3,0) (p3) edge ++(3,0);
+\end{tikzpicture}
+}
+
+\begin{document}
+\begin{tikzpicture}
+  \node (sh) {\usebox{\shallow}};
+  \node[anchor=west] (dp) at (sh.east) {\usebox{\deep}};
+\end{tikzpicture}
+\end{document}

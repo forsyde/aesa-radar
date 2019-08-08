@@ -5,7 +5,7 @@ The first refinement comes from the observation that the PC block from
 behavior over fixed sized-vectors of numbers. In other words, the SDF process
 associated with a channel's PC stage is more concerned that a moving average (MAV)
 algorithm is applied on a vector of $N_b$ samples as soon as they arrive, but it is
-not really concerned on _how_ the MAV is pefrormed. This type of under-specification
+not really concerned on _how_ the MAV is performed. This type of under-specification
 can derive a family of possible implementations, but does not bide well with the
 register transfer level (RTL) style of modeling specific to hardware implementations,
 which requires a more specific total order between actions. For example, translating
@@ -20,7 +20,7 @@ structure created with the `fir'` skeleton[^fn:fir-skel].
  ### Model
 
 In this first refinement phase we translate the SDF process `procPC` from @sec:pc-atom
-into systolic network of SY processes `pcFIR` much more appropriate and efficient for
+into systolic network of SY processes `procPC'` much more appropriate and efficient for
 RTL-based implementations.
 
 > {-# LANGUAGE PackageImports #-}
@@ -40,12 +40,9 @@ the high-level model in @sec:atom-network, we import them directly from the
 > import AESA.Coefs (mkPcCoefs)
 > import AESA.Params (pcTap, nb)
 
-Lastly, we need to import the `Complex` type. However, unlike previously, we now use
-our in-house `ForSyDe.Deep.Complex` module for that, which is in fact re-exporting
-`Data.Complex` along with some additional instances and utility functions which makes
-it synthesizable.
+Lastly, we need to import the `Complex` type.
 
-> import ForSyDe.Deep.Complex
+> import Data.Complex
 
 First we define the coefficients which will be used throughout all the refinement
 phases. If you read the API documentation of `fir'` you will see that the order of
@@ -60,36 +57,53 @@ Then we define the interface for the PC' stage, which is the same as for PC in
 replace `pc` with `pc'` in the original high level model and simulate as part of the
 entire AESA signal processing chain.
 
-> -- pc' :: Vector ( SY.Signal (Complex Float))
-> --     -> Vector (SDF.Signal (Complex Float))
-> -- pc' = farm11 (SY.toSDF . pcFIR coefsR1)
+> pc' :: Vector ( SY.Signal (Complex Float))
+>     -> Vector (SDF.Signal (Complex Float))
+> pc' = farm11 (SY.toSDF . procPC')
 
-Finally, we define `pcFIR` as a SY `fir'` process network which instantiates a
-particular timed (in the causality sense) behavior for the SDF `procPC` in
-@sec:pc-atom. However, when we change the time domain of the process we lose the
-information on the partial order between events. In SY there is no MoC-induced
-mechanism that tells us _when_ $N_b$ events have been consumed/processed: this
-mechanism needs to be hand-crafted. _One_ solution is to embed a count-reset Moore
-state machine inside each delay element associated with every FIR tap. This way, each
-Moore machine stores a counter value $\in [0,N_b)$ along with the previous complex
-sample, and would reset its state after after propagating $N_b$ samples.
+the `procPC'` process is, as mentioned earlier, a SY `fir'` process network which
+defines a particular timed (in the causality sense) behavior for the SDF `procPC` in
+@sec:pc-atom.
 
-![PC' process as a FIR network](figs/fir-proc-shallow.pdf){#fig:fir-pc}
+**OBS:** for didactic purpose, we define `procPC'` as an instance of a custom process
+constructor `pcFIR` defined below. The role of `pcFIR` is to decouple whatever happens
+in the _function layer_[^fn:recall] from the layers above. This will come in handy in
+the next refinement phase, which affects _only_ the function layer, and thus we can
+reuse the same code patterns from this module.
 
-> pcFIR :: Fractional a
->       => Vector    a
->       -> SY.Signal a
->       -> SY.Signal a 
-> pcFIR coefs = fir' sumP mulP resetDly coefs
+![The internals of the `pcFIR` process constructor](figs/fir-proc-shallow.pdf){#fig:fir-pc}
+
+[^fn:recall]: recall what layers are in @sec:crash-atom
+
+> pcFIR :: (a -> a -> a)               -- ^ /function layer/ addition
+>       -> (a -> a -> a)               -- ^ /function layer/ multiplication
+>       -> a                           -- ^ /function layer/ initial state
+>       -> Vector    a                 -- ^ vector of coefficients
+>       -> SY.Signal a                 -- ^ input signal
+>       -> SY.Signal a                 -- ^ output signal
+> pcFIR sum mul initial coefs = fir' sumP mulP resetDly coefs
 >   where
->     sumP     = SY.comb21 (+)
->     mulP c   = SY.comb11 (* c)
->     resetDly = SY.moore11 countReset propagate (0,0)
->     ---------------------------------------------------
->     countReset (c,_) p | c == nb-1 = (  0,0)
+>     sumP     = SY.comb21 sum
+>     mulP c   = SY.comb11 (mul c)
+>     resetDly = SY.moore11 countReset snd (0,initial)
+>     countReset (c,_) p | c == nb-1 = (0,initial)
 >                        | otherwise = (c+1,p)
->     ---------------------------------------------------
->     propagate (_,p) = p
+
+When we change the time domain of the process we lose the information on the partial
+order between events. In SY there is no MoC-induced mechanism that tells us _when_
+$N_b$ events have been consumed/processed: this mechanism needs to be
+hand-crafted. _One_ solution is to embed a count-reset Moore state machine inside each
+delay element associated with every FIR tap. This way, each Moore machine stores a
+counter value $\in [0,N_b)$ along with the previous complex sample, and would reset
+its state after after propagating $N_b$ samples.
+
+Finally, we define `procPC'` by filling in the function layer entities needed by the
+`pcFIR` process constructor.
+
+> procPC' :: Fractional a
+>         => SY.Signal a
+>         -> SY.Signal a
+> procPC' = pcFIR (+) (*) 0 coefsR1
 
 | Function                               | Original module                    | Package                 |
 |----------------------------------------|------------------------------------|-------------------------|
@@ -104,7 +118,7 @@ sample, and would reset its state after after propagating $N_b$ samples.
 As mentioned above, the PC' component can be "plugged in" and used with the AESA
 signal processing chain. Please refer to the project's `README` file, respectively the
 binary help menu instructions, on how to execute the model containing the PC' block
-against the same test input data as the prevoius high-level models. For the sake of
+against the same test input data as the previous high-level models. For the sake of
 space we do not include the output image, however we encourage the reader to try it
 out and plot it herself. For now we can only assure you that it looks similar to
 @fig:aesa-odata-atom-stream, except for the detection values, whose (slight)

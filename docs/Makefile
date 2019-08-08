@@ -17,6 +17,7 @@ LHS_FILES :=	21:../aesa-atom/src/AESA/CubesAtom.lhs \
 		61:../aesa-deep/src/AESA/PC/R1.lhs \
 		61a:../aesa-deep/test/TestR1.lhs \
 		62:../aesa-deep/src/AESA/PC/R2.lhs \
+		62a:../aesa-deep/test/TestR2.lhs \
 		63:../aesa-deep/src/AESA/PC/R3.lhs \
 		64:../aesa-deep/src/AESA/PC/R4.lhs
 

@@ -45,7 +45,7 @@ and a couple of other utility libraries. We use the data generators defined in t
 > import Data.List as L
 > import Data.Complex
 
- ### Properties
+ ### Properties {#sec:atom-stream-props}
 
 Perhaps the most noticeable transformation has been performed on the DBF module, since
 all the primitive operations performed by the vector-matrix dot product have become

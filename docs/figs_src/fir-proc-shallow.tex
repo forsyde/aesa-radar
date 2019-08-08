@@ -5,7 +5,7 @@
 \begin{document}
 \begin{tikzpicture}[xscale=1.4,yscale=1.1]
   \foreach \x/\i in {2/1,6/2,10/3}{
-    \standard[process,moc=sy,f={$\noexpand\mathtt{countReset}$;$\noexpand\mathtt{propagate}$;$(0,0)$},type=moore](d\i)<\x,3>{resetDly};
+    \standard[process,moc=sy,f={$\noexpand\mathtt{countReset}$;$\noexpand\mathtt{snd}$;$(0,i)$},type=moore](d\i)<\x,3>{resetDly};
   }
   \foreach \x/\i in {0/1,4/2,12/3}{
     \standard[process,moc=sy,f={$\times c$},type=comb](m\i)<\x,1.5>{mulP};
@@ -24,13 +24,18 @@
 
   \node (dum1) at (-.5,3) {};
   \node (dum2) at (-.5,0) {};
+
+  \cluster[composite,f={$\noexpand\langle \noexpand\times c_1, \noexpand\times c_2, \noexpand\cdots, \noexpand\times c_{t} \noexpand\rangle$;$i$;$+$},inner sep=22pt, inner ysep=40pt, type={fir'}](b)
+    <(d1)(m1)(a3)>{pcFIR};
+  \draw[f] (b-f.s1) edge[|-|=.1,->] (m1) edge[|-|=.1,->] (m2) edge[|-|=.1,->] (m3);
+  \draw[f] (b-f.s2) edge[|-|=.5,->] (d1.140)  edge[|-|=.5,->] (d2.140)  edge[|-|=.5,->] (d3.140);
+  \draw[f] (b-f.s2) edge[|-|=.5,->] (d1.30)  edge[|-|=.5,->] (d2.30)  edge[|-|=.5,->] (d3.30);
+  \draw[f] (b-f.s3) edge[|-|=.2,->] (a1)  edge[|-|=.2,->] (a2)  edge[|-|=.2,->] (a3);
+
   \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=12pt,type=recur](rec)<(dum1)(d1)(d3)>{};
   \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=16pt,type=farm](frm)<(m1)(m3)>{};
   \cluster[embed, class=blackbox, inner ysep=3pt,inner xsep=12pt,type=reduce](red)<(dum2)(a1)(a3)>{};
 
-  \cluster[composite,f={$\noexpand\langle c_1, c_2, \noexpand\cdots, c_8 \noexpand\rangle$},inner sep=22pt,type={fir'}](b)
-    <(d1)(m1)(a3)>{pcFIR};
-  \draw[f] (b-f.s1) edge[|-|=.1,->] (m1) edge[|-|=.1,->] (m2) edge[|-|=.1,->] (m3);
 \end{tikzpicture}
 \end{document}
 
