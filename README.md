@@ -40,7 +40,8 @@ The [technical report](https://www.researchgate.net/publication/334249975_Design
 The following projects produce binaries. Check their `README.md` file for more information.
 
  * [`aesa-atom`](aesa-atom)
- * [`aesa-shallow`](aesa-atom)
+ * [`aesa-shallow`](aesa-shallow)
+ * [`aesa-deep`](aesa-deep)
 
 We recommend to place the compiled binaries in the shell path, e.g.
 
@@ -51,6 +52,7 @@ At the moment these are the generated binaries (and their usage):
 	aesa-cube --help
 	aesa-shallow --help
 	aesa-stream --help
+	aesa-deep --help
 	
 These binaries have their default settings as to be run from [this](.) folder, otherwise the paths need to be provided as command line arguments. 
 
