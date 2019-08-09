@@ -166,7 +166,7 @@ items of future ForSyDe language versions).
 >     countReset = $(newProcFun
 >                    [d|cntf :: (Int16,Complex Fixed20) -> Complex Fixed20
 >                            -> (Int16,Complex Fixed20) 
->                       cntf(c,_) p = if c == 1024-1  -- nb-1 
+>                       cntf(c,_) p = if c == 1024-1
 >                                     then (0, 0 :+ 0)
 >                                     else (c+1,p) |])
 >     propagate  = $(newProcFun
