@@ -1,3 +1,12 @@
+
+<!-- In @sec:shallow we present an initial approach to -->
+<!-- modeling the AESA application in ForSyDe-Shallow, as chain of processes operation on cubes -->
+<!-- of data. In @sec:atom we first model the AESA application in ForSyDe-Atom from two -->
+<!-- different, yet isomorphic perspectives: in @sec:atom-operation we use the same approach as -->
+<!-- the previous one; followed by @sec:atom-network, where we regard the model as a parallel -->
+<!-- network of processes operating on individual incoming streams of data. -->
+
+
 ## Pulse compression atom
 
 In fact, as shown in @fig:pc-samp samples _are_ actually arriving in synchronous
@@ -63,3 +72,50 @@ instance instead of forcing it be a member of the `RealFloat` class (see
 API](http://hackage.haskell.org/package/base-4.12.0.0/docs/Data-Complex.html)). Although
 this does not make any improvement in particular at the time, it makes the code of
 `pcFIR` much more reusable in future refinement stages.
+
+
+As of the second bullet point above, we define one reset counter `rCounter`
+
+> rCounterSys :: SysDef (Signal (Complex Fixed20) -> Signal Bool)
+> rCounterSys = newSysDef (mooreSY "rCounterProc" count reset 0)
+>               "rCounter" ["i1"] ["o1"]
+>   where
+>     count = $(newProcFun
+>                [d|cntf :: Int16 -> Complex Fixed20 -> Int16  
+>                   cntf c _ = if c == 1024-1 then 0 else c+1 |])
+>     reset = $(newProcFun
+>                [d|rstf :: Int16 -> Bool 
+>                   rstf c = if c==1024-1 then True else False |])
+
+and a resettable delay (state) element.
+
+> delaySys :: SysDef (Signal Bool -> Signal (Complex Fixed20) -> Signal (Complex Fixed20))
+> delaySys = newSysDef (scanld2SY "rDelayProc" reset (0:+0))
+>            "rDelay" ["rst", "i1"] ["o1"]
+>   where
+>     reset = $(newProcFun
+>                [d|rstd :: Complex Fixed20 -> Bool -> Complex Fixed20 -> Complex Fixed20 
+>                   rstd _ r p = if r then (0:+0) else p |])
+
+To instantiate the logarithmic reduction tree, it is enough to replace the `reduce`
+skeleton with the `logReduce` skeleton in the previous `deepFIR` process network
+constructor. Furthermore, we decouple the reset counter to be outside the FIR network
+thus we pass the reset signal as an argument to the network constructor, and we use
+the `generate2` skeleton to apply this signal to all the delay elements.
+
+> balancedFIR name addSys mulSys dlySys coefs rstSig =
+>   Sk.logReduce (name L.++ "add_") addSys
+>   . Sk.farm21 (name L.++ "_mul_") mulSys coefs
+>   . Sk.generate2 (name L.++ "_dly_") n dlySys (copy n rstSig)
+>   where n = lengthT coefs
+
+The new `procPC` system definition is created using the skeleton above. The reset
+signal is obtained by creating one instance (see @fig:deep-syntax) of the counter
+system applied on the input signal.
+
+> procPCSys' :: SysDef (  Signal (Complex Fixed20)
+>                      -> Signal (Complex Fixed20) ) 
+> procPCSys' = newSysDef firSys "FIR" ["i1"] ["o1"]    
+>   where
+>     firSys s = balancedFIR "fir" addSys mulSys delaySys coefsR3 (rstSig s) s
+>     rstSig s = (instantiate "rCount" rCounterSys s)

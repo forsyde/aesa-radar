@@ -20,7 +20,8 @@ LHS_FILES :=	21:../aesa-atom/src/AESA/CubesAtom.lhs \
 		62a:../aesa-deep/test/TestR2.lhs \
 		63:../aesa-deep/src/AESA/PC/R3.lhs \
 		63a:../aesa-deep/test/TestR3.lhs \
-		64:../aesa-deep/src/AESA/PC/R4.lhs
+		64:../aesa-deep/src/AESA/PC/R4.lhs \
+		64a:../aesa-deep/test/TestR4.lhs
 
 BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))

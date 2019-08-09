@@ -114,25 +114,17 @@ the initial (high-level) specification model to lower level ones, more suitable 
 (backend) implementation synthesis, followed by @sec:stream-prop-defs where we
 formulate new properties for validating some of these refinements. All refinements in
 @sec:refine happen in the domain(s) of the ForSyDe-Atom DSL. In @sec:synth we switch
-the DSL to ForSyDe-Deep, which benefits from automatic synthesis towards VHDL:
-@sec:synth-model presents further refined models, whereas in @sec:synth-props
-properties for validating these models are formulated. Finally the VHDL code is
-generated, validated and tested in @sec:synth-vhdl.
-
-
-<!-- In @sec:shallow we present an initial approach to -->
-<!-- modeling the AESA application in ForSyDe-Shallow, as chain of processes operation on cubes -->
-<!-- of data. In @sec:atom we first model the AESA application in ForSyDe-Atom from two -->
-<!-- different, yet isomorphic perspectives: in @sec:atom-operation we use the same approach as -->
-<!-- the previous one; followed by @sec:atom-network, where we regard the model as a parallel -->
-<!-- network of processes operating on individual incoming streams of data. -->
+the DSL to ForSyDe-Deep, which benefits from automatic synthesis towards VHDL: in each
+subsection the refinements are stated, the refined components are modeled, properties
+are formulated to validate them, and in [@sec:synth-r3;@sec:synth-r4] VHDL code is
+generated and validated.
 
 ![Reading order dependencies](figs/reading-order.pdf){#fig:reading-order}
 
 @fig:reading-order depicts a reading order suggestion, based on information
-dependencies. The dashed line between @sec:shallow and @sec:synth-model suggests that
-understanding the latter is not directly dependent on the former, but since
-ForSyDe-Deep syntax is derived from ForSyDe-Shallow, it is recommended to get
+dependencies. The dashed line between @sec:shallow and [@sec:synth-r3;@sec:synth-r4]
+suggests that understanding the latter is not directly dependent on the former, but
+since ForSyDe-Deep syntax is derived from ForSyDe-Shallow, it is recommended to get
 acquainted with the ForSyDe-Shallow syntax and its equivalence with the ForSyDe-Atom
 syntax.
 

@@ -1,4 +1,4 @@
- ## Refinement 3: Deep Language Embedding
+ ## Refinement 3: Deep Language Embedding {#sec:synth-r3}
 
 In this refinement phase we translate the PC'' system defined in the previous phase to
 a language more appropriate for synthesis. Up until now we have used the
@@ -25,8 +25,8 @@ For more on ForSyDe-Deep modeling, refer to the beginner tutorials on the ForSyD
   called TemplateHaskell. The function parser is able to recognize a subset of the
   Haskell language written between the so-called banana brackets `[d| function |]`,
   and needs to _explicitly specify its type signature_. Whatever code is written
-  within the bananna brackets is parsed as-is and needs to be self-contained,
-  i.e. information cannot be infeered from global/system-wide definitions. In order to
+  within the banana brackets is parsed as-is and needs to be self-contained,
+  i.e. information cannot be inferred from global/system-wide definitions. In order to
   instantiate a parsable ForSyDe-Deep function from a Haskell function, it needs to be
   wrapped into a `ProcFun` type, using one of the [function
   wrappers](http://hackage.haskell.org/package/forsyde-deep-0.2.0/docs/ForSyDe-Deep-Process.html)
@@ -35,7 +35,7 @@ For more on ForSyDe-Deep modeling, refer to the beginner tutorials on the ForSyD
 * processes are instantiated using the ForSyDe-Deep equivalents of the main
   ForSyDe-Shallow [SY process
   constructors](http://hackage.haskell.org/package/forsyde-deep-0.2.0/docs/ForSyDe-Deep-Process-SynchProc.html). The
-  main difference is that they need a string identrifier as well as `ProcFun`-wrapped
+  main difference is that they need a string identifier as well as `ProcFun`-wrapped
   functions instead of regular Haskell functions.
   
 * in order to be able to simulate, parse or synthesize a process, it needs to be
@@ -80,8 +80,7 @@ the package extension built for this case study and contains a couple of deep-em
 (synthesizable) skeletons, as presented in [@sec:atom;@sec:refine].
 
 > import ForSyDe.Deep
-> import ForSyDe.Deep.Int
-> import ForSyDe.Deep.Skeleton
+> import ForSyDe.Deep.Skeleton as Sk
 
 We need some additional type libraries. `Data.Param.FSVec` defines fixed-size vectors
 as compared to the shallow vectors used until now,
@@ -89,7 +88,7 @@ e.g. `ForSyDe.Atom.Skeleton.Vector`. Fixed-size vectors have their length captur
 the type signature as type-level numerals imported from `Data.TypeLevel.Num`. For
 example `(FSVec D8 a)` denotes a fixed-size vector of type a, with the size of 8
 elements. We also use list functions, thus we can tell their functions apart by
-loading the two librarie using different aliases.
+loading the two libraries using different aliases.
 
 > import Data.List as L
 > import Data.Param.FSVec as FSV
@@ -105,7 +104,7 @@ For starters, let us define the adder process used in the `fir'` skeleton. Accor
 to the crash course in @sec:crash-deep we need to gradually wrap its elements until it
 becomes a system definition `SysDef`. First, we need to declare a `ProcFun` element
 from a Haskell addition function. As already mentioned, whatever is written between
-the bananna brackets needs to be self-contained. This means that the `Num` type
+the banana brackets needs to be self-contained. This means that the `Num` type
 instance of `Complex` which overloads the `(+)` operator is not of much use
 here. Complex number addition needs to be explicitly written so that the parser know
 what to synthesize (N.B. type class support is listed among the "todo" items of future
@@ -183,11 +182,16 @@ constructor":
 which we then use as argument for the `app11` skeleton (which is in fact a `farm11`
 tailored for partial application only) to instantiate a farm of constant signal
 generators, i.e. a vector of constant signals. The coefficients are interpreted into a
-`FSVec` from their shallow couterparts defined in the second refinement phase.
+`FSVec` from their shallow counterparts defined in the second refinement phase.
 
-> coefsR3 = app11V "coef" constSys coefs
+> coefsR3 = Sk.app11 "coef" constSys coefs
 >   where
 >     coefs = $(vectorTH (V.fromVector coefsR2 :: [Complex Fixed20]))
+
+**OBS:** ForSyDe-Deep skeletons, as compared to their shallow counterparts, take care
+  of _creating instances_ (see @fig:deep-syntax) of defined systems as well as
+  coupling them together. This is why they need components as arguments instead of
+  simple functions.
 
 Now, for didactic purpose, let us define ForSyDe-Deep equivalent of the `fir'`
 skeleton using the base catamorphisms _recur_ (or its specialization _generate_),
@@ -208,14 +212,14 @@ constants.
 >        -> a                     -- ^ input signal/structure 
 >        -> a                     -- ^ output signal/structure
 > deepFIR name addSys mulSys dlySys coefs =
->   reduceV addName addSys . farm21V mulName mulSys coefs . generateV dlyName n dlySys
+>   Sk.reduce addName addSys . Sk.farm21 mulName mulSys coefs . Sk.generate dlyName n dlySys
 >   where n = lengthT coefs
 >         dlyName = name L.++ "_dly_"
 >         addName = name L.++ "_add_"
 >         mulName = name L.++ "_mul_"
 
 We finally can define a component for the deep equivalent of `procPC` using the
-`deepFIR` process network constructor, by passing the aboce-defined components as
+`deepFIR` process network constructor, by passing the above-defined components as
 arguments.
 
 > procPCSys :: SysDef (  Signal (Complex Fixed20)
@@ -228,7 +232,7 @@ type-level numeral equal to $N_b$
 
 > pc3 :: FSVec D8 (Signal (Complex Fixed20))
 >     -> FSVec D8 (Signal (Complex Fixed20))
-> pc3 = farm11V "pc" procPCSys
+> pc3 = Sk.farm11 "pc" procPCSys
 
 with its associate system definition. Unfortunately, at the moment processes of type
 `FSVec a (Signal a) -> ...` are not part of the `SysFun` class, thus we cannot create
@@ -237,11 +241,11 @@ inside a `zipx . pc . unzipx` pattern which merely transposes the vector and sig
 domains, and the synthesizer will simply ignore it. (N.B. vector-based components will
 be supported in future iterations of ForSyDe).
 
-> sysPC3 = newSysDef (zipxSY "zip" . pc3 . unzipxSY "unzip") "PC" ["i1"] ["o1"]
+> sysPC3 = newSysDef (zipxSY "zip" . pc3 . unzipxSY "unzip") "PC3" ["i1"] ["o1"]
 
  ### Simulation. Synthesis
 
-Similarly to the prevous refinement stages, we further wrap the PC component in order
+Similarly to the previous refinement stages, we further wrap the PC component in order
 to co-simulate it with the rest of the AESA system. To simulate a ForSyDe-Deep
 `SysDef` component we use the `simulate` function
 
@@ -256,7 +260,7 @@ simulator types.
 >              . L.map (FSV.unsafeVector d8) . L.transpose . L.map SY.fromSignal . V.fromVector
 
 Please refer to the project's `README` file for how to execute the AESA system
-alongside the deep `pc3` component. The plotted output for running the system agains
+alongside the deep `pc3` component. The plotted output for running the system against
 the radar indata generated by the 13 objects is shown in @fig:deep-r3-odata.
 
 ![One output cube with radar data](figs/AESA_REFINE_R3.pdf){#fig:deep-r3-odata}
@@ -296,7 +300,7 @@ specifications in @tbl:deep-spec-r3.
 
 |                                    |               |
 | ---------------------------------- | ------------- |
-| Top-level Entity Name              | PC            |
+| Top-level Entity Name              | PC3           |
 | Family                             | Cyclone IV GX |
 | Total logic elements               | 3,014         |
 | Total combinational functions      | 3,014         |

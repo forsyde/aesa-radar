@@ -1,7 +1,7 @@
  ### Properties
 
 The main property we want to check now is that the ForSyDe-Deep version of PC$^{(3)}$
-is the same as PC'' defined in the second rfinement phase.
+is the same as PC'' defined in the second refinement phase.
 
 > {-# LANGUAGE PackageImports #-}
 > module TestR3 where

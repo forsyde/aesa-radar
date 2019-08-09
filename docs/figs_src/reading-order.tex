@@ -10,10 +10,10 @@
   --++(2,0) node[chap] (c2) {2} (c1) -- ++(2,-2) node[chap] (c3) {3}
   (c2) --++(2,-2) node[chap] (c4) {4}
   (c2) --++(2,0) node[chap] (c51) {5.1} --++(2,-2) node[chap] (c52) {5.3}
-  (c51) --++(2,0) node[chap] (c61) {6.(1|2).1} --++(2,-2) node[chap] (c62) {6.(1|2).3}
-  (c61) --++(2,0) node[chap] (c63) {6.4}
-  (c4) -- (c52) -- (c62) (c3) -- (c2);
-  \draw[dashed] (c3) -- (c61);
+  (c51) --++(2,0) node[chap] (c61) {6.1, 6.2}
+  (c61) --++(2.5,0) node[chap] (c63) {6.3, 6.4}
+  (c4) -- (c52) -- (c61) (c3) -- (c2);
+  \draw[dashed] (c3) -- (c63);
   \node at (-.5,.5) {}; \node at (8.5,-2.5) {};
 \end{tikzpicture}
 \end{document}

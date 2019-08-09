@@ -1,7 +1,7 @@
 # Model Synthesis to VHDL {#sec:synth}
 
 > _In this section we choose one sub-system in the AESA signal processing stage and
-> gradually refine to synthesizable VHDL code, by applying a series of
+> gradually refine to synthesizable VHDL code, by applying a series of semantic- and
 > nonsemantic-preserving transformations. In order to validate the resulting design we
 > gradually wrap each refined component in order to co-simulate it with the original
 > model, test it against the same input data as the previous sections, and formulate

@@ -4,6 +4,7 @@ packages:
 - .
 - ../forsyde-atom-extensions
 # - ../forsyde-deep-extensions
+# - ../../forsyde/forsyde-deep
 - ../aesa-atom
 
 extra-deps:
@@ -16,4 +17,4 @@ extra-deps:
 - git: git@github.com:forsyde/forsyde-atom.git
   commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3
 - git: git@github.com:ugeorge/forsyde-deep.git
-  commit: 39b89c2addaa1eeedee97c4cc2ea8e2fa180f257
+  commit: 482a972e3f99c627c01181c071bc2d0c91591878
