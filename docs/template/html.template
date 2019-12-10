@@ -57,14 +57,16 @@ $endif$
 $endfor$
 -->
 $if(author)$
+$if(copyright-notice)$
+<div class="copyright-notice">$copyright-notice$</p>
+$endif$
 $for(author)$
 $if(author.name)$
-<p class="author">$author.name$ $if(author.email)$ <code>&lt;$author.email$&gt;</code>$endif$</p>
-$if(author.affiliation)$ <p class="institute">$author.affiliation$</p>$endif$
+<p class="author">$author.name$ $if(author.affiliation)$ <small>($author.affiliation$)</small>$endif$</p>
 $else$
 <p class="author">$author$</p>
 $endif$
-$sep$ \and
+$sep$
 $endfor$
 $endif$
 
@@ -75,6 +77,8 @@ $endif$
 $if(abstract)$
 <p class="abstract">$abstract$</p>
 $endif$
+
+
 
 </header>
 $endif$

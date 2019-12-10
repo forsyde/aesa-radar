@@ -1,6 +1,6 @@
  ### System Parameters {#sec:aesa-parameters label="AESA parameters"}
 
-Here we define the size constants, for a simple test scenario provided by Saab AB. The
+Here we define the size constants, for a simple test scenario. The
 size `nA` can be inferred from the size of input data and the vector operations.
 
 > module AESA.Params where
@@ -14,5 +14,7 @@ size `nA` can be inferred from the size of input data and the vector operations.
 > 
 > freqRadar  = 10e9 :: Float -- 10 Ghz X-band
 > waveLength = 3e8 / freqRadar
-> dElements  = waveLength/2
+> dElements  = waveLength / 2
+> fSampling  = 3e6 :: Float
+> pulseWidth = 1e-6 :: Float
 

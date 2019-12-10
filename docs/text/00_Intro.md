@@ -23,6 +23,8 @@ link-citations: true
 linkReferences: true
 abstract: |
   This document serves as a report and as a step-by-step tutorial for modeling, simulating, testing and synthesizing complex heterogeneous systems in ForSyDe, with special focus on parallel and concurrent systems. The application under test is a radar signal processing chain for an active electronically scanned array (AESA) antenna provided by Saab AB. Throughout this report the application will be modeled using several different frameworks, gradually introducing new modeling concepts and pointing out similarities and differences between them. 
+copyright-notice: |
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/"><img src="figs/by-sa.png" alt="CC-BY SA 4.0" width="80px"/></href></a> 
 header-includes: |
 	\usepackage{pdflscape}
     \usepackage{todonotes}
