@@ -10,10 +10,10 @@ import qualified                 ForSyDe.Atom.MoC.Time as T
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.TimeStamp as Ts hiding (pi)
 
 import                           AESA.Params
-import                           Control.Monad
 import                           Control.Applicative
+import                           Control.Monad
 import                           Data.Complex
-import                           Data.Random
+import                           System.Random
 
 ------------------------------------------------------------
 
@@ -21,6 +21,9 @@ pulsePeriod = sampPeriod * timeStamp nb :: TimeStamp
 sampPeriod  = timeStamp (1 / fSampling) :: TimeStamp
 
 ------------------------------------------------------------
+-- APPROACH 1: translate Python function
+------------------------------------------------------------
+
 
 -- radix is a random number in (0,359)
 -- Distance in meters
@@ -58,7 +61,9 @@ reflectionFunc phi distance angle relativeSpeed power chanIndex t
     bigQ  = (-1) * bigA * sin (wd * t' + phi)
     value = (bigI :+ bigQ) * (cos channelDelay :+ sin channelDelay)
 
-------------------------------
+------------------------------------------------------------
+-- APPROACH 2: combine CT/DE signals to generate reflection
+------------------------------------------------------------
 
 channelReflection' :: Float -> Float -> Float -> Float -> Integer
                    -> Int -> CT.Signal (Complex Float)
@@ -118,13 +123,27 @@ objectReflection' radix distance angle relativeSpeed power
     
 -------------------------------------------------------------
 
-generateNoise :: Integer -> IO (SY.Signal (Complex Float))
-generateNoise power = do
-  isig <- repeatM $ runRVar (normal 0 $ 2 ^^ power) StdRandom
-  qsig <- repeatM $ runRVar (normal 0 $ 2 ^^ power) StdRandom
-  return $ SY.comb21 (:+) (SY.signal isig) (SY.signal qsig)
-
-repeatM f = liftA2 (:) f (repeatM f)
+noiseGenerator :: Integer -> IO (DE.Signal () ->  DE.Signal (Complex Float))
+noiseGenerator power = do
+  gen1 <- getStdGen
+  gen2 <- newStdGen
+  let sdev = 2 ^^ power
+      isig = DE.normalR (0,sdev) gen1
+      qsig = DE.normalR (0,sdev) gen2 
+  return $ \trig -> DE.comb21 (:+) (isig trig) (qsig trig)
 
 sampSignal :: DE.Signal ()
 sampSignal = DE.generate1 id (sampPeriod, ())
+
+-------------------------------------------------------------
+
+videoInData :: DE.Signal ()                               -- ^ trigger
+            -> Vector (DE.Signal (Complex Float))         -- ^ white noise
+            -> Vector (Vector (CT.Signal (Complex Float)))-- ^ reflections for all objects
+            -> Vector (SY.Signal (Complex Float))         -- ^ video Indata
+videoInData sampler noise reflections = inData
+  where
+    mixedRefl = (V.reduce . V.farm21 . CT.comb21) (+) reflections
+    sampRefl  = V.farm11 (CT.sampDE1 sampler) mixedRefl
+    noisyData = V.farm21 (DE.comb21 (+)) noise sampRefl
+    inData    = V.farm11 (snd . DE.toSY1) noisyData

@@ -29,6 +29,7 @@ library
                        numbers,
                        split,
                        random,
+                       normaldistribution,
                        forsyde-atom
                        
   hs-source-dirs:      src

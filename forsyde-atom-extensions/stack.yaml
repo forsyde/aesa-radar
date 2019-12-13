@@ -7,5 +7,6 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - numbers-3000.2.0.2
+- normaldistribution-1.1.0.3
 - git: git@github.com:forsyde/forsyde-atom.git
   commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3

@@ -11,6 +11,7 @@ packages:
 - ../forsyde-atom-extensions
 
 extra-deps:
+- normaldistribution-1.1.0.3
 - git: git@github.com:forsyde/forsyde-atom.git
   commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3
 

@@ -12,6 +12,7 @@ import Control.Monad
 import Control.DeepSeq
 import Control.Parallel.Strategies
 import Data.List
+import Data.Maybe
 
 import ForSyDe.Atom.MoC.Stream (Stream(..), tailS)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), SY(..), signal, fromSignal)
@@ -108,7 +109,10 @@ main = do
     ---------------------------------------------------------
 
 data Args = Args
-  { timeM   :: Bool
+  { genCube :: Bool
+  , numCube :: Int
+  , dumpCube:: Bool
+  , timeM   :: Bool
   , parExec :: Bool
   , inPath  :: String
   , outFile :: String
@@ -121,6 +125,10 @@ flags =
     "Distributes the simulation on multiple cores if possible."
   ,Option ['t'] ["time"]     (NoArg MeasureTime)
     "Measures and prints out execution time."
+  ,Option ['g'] ["gen"]      (OptArg (GenInData . fromMaybe "1") "NUM")
+    "Generates NUM cubes of indata instead of reading it from an input file. Default 1."
+  ,Option ['d'] ["dump"]     (NoArg DumpInData)
+    "Dumps the generate indata cube"
   ,Option ['i'] ["input"]    (ReqArg InPath "PATH")
     "Path to input data file. Default: gen/AESA_INPUT.csv"
   ,Option ['o'] ["output"]   (ReqArg DumpPath "PATH")
@@ -140,6 +148,8 @@ flags =
 data Flag
   = MeasureTime         -- -t
   | Parallel            -- -p
+  | DumpInData          -- -d
+  | GenInData String    -- -g
   | InPath String       -- -i
   | DumpPath String     -- -o
   | Intermediate String -- --inter
@@ -149,6 +159,8 @@ data Flag
 instance Eq Flag where
   MeasureTime      == MeasureTime      = True
   Parallel         == Parallel         = True
+  DumpInData       == DumpInData       = True
+  (GenInData _)    == (GenInData _)    = True
   (InPath _)       == (InPath _)       = True
   (DumpPath _)     == (DumpPath _)     = True
   (Intermediate _) == (Intermediate _) = True
@@ -156,6 +168,7 @@ instance Eq Flag where
   _ == _ = False
 
 getFlagArg (InPath s) = s
+getFlagArg (GenInData s) = s
 getFlagArg (DumpPath s) = s
 getFlagArg (Intermediate s) = s
 
@@ -163,21 +176,28 @@ getFlagArg (Intermediate s) = s
 parse argv = case getOpt Permute flags argv of
                (args,_,[]) -> do
                  let select x = filter (==x) args
-                     selArg x = let arg =  select (x "") in if null arg then "" else getFlagArg (head arg)
+                     selArg x = let arg =  select (x "")
+                                in if null arg then "" else getFlagArg (head arg)
                      timeM    = not (null (select MeasureTime)) 
                      par      = not (null (select Parallel))
+                     gen      = not (null (select $ GenInData ""))
+                     dump     = not (null (select DumpInData))
                      inter    = selArg Intermediate
-                     inPath   = let p = (selArg InPath) in if null p then "gen/AESA_INPUT.csv" else p 
-                     outFile  = let p = (selArg DumpPath) in if null p then "gen/AESA_OUT_S.csv" else p 
+                     numCubes = let p = (selArg GenInData)
+                                in if null p then 1 else (read p :: Int) 
+                     inPath   = let p = (selArg InPath)
+                                in if null p then "gen/AESA_INPUT.csv" else p 
+                     outFile  = let p = (selArg DumpPath)
+                                in if null p then "gen/AESA_OUT_S.csv" else p 
                  if Help `elem` args
                    then do hPutStrLn stderr (usageInfo header flags)
                            exitSuccess
-                   else return $ Args timeM par inPath outFile outFile inter
+                   else return $ Args gen numCubes dump timeM par inPath outFile outFile inter
                (_,_,errs)   -> do
                  hPutStrLn stderr (concat errs ++ usageInfo header flags)
                  exitWith (ExitFailure 1)
  
-  where header = "Usage: aesa-hl [-tpio|--inter=[dpcfa]|...]"
+  where header = "Usage: aesa-hl [-tpdio|--gen=NUM|--inter=[dpcfa]|...]"
  
 
 lim :: Int
