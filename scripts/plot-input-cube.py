@@ -39,7 +39,8 @@ for i in range(nantennas):
     axs[i].grid(False)
     axs[i].label_outer()
     axs[i].set_title('antenna ' + str(i), size=10)
-    axs[i].tick_params(which='major', labelsize=8, labelrotation=45);
+    axs[i].tick_params(which='major', labelsize=8# , labelrotation=45
+    );
 
 vmin = min(image.get_array().min() for image in images)
 vmax = max(image.get_array().max() for image in images)

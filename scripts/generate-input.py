@@ -93,11 +93,11 @@ def GenerateObjectReflection(AESA, Distance, Angle, RelativeSpeed, SignalPower):
     # The initial phase of a full data cube will be random
     phi_start = 2*math.pi*np.random.randint(0,359)/360
     
-    for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):
-       for RangeBinIterator in range(0, AESA["NoRangeBinInEveryPulse"]):
-           for ChannelIterator in range(0, AESA["NoDataChannels"]):
-               ChannelDelay = -1*ChannelIterator*math.pi*math.sin(Angle)
-               t = (RangeBinIterator + PulseIterator*AESA["NoRangeBinInEveryPulse"]) / AESA["Fsampling"]
+    for PulseIt in range(0, AESA["NoPulsesPerFFTBatch"]):
+       for RangeBinIt in range(0, AESA["NoRangeBinInEveryPulse"]):
+           for ChannelIt in range(0, AESA["NoDataChannels"]):
+               ChannelDelay = -1*ChannelIt*math.pi*math.sin(Angle)
+               t = (RangeBinIt + PulseIt*AESA["NoRangeBinInEveryPulse"]) / AESA["Fsampling"]
                I = A*math.cos(wd*t + phi_start)
                Q = -A*math.sin(wd*t + phi_start)
                value = (I + 1j*Q)*(math.cos(ChannelDelay) + 1j*math.sin(ChannelDelay))
@@ -105,10 +105,10 @@ def GenerateObjectReflection(AESA, Distance, Angle, RelativeSpeed, SignalPower):
 
                   
              
-               if (RangeBinIterator in range(trefl_start, trefl_stop)) and (not crossing_reflection):
-                  AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator] = AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator] + value
-               if not (RangeBinIterator in range(trefl_start, trefl_stop)) and (crossing_reflection):
-                  AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator] = AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator] + value
+               if (RangeBinIt in range(trefl_start, trefl_stop)) and (not crossing_reflection):
+                  AESA["InputData"][ChannelIt][RangeBinIt][PulseIt] = AESA["InputData"][ChannelIt][RangeBinIt][PulseIt] + value
+               if not (RangeBinIt in range(trefl_start, trefl_stop)) and (crossing_reflection):
+                  AESA["InputData"][ChannelIt][RangeBinIt][PulseIt] = AESA["InputData"][ChannelIt][RangeBinIt][PulseIt] + value
 
 
 
@@ -119,13 +119,13 @@ def GenerateObjectReflection(AESA, Distance, Angle, RelativeSpeed, SignalPower):
 #                                                         #
 ###########################################################
 def GenerateNoise(AESA, SignalPower):
-    for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):
-       for RangeBinIterator in range(0, AESA["NoRangeBinInEveryPulse"]):
-           for ChannelIterator in range(0, AESA["NoDataChannels"]):
+    for PulseIt in range(0, AESA["NoPulsesPerFFTBatch"]):
+       for RangeBinIt in range(0, AESA["NoRangeBinInEveryPulse"]):
+           for ChannelIt in range(0, AESA["NoDataChannels"]):
                valueI = np.random.normal(0, math.pow(2,SignalPower))   
                valueQ = np.random.normal(0, math.pow(2,SignalPower))
                value = valueI + 1j*valueQ
-               AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator] = AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator] + value
+               AESA["InputData"][ChannelIt][RangeBinIt][PulseIt] = AESA["InputData"][ChannelIt][RangeBinIt][PulseIt] + value
 
 
 
@@ -182,16 +182,16 @@ if not os.path.exists(odirPath):
 
 #with open('AESA_DATA.csv', mode='w') as data_file:
 #    data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-#    for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):
-#       for RangeBinIterator in range(0, AESA["NoRangeBinInEveryPulse"]):
+#    for PulseIt in range(0, AESA["NoPulsesPerFFTBatch"]):
+#       for RangeBinIt in range(0, AESA["NoRangeBinInEveryPulse"]):
 #           WriteCSVRow = list()
-#           for ChannelIterator in range(0, AESA["NoDataChannels"]):
+#           for ChannelIt in range(0, AESA["NoDataChannels"]):
 #               # Output I and Q separately, scaled from 0 to (2^AESA["DataWidthIn"]-1) 
-##               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].real*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
-##               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].imag*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
+##               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].real*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
+##               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].imag*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
 #
-#               WriteCSVRow.append(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].real)
-#               WriteCSVRow.append(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].imag)
+#               WriteCSVRow.append(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].real)
+#               WriteCSVRow.append(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].imag)
 #
 #           data_writer.writerow(WriteCSVRow)
            
@@ -200,22 +200,22 @@ if not os.path.exists(odirPath):
 #    WriteArray = list()
 #    
 #    data_writer = csv.writer(data_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-#    for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):
-#       for RangeBinIterator in range(0, AESA["NoRangeBinInEveryPulse"]):
+#    for PulseIt in range(0, AESA["NoPulsesPerFFTBatch"]):
+#       for RangeBinIt in range(0, AESA["NoRangeBinInEveryPulse"]):
 #           WriteCSVRow = list()
-#           for ChannelIterator in range(0, AESA["NoDataChannels"]):
+#           for ChannelIt in range(0, AESA["NoDataChannels"]):
                # Output I and Q separately, scaled from 0 to (2^AESA["DataWidthIn"]-1) 
-#               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].real*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
-#               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].imag*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
+#               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].real*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
+#               WriteCSVRow.append(math.floor(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].imag*pow(2,AESA["DataWidthIn"]-1) + pow(2,AESA["DataWidthIn"]-1)))
 
 with open(args.o, mode='w') as data_file:
     data_writer = csv.writer(data_file, delimiter=' ', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    for CubeIterator in range(0, AESA["NoInCubes"]):
-        for PulseIterator in range(0, AESA["NoPulsesPerFFTBatch"]):
-            for RangeBinIterator in range(0, AESA["NoRangeBinInEveryPulse"]):
+    for CubeIt in range(0, AESA["NoInCubes"]):
+        for PulseIt in range(0, AESA["NoPulsesPerFFTBatch"]):
+            for RangeBinIt in range(0, AESA["NoRangeBinInEveryPulse"]):
                 WriteCSVRow = list()
-                for ChannelIterator in range(0, AESA["NoDataChannels"]):
+                for ChannelIt in range(0, AESA["NoDataChannels"]):
                     # Output I and Q separately, scaled from 0 to (2^AESA["DataWidthIn"]-1) 
-                    WriteCSVRow.append('{:f}'.format(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].real))
-                    WriteCSVRow.append('{:f}'.format(AESA["InputData"][ChannelIterator][RangeBinIterator][PulseIterator].imag))
+                    WriteCSVRow.append('{:f}'.format(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].real))
+                    WriteCSVRow.append('{:f}'.format(AESA["InputData"][ChannelIt][RangeBinIt][PulseIt].imag))
                 data_writer.writerow(WriteCSVRow)

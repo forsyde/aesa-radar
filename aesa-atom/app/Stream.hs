@@ -13,44 +13,49 @@ import Control.DeepSeq
 import Control.Parallel.Strategies
 import Data.List
 import Data.Maybe
+import System.Random
 
-import ForSyDe.Atom.MoC.Stream (Stream(..), tailS)
+import ForSyDe.Atom.MoC.Stream (Stream(..), tailS, takeS)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), SY(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF (Signal(..), signal, fromSignal)
-import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11)
+import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11, first)
 
 import AESA.StreamsAtom
 import AESA.Params
+import AESA.Radar
 
 import Utils
 
 main = do
-  iargs <- getArgs >>= parse
-  inPath <- checkIfFile (inFilePath iargs)
+  iargs  <- getArgs >>= parse
   outDir <- checkIfDir (outFile iargs)
-  -- Begin execution
-  putStrLn $ "Reading the indata at: " ++ inPath ++ "..."
-  aesaIn <- readInData inPath
+  iSigs  <- generateInput iargs
   let args      = iargs { outPath=outDir }
-      nAntennas = length aesaIn
-      nSamples  = length $ head aesaIn
+      nAntennas = length $ fromVector iSigs
+      nSamples  = length $ SY.fromSignal $ V.first iSigs
   print args
-  putStrLn $ "Read " ++ show nAntennas ++ " * " ++ show nSamples
+  putStrLn $ "Operating on " ++ show nAntennas ++ " * " ++ show nSamples
     ++ " complex samples which means " ++ show ((nAntennas * nSamples) `div` (nA * nb * nFFT))
     ++ " indata cube(s)..."
-  let iSigs           = map SY.signal aesaIn
-      beams           = dbf $ vector iSigs
+  -------------------------------------------------
+  when (dumpCube args) $ do
+    let inData  = toListVecSig SY.fromSignal iSigs
+        indFile = outPath args ++ "/AESA_GENERATED_INDATA.csv"
+    dumpData2 indFile showComplex inData  >> printDimen2 "AESAi  :" inData
+    exitSuccess
+  -------------------------------------------------
+  let beams           = dbf iSigs
       oPC             = pc beams
       (oCTR,oCTL)     = ct oPC
       (oDFBR,oDFBL)   = (dfb oCTR,dfb oCTL)
       (oCFARR,oCFARL) = (cfar oDFBR,cfar oDFBL)
-      oAESA           = let aesa = int oCFARR oCFARL
-                        in if (parExec args)
-                           then vector (fromVector aesa `using` parList rdeepseq)
-                           else aesa
+      oAESA  = let aesa = int oCFARR oCFARL
+               in if (parExec args)
+                  then vector (fromVector aesa `using` parList rdeepseq)
+                  else aesa
       ------------------------------------------------------
       -- declarations for unwrapped (dumpable) data
-      inData       = toListVecSig SY.fromSignal $ vector iSigs
+      inData       = toListVecSig SY.fromSignal iSigs
       outDbfData   = toListVecSig SY.fromSignal beams
       outPcData    = toListVecSig SDF.fromSignal oPC
       outCtrData   = toListVecSig SDF.fromSignal oCTR
@@ -105,8 +110,40 @@ main = do
       'a' -> dumpData3 (fst $ cfarOutFile args) showFloat outCfarrData >> printDimen3 "CFARro :" outCfarrData >>
              dumpData3 (snd $ cfarOutFile args) showFloat outCfarlData >> printDimen3 "CFARlo :" outCfarlData
       'o' -> dumpData3 (outFilePath args) showFloat outAesaData        >> printDimen3 "AESAo  :" outAesaData
-      ls_ -> return ()
+      _   -> return ()
     ---------------------------------------------------------
+
+generateInput args = do
+  noiseG <- replicateM nA $ noiseGenerator (-6)
+  randG  <- getStdGen
+  let [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13] = take 13 $ randomRs (0,359) randG
+      objs = vector
+        [ objectReflection' r1  12e3 (pi/3 + 2*(pi-2*pi/3)/7)     (0.94)   (-6)
+        , objectReflection' r2  13e3 (pi/3 + 2*(pi-2*pi/3)/7)   (5*0.94) (-6)
+        , objectReflection' r3  14e3 (pi/3 + 2*(pi-2*pi/3)/7)  (10*0.94) (-6)
+        , objectReflection' r4  15e3 (pi/3 + 2*(pi-2*pi/3)/7)    (-0.94) (-2)
+        ,
+          objectReflection' r5  16e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-2*0.94) (-2)
+        ,
+          objectReflection' r6  17e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-3*0.94) (-2)
+        , objectReflection' r7  18e3 (pi/3 + 2*(pi-2*pi/3)/7) (-20*0.94) (-4)
+        , objectReflection' r8  19e3 (pi/3 + 2*(pi-2*pi/3)/7) (-23*0.94) (-4)
+        , objectReflection' r9  20e3 (pi/3 + 2*(pi-2*pi/3)/7) (-26*0.94) (-4)
+        , objectReflection' r10 21e3 (pi/3 + 2*(pi-2*pi/3)/7) (-29*0.94) (-4)
+        , objectReflection' r11 25e3 (pi/3 + 2*(pi-2*pi/3)/7) (-15*0.94) (-2)
+        , objectReflection' r12 25.4e3 (pi/3 + 2.1*(pi-2*pi/3)/7) (-15*0.94) (-4)
+        , objectReflection' r13 25.2e3 (pi/3 + 2.2*(pi-2*pi/3)/7) (-15*0.94) (-3)
+        ]
+  let noise = vector $ map ($ sampSignal) noiseG
+      gend  = videoInData sampSignal noise objs
+  if genCube args then do
+    putStrLn $ "Generating " ++ show (numCube args) ++ " indata cubes..."
+    return $ farm11 (takeS $ numCube args * nb * nFFT) gend
+    else do
+    fPath  <- checkIfFile (inPath args)
+    aesaIn <- readInData fPath
+    putStrLn $ "Reading the indata at: " ++ fPath ++ "..."
+    return $ vector $ map SY.signal aesaIn
 
 data Args = Args
   { genCube :: Bool

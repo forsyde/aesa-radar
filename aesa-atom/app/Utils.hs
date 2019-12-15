@@ -1,9 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Utils where
 
 import qualified Data.ByteString.Char8 as S
 import           Data.ByteString.Lex.Fractional
 import qualified Data.ByteString.Unsafe as S
 import           Data.Complex
+import           Data.Maybe
 import           Data.Double.Conversion.ByteString
 import           Data.List
 import           System.Directory
@@ -41,15 +43,20 @@ getSamples = getReal []
                     Just (k,rst)  -> if S.null rst
                                      then error "You should not be here!"
                                      else getImag k n (S.tail rst)
-    getImag r n s = case readSDecimal s of
-                      Nothing     -> error "AAAA!"
-                      Just (k,rst)-> if S.null rst
-                                     then n ++ [r :+ k]
-                                     else getReal (n ++ [r :+ k]) (S.tail rst)
+    getImag r n s
+      | "Infinity" `S.isPrefixOf` s =
+        let rst = fromMaybe s $ S.stripPrefix "Infinity " s
+        in getReal (n ++ [r :+ 0]) (S.tail rst)
+      | otherwise =
+        case readSDecimal s of
+          Nothing     -> error $ "AAAA!" ++ show s
+          Just (k,rst)-> if S.null rst
+                         then n ++ [r :+ k]
+                         else getReal (n ++ [r :+ k]) (S.tail rst)
                                           
 showComplex :: Complex Float -> S.ByteString
--- showComplex x = ' ' `S.cons` toFixed 6 (realToFrac $ realPart x) `S.append` (' ' `S.cons` toFixed 6 (realToFrac $ imagPart x))
-showComplex x = ' ' `S.cons` toShortest (realToFrac $ realPart x) `S.append` (' ' `S.cons` toShortest (realToFrac $ imagPart x))
+showComplex x = ' ' `S.cons` toFixed 6 (realToFrac $ realPart x) `S.append` (' ' `S.cons` toFixed 6 (realToFrac $ imagPart x))
+-- showComplex x = ' ' `S.cons` toShortest (realToFrac $ realPart x) `S.append` (' ' `S.cons` toShortest (realToFrac $ imagPart x))
 
 showFloat :: Float -> S.ByteString
 -- showFloat x = ' ' `S.cons` toFixed 8 (realToFrac x)
