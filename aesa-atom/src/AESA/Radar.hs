@@ -1,20 +1,25 @@
-{-# LANGUAGE PackageImports #-} --can be ignored
+{-# LANGUAGE PackageImports, FlexibleInstances, TypeSynonymInstances #-} --can be ignored
 module AESA.Radar where
 
-import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY as SY
-import                           ForSyDe.Atom.MoC.CT as CT
+import "forsyde-atom-extensions" ForSyDe.Atom.MoC.CT as CT
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.DE as DE
+import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY as SY
 import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 
-import qualified                 ForSyDe.Atom.MoC.Time as T
+import "forsyde-atom-extensions" ForSyDe.Atom.MoC.Time as T
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.TimeStamp as Ts hiding (pi)
 
 import                           AESA.Params
 import                           Data.Complex
 import                           System.Random
-import Data.Ratio
+import                           Data.Ratio
 
 ------------------------------------------------------------
+
+type CTSignal a = CT.Signal Rational a
+type DESignal a = DE.Signal Rational a
+
+instance TimeStamp (Rational)
 
 
 freqRadar'  = 10e9 :: Rational
@@ -23,12 +28,13 @@ dElements'  = waveLength' / 2
 fSampling'  = 3e6 :: Rational
 pulseWidth' = 1e-6 :: Rational
 
-sampPeriod'  = timeStamp (1 / fSampling') :: TimeStamp
--- !!!!!! WHY 2 * numObjects?!!!
-pulsePeriod' = timeStamp (sampPeriod' * realToFrac (nb-26)) :: TimeStamp
--- pulsePeriod' = microsec (ceiling $ 1%3 * realToFrac nb)
 
--- pulsePeriod = timeStamp nb / timeStamp fSampling - timeStamp pulseWidth
+sampPeriod'  = 1 / fSampling' :: Rational
+-- !!!!!! WHY 2 * numObjects?!!!
+pulsePeriod' = sampPeriod' * realToFrac nb
+-- pulsePeriod' = sampPeriod' * realToFrac (nb-26) :: Rational
+-- pulsePeriod' = microsec (ceiling $ 1%3 * realToFrac nb)
+-- pulsePeriod' = realToFrac nb / realToFrac fSampling
 
 ------------------------------------------------------------
 -- APPROACH 1: translate Python function
@@ -40,7 +46,7 @@ pulsePeriod' = timeStamp (sampPeriod' * realToFrac (nb-26)) :: TimeStamp
 -- Relative speed in m/s, positive relative speed means approaching object
 -- Angle to object, given as Theta above
 channelReflection :: Float -> Float -> Float -> Float -> Integer
-                   -> Int -> CT.Signal (Complex Float)
+                   -> Int -> CTSignal (Complex Float)
 channelReflection phi distance angle relativeSpeed power chanIndex
   = CT.infinite1 (reflectionFunc phi distance angle relativeSpeed power chanIndex)
 
@@ -80,22 +86,20 @@ reflectionFunc phi distance angle relativeSpeed signalPower chanIx t
 ------------------------------------------------------------
 
 channelReflection' :: Float -> Float -> Float -> Float -> Integer
-                   -> Int -> CT.Signal (Complex Float)
+                   -> Int -> CTSignal (Complex Float)
 channelReflection' phi distance angle relativeSpeed power chanIndex
   -- delay the modulated pulse reflections according to the object distance.
   -- until the first reflection is observed, the signal is constant 0
   = CT.comb21 (*) pulseSig (modulationSig chanIndex)
   where
     -- convert floating point numbers to timestamp format
-    distance'    = timeStamp distance
-    pulseWidth'' = timeStamp pulseWidth'
+    distance'    = realToFrac distance
 
     -- reflection time, given as timestamp
     reflTime      = 2 * distance' / 3e8
 
     -- a discrete (infinite) PWM signal with amplitude 1, converted to CT domain
-    pulseSig      = DE.toCT1 $ DE.comb11 T.const
-                    $ DE.delay reflTime 0 $ pwm pulseWidth'' pulsePeriod'
+    pulseSig      = DE.hold1 $ DE.delay reflTime 0 $ pwm pulseWidth' pulsePeriod'
 
     -- an infinite CT signal describing the modulation for each channel
     modulationSig = CT.infinite1 . reflectionEnvelope phi angle relativeSpeed power
@@ -123,14 +127,14 @@ reflectionEnvelope phi angle relativeSpeed power chanIdx t
 -------------------------------------------------------------
 
 objectReflection :: Float -> Float -> Float -> Float -> Integer
-                 -> Vector (CT.Signal (Complex Float))
+                 -> Vector (CTSignal (Complex Float))
 objectReflection radix distance angle relativeSpeed power
   = V.farm11 (channelReflection phi_start distance angle relativeSpeed power)
     (vector [0..nA-1])
   where phi_start = 2 * pi * radix / 360
 
 objectReflection' :: Float -> Float -> Float -> Float -> Integer
-                  -> Vector (CT.Signal (Complex Float))
+                  -> Vector (CTSignal (Complex Float))
 objectReflection' radix distance angle relativeSpeed power
   = V.farm11 (channelReflection' phi_start distance angle relativeSpeed power)
     (vector [0..nA-1])
@@ -138,7 +142,7 @@ objectReflection' radix distance angle relativeSpeed power
     
 -------------------------------------------------------------
 
-noiseGenerator :: Integer -> IO (DE.Signal () ->  DE.Signal (Complex Float))
+noiseGenerator :: Integer -> IO (DESignal () ->  DESignal (Complex Float))
 noiseGenerator power = do
   gen1 <- getStdGen
   gen2 <- newStdGen
@@ -147,14 +151,14 @@ noiseGenerator power = do
       qsig = DE.normalR (0,sdev) gen2 
   return $ \trig -> DE.comb21 (:+) (isig trig) (qsig trig)
 
-sampSignal :: DE.Signal ()
+sampSignal :: DESignal ()
 sampSignal = DE.generate1 id (sampPeriod', ())
 
 -------------------------------------------------------------
 
-videoInData :: DE.Signal ()                               -- ^ trigger
-            -> Vector (DE.Signal (Complex Float))         -- ^ white noise
-            -> Vector (Vector (CT.Signal (Complex Float)))
+videoInData :: DESignal ()                               -- ^ trigger
+            -> Vector (DESignal (Complex Float))         -- ^ white noise
+            -> Vector (Vector (CTSignal (Complex Float)))
             -- ^ reflections for all objects
             -> Vector (SY.Signal (Complex Float))         -- ^ video Indata
 videoInData sampler noise reflections = inData
