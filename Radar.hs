@@ -8,6 +8,8 @@ import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V
 
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.Time as T
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.TimeStamp as Ts hiding (pi)
+import "forsyde-atom-extensions" ForSyDe.Atom.Probability as Prob
+import "forsyde-atom-extensions" ForSyDe.Atom.Probability.Normal as N
 
 import                           AESA.Params
 import                           Data.Complex
@@ -27,7 +29,6 @@ waveLength' = 3e8 / freqRadar'
 dElements'  = waveLength' / 2
 fSampling'  = 3e6 :: Rational
 pulseWidth' = 1e-6 :: Rational
-
 
 sampPeriod'  = 1 / fSampling' :: Rational
 -- !!!!!! WHY 2 * numObjects?!!!
@@ -90,8 +91,9 @@ channelReflection' :: Float -> Float -> Float -> Float -> Integer
 channelReflection' phi distance angle relativeSpeed power chanIndex
   -- delay the modulated pulse reflections according to the object distance.
   -- until the first reflection is observed, the signal is constant 0
-  = CT.comb21 (*) pulseSig (modulationSig chanIndex)
+  = CT.comb21 (+) pulseSig (modulationSig chanIndex)
   where
+    
     -- convert floating point numbers to timestamp format
     distance'    = realToFrac distance
 
@@ -142,28 +144,47 @@ objectReflection' radix distance angle relativeSpeed power
     
 -------------------------------------------------------------
 
-noiseGenerator :: Integer -> IO (DESignal () ->  DESignal (Complex Float))
-noiseGenerator power = do
-  gen1 <- getStdGen
-  gen2 <- newStdGen
-  let sdev = 2 ^^ power
-      isig = DE.normalR (0,sdev) gen1
-      qsig = DE.normalR (0,sdev) gen2 
-  return $ \trig -> DE.comb21 (:+) (isig trig) (qsig trig)
+-- noiseGenerator :: Integer -> IO (DESignal () ->  DESignal (Complex Float))
+-- noiseGenerator power = do
+--   gen1 <- getStdGen
+--   gen2 <- newStdGen
+--   let sdev = 2 ^^ power
+--       isig = DE.normalR (0,sdev) gen1
+--       qsig = DE.normalR (0,sdev) gen2 
+--   return $ \trig -> DE.comb21 (:+) (isig trig) (qsig trig)
 
 sampSignal :: DESignal ()
 sampSignal = DE.generate1 id (sampPeriod', ())
 
 -------------------------------------------------------------
 
-videoInData :: DESignal ()                               -- ^ trigger
-            -> Vector (DESignal (Complex Float))         -- ^ white noise
+videoInData :: Integer                            -- ^ Noise power
+            -> DESignal ()                        -- ^ trigger
+            -> Vector (SY.Signal StdGen)          -- ^ random seeds for sampling
             -> Vector (Vector (CTSignal (Complex Float)))
             -- ^ reflections for all objects
-            -> Vector (SY.Signal (Complex Float))         -- ^ video Indata
-videoInData sampler noise reflections = inData
+            -> Vector (SY.Signal (Complex Float)) -- ^ video Indata
+videoInData noisePow sampler seeds reflections = V.farm21 sampSig seeds mixedRefl
   where
-    mixedRefl = (V.reduce . V.farm21 . CT.comb21) (+) reflections
-    sampRefl  = V.farm11 (CT.sampDE1 sampler) mixedRefl
-    noisyData = V.farm21 (DE.comb21 (+)) noise sampRefl
-    inData    = V.farm11 (snd . DE.toSY1) noisyData
+    mixedRefl    = (V.reduce . V.farm21 . CT.comb21) (+) reflections
+    sampSig seed = -- SY.comb21 (\s a ->
+                   --              Prob.sample s (realPart a)
+                   --             :+ Prob.sample s (imagPart a)) seed
+                   -- -- sample on distribution
+                   -- .
+      SY.comb21 (+) (SY.comb11 (\g -> Prob.sample g $ N.normal (2 ^^ noisePow) 0) seed)
+      . snd . DE.toSY1 . CT.sampDE1 sampler  -- CT/SY "ADC"
+                   -- . CT.comb11 (\a ->
+                   --                N.normal (2 ^^ noisePow) (realPart a)
+                   --               :+ N.normal (2 ^^ noisePow) (imagPart a))
+                   -- characterize noise
+
+
+instance Random (Complex Float) where
+  randomR (lo,hi) g = let (i,g')  = randomR (realPart lo, realPart hi) g
+                          (q,g'') = randomR (imagPart lo, imagPart hi) g'
+                      in (i:+q, g'')
+  random g  = let (i,g')  = random g
+                  (q,g'') = random g'
+              in (i:+q, g'')
+

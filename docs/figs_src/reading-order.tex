@@ -2,16 +2,17 @@
 \usepackage{tikz}
 
 \begin{document}
-\begin{tikzpicture}[%
+\begin{tikzpicture}[scale=.8, every node/.style={scale=.8},%
   chap/.style={fill=gray!10,draw,rounded corners,inner sep=7pt},
   w/.style={anchor=west},
   >=latex]
   \draw[] (0,0) node[chap] (c1) {1}
   --++(2,0) node[chap] (c2) {2} (c1) -- ++(2,-2) node[chap] (c3) {3}
-  (c2) --++(2,-2) node[chap] (c4) {4}
-  (c2) --++(2,0) node[chap] (c51) {5.1} --++(2,-2) node[chap] (c52) {5.3}
-  (c51) --++(2,0) node[chap] (c61) {6.1, 6.2}
-  (c61) --++(2.5,0) node[chap] (c63) {6.3, 6.4}
+  (c2) --++(2,-2) node[chap] (c4) {5}
+  (c2) --++(2,2) node[chap] (c4prim) {4}
+  (c2) --++(2,0) node[chap] (c51) {6.1} --++(2,-2) node[chap] (c52) {6.3}
+  (c51) --++(2,0) node[chap] (c61) {7.1, 7.2}
+  (c61) --++(2.5,0) node[chap] (c63) {7.3, 7.4}
   (c4) -- (c52) -- (c61) (c3) -- (c2);
   \draw[dashed] (c3) -- (c63);
   \node at (-.5,.5) {}; \node at (8.5,-2.5) {};

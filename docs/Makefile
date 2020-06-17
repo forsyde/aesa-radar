@@ -10,18 +10,19 @@ LHS_FILES :=	21:../aesa-atom/src/AESA/CubesAtom.lhs \
 		22:../aesa-atom/src/AESA/Params.lhs \
 		23:../aesa-atom/src/AESA/Coefs.lhs \
 		31:../aesa-shallow/src/AESA/CubesShallow.lhs \
-		41:../aesa-atom/test/SpecCube.lhs \
-		42:../aesa-atom/test/Generators.lhs \
-		51:../aesa-atom/src/AESA/StreamsAtom.lhs \
-		56:../aesa-atom/test/SpecStream.lhs \
-		61:../aesa-deep/src/AESA/PC/R1.lhs \
-		61a:../aesa-deep/test/TestR1.lhs \
-		62:../aesa-deep/src/AESA/PC/R2.lhs \
-		62a:../aesa-deep/test/TestR2.lhs \
-		63:../aesa-deep/src/AESA/PC/R3.lhs \
-		63a:../aesa-deep/test/TestR3.lhs \
-		64:../aesa-deep/src/AESA/PC/R4.lhs \
-		64a:../aesa-deep/test/TestR4.lhs
+		41:../aesa-atom/src/AESA/Radar.lhs \
+		51:../aesa-atom/test/SpecCube.lhs \
+		52:../aesa-atom/test/Generators.lhs \
+		61:../aesa-atom/src/AESA/StreamsAtom.lhs \
+		66:../aesa-atom/test/SpecStream.lhs \
+		71:../aesa-deep/src/AESA/PC/R1.lhs \
+		71a:../aesa-deep/test/TestR1.lhs \
+		72:../aesa-deep/src/AESA/PC/R2.lhs \
+		72a:../aesa-deep/test/TestR2.lhs \
+		73:../aesa-deep/src/AESA/PC/R3.lhs \
+		73a:../aesa-deep/test/TestR3.lhs \
+		74:../aesa-deep/src/AESA/PC/R4.lhs \
+		74a:../aesa-deep/test/TestR4.lhs
 
 BIB_FILE := refs.bib
 TX_FILES := $(patsubst $(TXT_DIR)/%.md, $(MD_DIR)/%.md, $(wildcard $(TXT_DIR)/*.md))
@@ -111,7 +112,8 @@ $(PDF_FIGS): figs/%.pdf: figs_src/%.pdf
 	cp $(<) $@
 
 $(PNG_FIGS): figs/%.png: figs/%.pdf
-	convert -density 150 $< -scale 80% -quality 90 $@
+	pdftoppm $< $@ -png
+#	convert -density 150 $< -scale 80% -quality 90 $@
 #	 sed -i 's|<svg|<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" |g' $@
 #	pdf2svg $(<) $@
 

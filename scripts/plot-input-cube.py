@@ -25,7 +25,7 @@ abscube = []
 for i in range(nantennas):
     reals = cube[2*i]
     imags = cube[2*i+1]
-    abscube.append(np.array(list(map(lambda x, y: 20*math.log10(math.sqrt(x*x+y*y)), reals, imags))))
+    abscube.append(np.array(list(map(lambda x, y: 20*math.log10(math.sqrt(x*x+y*y)) if (x + y) != 0 else 0, reals, imags))))
 
 antennas=[]
 for c in abscube:

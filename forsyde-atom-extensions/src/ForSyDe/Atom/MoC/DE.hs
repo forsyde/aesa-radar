@@ -211,7 +211,7 @@ module ForSyDe.Atom.MoC.DE (
 
   -- ** Project utils
 
-  timeStamps, pwm, random, randomR, normal, normalR
+  timeStamps, pwm --, random, randomR, normal, normalR
       
  ) where
 

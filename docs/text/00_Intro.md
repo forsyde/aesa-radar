@@ -106,9 +106,11 @@ an introduction to the AESA application. In @sec:atom a high-level, functionally
 complete ForSyDe-Atom model of the application is thoroughly presented with respect to
 the specification, and tested against a set of known input data. In @sec:shallow an
 equivalent model written in ForSyDe-Shallow is briefly presented and tested, to show
-the main similarities and differences between the two modeling APIs. In @sec:props is
-introduced the concept of property checking for the purpose of validation of ForSyDe
-designs. We formulate a set of properties in the
+the main similarities and differences between the two modeling APIs. In @sec:radar we
+model the radar environment as describing the object reflections, represented by
+continuous signals in time subjected to white noize. In @sec:props is introduced the
+concept of property checking for the purpose of validation of ForSyDe designs. We
+formulate a set of properties in the
 [QuicCheck](https://begriffs.com/posts/2017-01-14-design-use-quickcheck.html) DSL for
 each component of the AESA model which are validated against a number of
 randomly-generated tests. In @sec:atom-network we focus on refining the behavior of

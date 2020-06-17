@@ -33,6 +33,9 @@ library
                    , ForSyDe.Atom.MoC.CT.Interface
                    , ForSyDe.Atom.MoC.SDF
                    , ForSyDe.Atom.MoC.BDF
+                   , ForSyDe.Atom.Probability
+                   , ForSyDe.Atom.Probability.Normal
+                   , ForSyDe.Atom.Probability.Uniform
   other-modules:     Paths_forsyde_atom_extensions
   -- other-extensions:
   build-depends:       base >=4.2 && <5,

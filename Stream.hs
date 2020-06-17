@@ -19,8 +19,8 @@ import ForSyDe.Atom.MoC.Stream (Stream(..), tailS, takeS)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SY  as SY  (Signal(..), SY(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.MoC.SDF as SDF (Signal(..), signal, fromSignal)
 import "forsyde-atom-extensions" ForSyDe.Atom.Skeleton.Vector as V (Vector(..), vector, fromVector, farm11, first)
-import ForSyDe.Atom.Probability
 
+import ForSyDe.Atom.Probability
 import AESA.StreamsAtom
 import AESA.Params
 import AESA.Radar
@@ -115,20 +115,16 @@ main = do
     ---------------------------------------------------------
 
 generateInput args = do
-  -- noiseG <- replicateM nA $ noiseGenerator (-6)
-  -- randG  <- getStdGen
   randG  <- getStdGen
-  seeds  <- replicateM nA (mkStdGens <$> newStdGen) -- :: IO [[Int]]
+  seeds  <- replicateM nA (buildGens (random :: StdGen -> (Float,StdGen)) <$> newStdGen) -- :: IO [[Int]]
   let [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13] = take 13 $ randomRs (0,359) randG
       objs = vector
         [ objectReflection' r1  12e3 (pi/3 + 2*(pi-2*pi/3)/7)     (0.94)   (-6)
         , objectReflection' r2  13e3 (pi/3 + 2*(pi-2*pi/3)/7)   (5*0.94) (-6)
         , objectReflection' r3  14e3 (pi/3 + 2*(pi-2*pi/3)/7)  (10*0.94) (-6)
         , objectReflection' r4  15e3 (pi/3 + 2*(pi-2*pi/3)/7)    (-0.94) (-2)
-        ,
-          objectReflection' r5  16e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-2*0.94) (-2)
-        ,
-          objectReflection' r6  17e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-3*0.94) (-2)
+        , objectReflection' r5  16e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-2*0.94) (-2)
+        , objectReflection' r6  17e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-3*0.94) (-2)
         , objectReflection' r7  18e3 (pi/3 + 2*(pi-2*pi/3)/7) (-20*0.94) (-4)
         , objectReflection' r8  19e3 (pi/3 + 2*(pi-2*pi/3)/7) (-23*0.94) (-4)
         , objectReflection' r9  20e3 (pi/3 + 2*(pi-2*pi/3)/7) (-26*0.94) (-4)
@@ -137,8 +133,6 @@ generateInput args = do
         , objectReflection' r12 25.4e3 (pi/3 + 2.1*(pi-2*pi/3)/7) (-15*0.94) (-4)
         , objectReflection' r13 25.2e3 (pi/3 + 2.2*(pi-2*pi/3)/7) (-15*0.94) (-3)
         ]
-  -- let noise = vector $ map ($ sampSignal) noiseG
-  --     gend  = videoInData sampSignal noise objs
   let seedGens = vector $ map (SY.signal) $ seeds
       genData  = videoInData (-6) sampSignal seedGens objs
   if genCube args then do
@@ -164,11 +158,11 @@ data Args = Args
              
 flags =
   [Option ['p'] ["parallel"] (NoArg Parallel)
-    "Distributes the simulation on multiple cores if possible."
+    "Distributes the simulation on multiple cores if possible.\n(Not implemented)"
   ,Option ['t'] ["time"]     (NoArg MeasureTime)
     "Measures and prints out execution time."
   ,Option ['g'] ["gen"]      (OptArg (GenInData . fromMaybe "1") "NUM")
-    "Generates NUM cubes of indata instead of reading it from an input file. Default 1."
+    "Generates NUM cubes of indata instead of reading from an\n input file. Default 1."
   ,Option ['d'] ["dump"]     (NoArg DumpInData)
     "Dumps the generate indata cube"
   ,Option ['i'] ["input"]    (ReqArg InPath "PATH")

@@ -1,4 +1,4 @@
-#!/usr/bin/env runhaskell
+#!/usr/bin/env stack exec runhaskell
 import Text.Pandoc.JSON
 import System.FilePath
 

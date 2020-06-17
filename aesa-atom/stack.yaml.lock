@@ -5,13 +5,6 @@
 
 packages:
 - completed:
-    hackage: numbers-3000.2.0.2@sha256:fedb235e16f19ffb5dc40711738c29e231fae4ad608473880a1f59ba5f60829e,1757
-    pantry-tree:
-      size: 845
-      sha256: 8b21054c6431e81d0cb58611caabc07feac8ef40854e5f72b553edddb72cee43
-  original:
-    hackage: numbers-3000.2.0.2
-- completed:
     hackage: normaldistribution-1.1.0.3@sha256:2615b784c4112cbf6ffa0e2b55b76790290a9b9dff18a05d8c89aa374b213477,2160
     pantry-tree:
       size: 269
@@ -34,7 +27,7 @@ packages:
     commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3
 snapshots:
 - completed:
-    size: 527836
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/11/22.yaml
-    sha256: 341870ac98d8a9f8f77c4adf2e9e0b22063e264a7fbeb4c85b7af5f380dac60e
-  original: lts-11.22
+    size: 525493
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/11/13.yaml
+    sha256: 3ff9a02d995443604a515624f8ae5bc3ba492c89b977000d7b3fbaf91889b224
+  original: lts-11.13
