@@ -34,7 +34,7 @@ distribution to represent white noise.
 > import "forsyde-atom-extensions" ForSyDe.Atom.Probability as Prob
 > import "forsyde-atom-extensions" ForSyDe.Atom.Probability.Normal as N
 
-We also import other necessary utilities.
+Other necessary utilities are also imported.
 
 > import                           AESA.Params
 > import                           Data.Complex
@@ -61,6 +61,24 @@ The beamforming principle, illustrated in @fig:aesa-beamforming and briefly pres
 
 ![The geometry for beamforming calculations](figs/beamform-calculations.png){#fig:aesa-calculations height=3.5cm}
 
+According to basic radar principles, an object is detected by sending carrier pulse
+wave (usually in GHz band, pulse width $w$, period $p$), and decoding the cumulative
+information from the returning signal, such as reflection time $r$ or phase modulation
+$\phi$. In an AESA radar, the constructive interference created by multiple
+simultaneous detections (see @fig:aesa-beamforming) infers information about direction
+or speed. Each antenna element is extracting phase information as complex numbers
+$I+iQ$ where $I=A\cos(\phi t)$ and $Q=A\sin(\phi t)$, which are then samples them and
+stores them into range bins, like in @fig:aesa-iq.
+
+![Extracting the phase information](figs/iq.pdf){#fig:aesa-iq}
+
+We model the radar environment by recreating, in CT domain, the image of signals
+reflected by arbitrary objects, as perceived by every antenna element. Since many of
+the calculations are time-dependent, we need a high precision for the number
+representation. Therefore, as with the time representation, the coefficients
+representing the radar physics need to be _defined_ as rationals (and not just
+converted), hence we define `'` alternatives to the coeficients in `AESA.Params`.
+
 > freqRadar'  = 10e9              :: Rational
 > waveLength' = 3e8 / freqRadar'
 > dElements'  = waveLength' / 2
@@ -69,26 +87,34 @@ The beamforming principle, illustrated in @fig:aesa-beamforming and briefly pres
 > sampPeriod'  = 1 / fSampling'   :: Rational
 > pulsePeriod' = sampPeriod' * realToFrac nb
 
- ### Approach 1: Translate Discrete Interpretation{#sec:atom-radar-app1}
+We approach modeling of the object reflection signals from two perspectives: the first
+one is a simple "translation" of a numerical program, e.g. written in Matlab or
+Python, where we only abstract away the time representation as a function argument;
+the second one is a more proper description of the signal transformations and
+interactions through CT processes.
 
-> objectReflection :: Float -> Float -> Float -> Float -> Integer
->                  -> Vector (CTSignal (Complex Float))
-> objectReflection radix distance angle relativeSpeed power
->   = V.farm11 (channelReflection phi_start distance angle relativeSpeed power)
->     (vector [0..nA-1])
->   where phi_start = 2 * pi * radix / 360
+ ### Approach 1: Translating a Numerical Program{#sec:atom-radar-app1}
 
-> -- radix is a random number in (0,359)
-> -- Distance in meters
-> -- Relative speed in m/s, positive relative speed means approaching object
-> -- Angle to object, given as Theta above
-> channelReflection :: Float -> Float -> Float -> Float -> Integer
->                    -> Int -> CTSignal (Complex Float)
-> channelReflection phi distance angle relativeSpeed power chanIndex
->   = CT.infinite1 (reflectionFunc phi distance angle relativeSpeed power chanIndex)
-> 
-> reflectionFunc :: Float -> Float -> Float -> Float -> Integer
->                -> Int -> T.Time -> Complex Float
+In this approach we simply translate the Python script used to generate the AESA radar
+indata for the previous sections, included in this project source files. We do this in
+order to familiarize with the concept of continuums in ForSyDe as simply functions
+over (an abstract representation of) time. This way any numerical program can become a
+CT signal by defining it as a function which exposes the time variable $t$ as an
+argument and passes it to an infinite signal generator.
+
+The following function describes the value in time of the impulses reflected from a
+specific object with certain characteristics (see arguments list). The initial phase
+is a random number between $[0,2\pi)$.
+
+
+> reflectionFunc :: Float   -- ^ initial phase
+>                -> Float   -- ^ object distance from radar, in meters
+>                -> Float   -- ^ $\theta$, angle relative to the radar element
+>                -> Float   -- ^ relative speed in m/s. Positive speed means approaching object
+>                -> Integer -- ^ signal power
+>                -> Int     -- ^ index of the antenna element in [0..nA]
+>                -> T.Time  -- ^ Abstract time representation. Evaluated only when plotting
+>                -> Complex Float -- ^ Value of reflection signal for an antenna element (t)
 > reflectionFunc phi distance angle relativeSpeed signalPower chanIx t
 >   | range_bin >= trefl_start && range_bin <= trefl_stop && not crossing_reflection = value
 >   | not (range_bin >= trefl_start && range_bin <= trefl_stop) && crossing_reflection = value
@@ -111,16 +137,35 @@ The beamforming principle, illustrated in @fig:aesa-beamforming and briefly pres
 > 
 >     -- Handling for distances at the edge of the
 >     crossing_reflection = trefl_stop < trefl_start
-> 
->     -- channelDelay :: Integer -> Double
+>
+>     -- Models the delay between the first antenna element and the current one    
 >     channelDelay = (-1) * i' * pi * sin angle
 >     bigI  =        bigA * cos (wd * t' + phi)
 >     bigQ  = (-1) * bigA * sin (wd * t' + phi)
 >     value = (bigI :+ bigQ) * (cos channelDelay :+ sin channelDelay)
 
+> objectReflection :: Float -> Float -> Float -> Float -> Integer
+>                  -> Vector (CTSignal (Complex Float))
+> objectReflection radix distance angle relativeSpeed power
+>   = V.farm11 (channelReflection phi_start distance angle relativeSpeed power)
+>     (vector [0..nA-1])
+>   where phi_start = 2 * pi * radix / 360
+
+> -- radix is a random number in (0,359)
+> -- Distance in meters
+> -- Relative speed in m/s, positive relative speed means approaching object
+> -- Angle to object, given as Theta above
+> channelReflection :: Float -> Float -> Float -> Float -> Integer
+>                    -> Int -> CTSignal (Complex Float)
+> channelReflection phi distance angle relativeSpeed power chanIndex
+>   = CT.infinite1 (reflectionFunc phi distance angle relativeSpeed power chanIndex)
+> 
+
 
 
  ### Approach 2: CT Signal Generators{#sec:atom-radar-app2}
+
+Our object reflection model is a $\mathtt{farm_S}$ of CT signals like in Fig.~\ref{fig:radar-env}, where each signal is pulse width modulated (PWM) and carries the corresponding $I+iQ$ information as a function of time. The $\mathtt{pwm_M}$ generator is a specialized instance of a DE $\mathtt{state_M}$ process (see Fig.~\ref{fig:moc-state}), and the reflection time $r$ is controlled with a $\mathtt{delay_M}$ process. Multiple reflected objects are described as a vector of  $\mathcal{V}(\mathcal{S}_{\mathit{CT}}(\mathbb{C}))$, each originating from its corresponding $\mathtt{objectRefl}$ network.
 
 > channelReflection' :: Float -> Float -> Float -> Float -> Integer
 >                    -> Int -> CTSignal (Complex Float)
