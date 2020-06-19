@@ -121,26 +121,24 @@ generateInput args = do
   seeds  <- replicateM nA (mkStdGens <$> newStdGen) -- :: IO [[Int]]
   let [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13] = take 13 $ randomRs (0,359) randG
       objs = vector
-        [ objectReflection' r1  12e3 (pi/3 + 2*(pi-2*pi/3)/7)     (0.94)   (-6)
-        , objectReflection' r2  13e3 (pi/3 + 2*(pi-2*pi/3)/7)   (5*0.94) (-6)
-        , objectReflection' r3  14e3 (pi/3 + 2*(pi-2*pi/3)/7)  (10*0.94) (-6)
-        , objectReflection' r4  15e3 (pi/3 + 2*(pi-2*pi/3)/7)    (-0.94) (-2)
-        ,
-          objectReflection' r5  16e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-2*0.94) (-2)
-        ,
-          objectReflection' r6  17e3 (pi/3 + 2*(pi-2*pi/3)/7)  (-3*0.94) (-2)
-        , objectReflection' r7  18e3 (pi/3 + 2*(pi-2*pi/3)/7) (-20*0.94) (-4)
-        , objectReflection' r8  19e3 (pi/3 + 2*(pi-2*pi/3)/7) (-23*0.94) (-4)
-        , objectReflection' r9  20e3 (pi/3 + 2*(pi-2*pi/3)/7) (-26*0.94) (-4)
-        , objectReflection' r10 21e3 (pi/3 + 2*(pi-2*pi/3)/7) (-29*0.94) (-4)
-        , objectReflection' r11 25e3 (pi/3 + 2*(pi-2*pi/3)/7) (-15*0.94) (-2)
+        [ objectReflection' r1  12e3   (pi/3 + 2*(pi-2*pi/3)/7)       (0.94) (-6)
+        , objectReflection' r2  13e3   (pi/3 + 2*(pi-2*pi/3)/7)     (5*0.94) (-6)
+        , objectReflection' r3  14e3   (pi/3 + 2*(pi-2*pi/3)/7)    (10*0.94) (-6)
+        , objectReflection' r4  15e3   (pi/3 + 2*(pi-2*pi/3)/7)      (-0.94) (-2)
+        , objectReflection' r5  16e3   (pi/3 + 2*(pi-2*pi/3)/7)    (-2*0.94) (-2)
+        , objectReflection' r6  17e3   (pi/3 + 2*(pi-2*pi/3)/7)    (-3*0.94) (-2)
+        , objectReflection' r7  18e3   (pi/3 + 2*(pi-2*pi/3)/7)   (-20*0.94) (-4)
+        , objectReflection' r8  19e3   (pi/3 + 2*(pi-2*pi/3)/7)   (-23*0.94) (-4)
+        , objectReflection' r9  20e3   (pi/3 + 2*(pi-2*pi/3)/7)   (-26*0.94) (-4)
+        , objectReflection' r10 21e3   (pi/3 + 2*(pi-2*pi/3)/7)   (-29*0.94) (-4)
+        , objectReflection' r11 25e3   (pi/3 + 2*(pi-2*pi/3)/7)   (-15*0.94) (-2)
         , objectReflection' r12 25.4e3 (pi/3 + 2.1*(pi-2*pi/3)/7) (-15*0.94) (-4)
         , objectReflection' r13 25.2e3 (pi/3 + 2.2*(pi-2*pi/3)/7) (-15*0.94) (-3)
         ]
   -- let noise = vector $ map ($ sampSignal) noiseG
   --     gend  = videoInData sampSignal noise objs
   let seedGens = vector $ map (SY.signal) $ seeds
-      genData  = videoInData (-6) sampSignal seedGens objs
+      genData  = videoInData (-3) seedGens objs
   if genCube args then do
     putStrLn $ "Generating " ++ show (numCube args) ++ " indata cubes..."
     return $ farm11 (takeS $ numCube args * nb * nFFT) genData

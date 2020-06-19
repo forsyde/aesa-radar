@@ -1,0 +1,42 @@
+\documentclass{standalone}
+ 
+\usepackage[tikz,math]{forsyde}
+\begin{document}
+\begin{tikzpicture}
+  \basic[primitive,f=$+$](r1)<1,2>{$\MocCmb$};\cluster[farmstyle,inner sep=5pt](f1)<(r1)>{};
+  \basic[primitive,f=$+$](r2)<3,0>{$\MocCmb$};\cluster[farmstyle,inner sep=5pt](f2)<(r2)>{};
+  \cluster[process,inner sep=10pt](rall)<(f1)(r2)>{};
+  \node[anchor=south west] at (rall.south west) {\footnotesize\texttt{reduce}};
+  \basic[primitive,f=$+$](r1)<1,2>{$\MocCmb$};\cluster[farmstyle,inner sep=5pt](f1)<(r1)>{};
+  \basic[primitive,f=$+$](r2)<3,0>{$\MocCmb$};\cluster[farmstyle,inner sep=5pt](f2)<(r2)>{};
+  
+  \interface[right of=f2](noise){ct}{sy};
+  \basic[primitive,f=$\noexpand\mathcal{N}(\sigma)$,right of=noise](if1){$\MocCmb$};
+  \cluster[farmstyle,inner ysep=25pt,type=farm](f3)<(noise.north west)(if1.north east)>{};
+  
+  \node[anchor=east] (o1) at (0,3) {$\mathit{obj}_1$};
+  \node[anchor=east] (o2) at (0,2) {$\mathit{obj}_2$};
+  \node[anchor=east] (o3) at (0,0) {$\mathit{obj}_n$};
+  \node at ($(r1)!.5!(r2)$) {$\ddots$};\node at ($(o2)!.5!(o3)$) {$\vdots$};
+  \node[anchor=south,text width=2cm,align=center,inner sep=2pt] at (noise.north) {};
+  \node[anchor=south west,rotate=90,yshift=-1.2cm] (out1) at (if1) {$\mathit{video}$};
+
+
+  \path[v=ct]
+  (r1) edge[trans={<-,s}{f1-west}{v}] (o1.east)
+       edge[trans={<-,s}{f1-west}{v}] (o2)
+       edge[trans={s}{f1-east}{v,->}] ++(.7,-.7)
+  (r2) edge[trans={<-,s}{f2-west}{v}]++(-.7,.7)
+       edge[trans={<-,s}{f2-west}{v}] (o3)
+       edge[s=ct] (f2.e1)
+  (f2.e1) edge[trans={v}{f3-west}{s,->}] (noise);
+  \draw[s=sy,->] (noise) edge (if1);
+  \path(if1) edge[trans={s=sy}{f3-east}{v=sy,->}] (out1.south west);
+\end{tikzpicture}
+\end{document}
+
+%%% Local Variables:
+%%% TeX-command-default: "Make"
+%%% mode: latex
+%%% TeX-master: "../journal"
+%%% End:

@@ -1,0 +1,58 @@
+% Title    : Example plot of ForSyDe signals
+% Author   : George Ungureanu
+% Category : plot
+\documentclass{standalone}
+\usepackage[plot,tikz,math]{forsyde}
+\usepackage{filecontents}
+
+\begin{filecontents}{ct-sampde-i1.flx}
+  0.0                 : 0             ,  9.983480705722622e-2 : 0.10000000149,
+  0.5646425989611361  : 0.60000000894 ,  0.6442172934010967   : 0.70000001043,
+  0.9635580777669631  : 1.30000001937 ,  0.9854495936745004   : 1.40000002086,
+  0.8632093171439696  : 2.10000003129 ,  0.5984721912401382   : 2.50000003725,
+  0.5155014142351443  : 2.60000003874 ,  0.2392493170657283   : 2.90000004321,
+  0.1411199729841522  : 3.0000000447  , -0.15774590023230295  : 3.30000004917,
+ -0.2555412776230858  : 3.40000005066 , -0.5298363260375504   : 3.70000005513,
+ -0.6118581429834538  : 3.80000005662 , -0.8715756491042981   : 4.20000006258,
+ -0.9161661569653531  : 4.30000006407 , -0.9999232696597815   : 4.70000007003,
+ -0.9961645277800696  : 4.80000007152 , -0.9824524964336662   : 4.90000007301,
+ -0.8322681468629263  : 5.30000007897 , -0.7727641178059984   : 5.40000008046,
+ -0.46460085726814676 : 5.80000008642 , -8.308743802765294e-2 : 6.20000009238,
+  0.31154304920391934 : 6.60000009834 ,  0.40484843505764895  : 6.70000009983,
+  0.7289691091159304  : 7.10000010579 ,  0.7936684574683253   : 7.20000010728,
+  0.9679197162034261  : 7.60000011324 ,  0.9989413219493093   : 7.90000011771
+\end{filecontents}
+\begin{filecontents}{ct-sampde-o1.flx}
+  0.0 : 0,
+  1.0 : 1.570796326794,
+  1.793238462856701e-12 : 3.141592653588,
+ -1.0 : 4.712388980382,
+  0.0 : 6.283185307176,
+  1.0 : 7.85398163397,
+ -3.0403029981061924e-7 : 8
+\end{filecontents}
+
+\begin{document}
+\begin{tikzpicture}[]
+  \basic[primitive,f={$\noexpand\mathtt{sample}$}](p1)<0,1>{$\MocFun$};
+  \interface[](p3)<-.1,0>{ct}{de};
+  \basic[primitive](p2)<1,0>{$\MocApp$};
+  \path[]
+  (p1)++(-1,0) coordinate (p1in) edge[s=de,->] (p1)
+  (p2)++(-2,0) coordinate (p2in) edge[s=ct,->] (p3)
+  (p2) edge[s=de,<-] (p1) edge[s=de,<-] (p3)
+  (p2)++(1,0) coordinate (p2out) edge[s=de,<-] (p2)
+  ;
+  
+  % \standard[process, ni=2, no=1, moc=ct, type=sampDE](p1){};
+  \begin{signalsCT}[name=ct-in, timestamps=1.57, grid=1.57, at={p2in}, anchor=east, xshift=-.05cm, xscale=1]{7.86}
+    \signalCT*[outline,ordinate=0,ymin=-1,ymax=1]{ct-sampde-i1.flx}
+  \end{signalsCT}
+  \begin{signalsDE}[name=de-in, timestamps=3.14, grid=3.14, at={p1in}, anchor=east, yshift=.12cm]{8}
+    \signalDE[last label=false]{ : 0,  : 1.570, : 3.141, : 4.712, : 6.283, : 7.853, : 8 }
+  \end{signalsDE}
+  \begin{signalsDE}[name=de-out, timestamps=3.14, grid=3.14, outputs={p2out}, yshift=.12cm, xshift=-.12cm]{7.8}
+    \signalDE*[trunc]{ct-sampde-o1.flx}
+  \end{signalsDE}
+\end{tikzpicture}
+\end{document}
