@@ -7,6 +7,7 @@ packages:
 - ../forsyde-shallow-extensions
 
 extra-deps:
+- normaldistribution-1.1.0.3
 - forsyde-shallow-3.4.0.0
 - git: git@github.com:forsyde/forsyde-atom.git
-  commit: 59aeeb6130bc3fa4665aebd2634ebe3a575a7208
+  commit: 76b0c8b07047180cdef2a58c696e5245e7db3ce3
