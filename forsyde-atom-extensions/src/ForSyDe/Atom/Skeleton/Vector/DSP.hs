@@ -5,7 +5,7 @@ import qualified Data.Number.FixedFunctions as F
 import ForSyDe.Atom.MoC as MoC
 import ForSyDe.Atom.Skeleton.Vector as V hiding (duals, unduals)
 import ForSyDe.Atom.Skeleton.Vector.Matrix as M
-import ForSyDe.Atom.Utility ((<>))
+import ForSyDe.Atom.Utility as Util
 
 
 -- import qualified ForSyDe.Shallow as Sh
@@ -212,7 +212,7 @@ fft k vs | n == 2^k = V.reverse $ V.bitrev $ (stage `V.pipe1` V.iterate k (*2) 2
          | otherwise = error $ "n=" ++ show n ++ "; k=" ++ show k
   where
     stage   w = V.concat . V.farm21 segment (twiddles n) . V.group w
-    segment t = (<>) unduals . (<>) (V.farm22 (butterfly t)) . duals
+    segment t = (Util.<>) unduals . (Util.<>) (V.farm22 (butterfly t)) . duals
     n         = V.length vs        -- length of input
     -------------------------------------------------
     butterfly w x0 x1 = let t = w * x1 in (x0 + t, x0 - t) -- kernel function
@@ -223,7 +223,7 @@ fft' :: Floating a
 fft' butterfly k vs | n == 2^k = V.bitrev $ (stage `V.pipe1` (V.iterate k (*2) 2)) vs
   where
     stage   w = V.concat . V.farm21 segment (twiddles n) . V.group w
-    segment t = (<>) unduals . (<>) (V.farm22 (butterfly t)) . duals
+    segment t = (Util.<>) unduals . (Util.<>) (V.farm22 (butterfly t)) . duals
     n         = V.length vs        -- length of input
 
 duals    :: Vector a -> (Vector a, Vector a)
